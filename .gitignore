@@ -52,3 +52,5 @@ createAdmin.tsx
 /src/app/admin/products/api/addProduct
 /src/app/admin/products/api/editProduct
 /src/app/admin/products/api/getProducts
+
+README.md
