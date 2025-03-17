@@ -22,7 +22,7 @@ type CartItem = {
   quantity: number;
 };
 
-type CartContextType = {
+export type CartContextType = {
   cart: CartItem[];
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string) => void;

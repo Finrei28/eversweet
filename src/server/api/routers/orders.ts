@@ -28,6 +28,7 @@ export const orderRouter = createTRPCRouter({
           customerEmail: input.customerEmail,
           customerPhoneNumber: Number(input.customerPhoneNumber),
           priceInCents: input.totalPriceInCents,
+          status: "PENDING",
           desserts: {
             create: input.dessert.map((dessertItem) => ({
               dessert: { connect: { id: dessertItem.dessert.id } },
@@ -71,4 +72,12 @@ export const orderRouter = createTRPCRouter({
         },
       });
     }),
+
+  getAllOrders: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.order.findMany();
+  }),
+
+  getPendingOrders: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.order.findMany({ where: { status: "PENDING" } });
+  }),
 });
