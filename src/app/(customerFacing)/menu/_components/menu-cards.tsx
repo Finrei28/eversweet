@@ -70,9 +70,7 @@ export default function MenuCards() {
               </CardDescription>
             </CardHeader>
             <CardFooter className="mt-auto">
-              <div className="w-full">
-                <CustomisationDialog dessert={dessert} />
-              </div>
+              <CustomisationDialog dessert={dessert} />
             </CardFooter>
           </Card>
         ))}

@@ -16,9 +16,9 @@ const config = {
       },
     ],
   },
-  experimental: {
-    reactCompiler: true,
-  },
+  // experimental: {
+  //   reactCompiler: true,
+  // },
 };
 
 export default config;

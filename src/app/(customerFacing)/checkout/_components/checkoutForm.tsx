@@ -44,18 +44,32 @@ export default function CheckoutForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPaymentError("");
 
     if (!stripe || !elements) {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const nzPhoneRegex = /^\+?64[2-9]\d{7,8}$/;
     if (
-      !customerInfo.firstName ||
-      !customerInfo.lastName ||
-      !customerInfo.email ||
-      !customerInfo.phone
+      !customerInfo.firstName?.trim() ||
+      !customerInfo.lastName?.trim() ||
+      !customerInfo.email?.trim() ||
+      !customerInfo.phone?.trim()
     ) {
       setPaymentError("Please fill in all customer information fields.");
+      return;
+    }
+
+    if (!emailRegex.test(customerInfo.email.trim())) {
+      setPaymentError("Please enter a valid email address.");
+      return;
+    }
+
+    if (!nzPhoneRegex.test(customerInfo.phone.trim())) {
+      console.log(customerInfo.phone);
+      setPaymentError("Please enter a valid New Zealand phone number.");
       return;
     }
 
@@ -77,11 +91,10 @@ export default function CheckoutForm({
       setPaymentLoading(false);
     } else if (paymentIntent && paymentIntent.status === "succeeded") {
       setPaymentSuccess(true);
-      cart?.cart;
       const mappedDesserts =
         cart?.cart?.map((item) => ({
           dessert: {
-            id: item.id,
+            id: item.dessert.id,
             quantity: item.quantity,
           },
           priceInCents: item.priceInCents,

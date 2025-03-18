@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -13,7 +13,7 @@ import { db } from "~/server/db";
 async function getCurrentOrders() {
   const Currentorders = await db.order.count({
     where: {
-      completed: false,
+      status: "PENDING",
     },
   });
   return Currentorders;
@@ -22,7 +22,7 @@ async function getCurrentOrders() {
 async function getCompletedOrders() {
   const CompletedOrders = await db.order.count({
     where: {
-      completed: true,
+      status: "COMPLETED",
     },
   });
   return CompletedOrders;
@@ -67,7 +67,7 @@ async function getTotalSales() {
 export default async function AdminDashboard() {
   const session = await auth();
   if (!session?.user) {
-    redirect("/");
+    return notFound();
   }
 
   const Currentorders = await getCurrentOrders();

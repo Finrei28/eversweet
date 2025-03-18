@@ -87,6 +87,7 @@ export function EditCustomisation() {
     if (prevDialogOpen.current && !dialogOpen) {
       // ✅ Runs only when closing the dialog
       setEditCustomisations(dessertCustomisations);
+      setAddNewCustomisation(false);
     }
     prevDialogOpen.current = dialogOpen; // Update previous value
   }, [dialogOpen]);
@@ -132,11 +133,20 @@ export function EditCustomisation() {
                     className="w-24"
                     name="priceInCents"
                     value={customisation.priceInCents}
-                    onChange={(e) =>
-                      handleChange(customisation.id, {
-                        priceInCents: Number(e.target.value),
-                      })
-                    }
+                    onChange={(e) => {
+                      if (e.target.value.charAt(0) === "0") {
+                        e.target.value = e.target.value.slice(1);
+                      }
+                      // Check if the value is a valid number and does not start with '0' unless it's exactly '0'
+                      if (
+                        /^\d*$/.test(e.target.value) &&
+                        !e.target.value.startsWith("0")
+                      ) {
+                        handleChange(customisation.id, {
+                          priceInCents: Number(e.target.value),
+                        });
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -190,12 +200,20 @@ export function EditCustomisation() {
                   type="text"
                   placeholder="Price in cents"
                   value={newCustomisation.priceInCents}
-                  onChange={(e) =>
-                    setNewCustomisation((prev) => ({
-                      ...prev,
-                      priceInCents: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+
+                    // Check if the value is a valid number and does not start with '0' unless it's exactly '0'
+                    if (
+                      /^\d*$/.test(value) &&
+                      (value === "0" || !value.startsWith("0"))
+                    ) {
+                      setNewCustomisation((prev) => ({
+                        ...prev,
+                        priceInCents: value,
+                      }));
+                    }
+                  }}
                 />
                 <div className="pointer-events-none absolute right-40 mt-1">
                   <span className="text-sm text-gray-600">

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  ColumnDef,
   ColumnFiltersState,
   SortingState,
   flexRender,
@@ -23,21 +22,30 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Input } from "~/components/ui/input";
+import { api } from "~/trpc/react";
+import { getPastOrderColumns } from "./columns";
+import { useState } from "react";
+import CustomerDetails from "../orders/_components/customerDetails";
+import OrderDetails from "../orders/_components/orderDetails";
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
-}
-
-export function DataTable<TData, TValue>({
-  columns,
-  data,
-}: DataTableProps<TData, TValue>) {
+export function DataTable() {
+  const [customerDetailsOpen, setCustomerDetailsOpen] = useState({
+    id: "",
+    open: false,
+  });
+  const [orderDetailsOpen, setOrderDetailsOpen] = useState({
+    id: "",
+    open: false,
+  });
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
-
+  const [data] = api.order.getAllPastOrders.useSuspenseQuery();
+  const columns = getPastOrderColumns({
+    setCustomerDetailsOpen,
+    setOrderDetailsOpen,
+  });
   const table = useReactTable({
     data,
     columns,
@@ -52,6 +60,11 @@ export function DataTable<TData, TValue>({
       columnFilters,
     },
   });
+
+  const handleChangeOpen = () => {
+    setCustomerDetailsOpen({ id: "", open: false });
+    setOrderDetailsOpen({ id: "", open: false });
+  };
 
   return (
     <div>
@@ -135,6 +148,18 @@ export function DataTable<TData, TValue>({
           Next
         </Button>
       </div>
+      {customerDetailsOpen && (
+        <CustomerDetails
+          customerDetailsOpen={customerDetailsOpen}
+          handleChangeOpen={handleChangeOpen}
+        />
+      )}
+      {orderDetailsOpen && (
+        <OrderDetails
+          orderDetailsOpen={orderDetailsOpen}
+          handleChangeOpen={handleChangeOpen}
+        />
+      )}
     </div>
   );
 }

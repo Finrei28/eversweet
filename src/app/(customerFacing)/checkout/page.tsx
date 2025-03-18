@@ -9,6 +9,7 @@ import Link from "next/link";
 import PaymentSection from "./_components/paymentSection";
 import CustomerInformation from "./_components/customerInformation";
 import OrderSummary from "./_components/orderSummary";
+import { CountryData } from "react-phone-input-2";
 
 export default function CheckoutPage() {
   const cart = useContext(CartContext);
@@ -49,12 +50,24 @@ export default function CheckoutPage() {
       });
   }, [cart?.totalPrice, isClient]);
 
-  const handleCustomerInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setCustomerInfo((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const handleCustomerInfoChange = (
+    value: string | React.ChangeEvent<HTMLInputElement>,
+    data?: {} | CountryData,
+  ) => {
+    if (typeof value === "string") {
+      // Handle phone input separately
+      setCustomerInfo((prev) => ({
+        ...prev,
+        phone: value, // Store the full number (e.g., +64211234567)
+      }));
+    } else {
+      // Handle normal input fields
+      const { name, value: inputValue } = value.target;
+      setCustomerInfo((prev) => ({
+        ...prev,
+        [name]: inputValue,
+      }));
+    }
   };
 
   // Show loading state during server rendering and initial client render

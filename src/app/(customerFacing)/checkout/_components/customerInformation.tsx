@@ -4,10 +4,15 @@ import { CustomerInfo } from "~/app/components/types";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import PhoneInput, { CountryData } from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
 
 type customerInformationProps = {
   customerInfo: CustomerInfo;
-  handleCustomerInfoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleCustomerInfoChange: (
+    value: string | React.ChangeEvent<HTMLInputElement>,
+    data?: {} | CountryData,
+  ) => void;
 };
 
 export default function CustomerInformation({
@@ -54,13 +59,13 @@ export default function CustomerInformation({
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Phone Number</Label>
-            <Input
-              id="phone"
-              name="phone"
-              type="tel"
+            <PhoneInput
+              country={"nz"} // Automatically sets +64 and NZ flag
               value={customerInfo.phone}
               onChange={handleCustomerInfoChange}
-              required
+              inputStyle={{ width: "100%", paddingLeft: "50px" }} // Adjust input styling
+              onlyCountries={["nz"]} // Restrict to only NZ numbers
+              countryCodeEditable={false} // Prevent users from changing +64
             />
           </div>
         </div>

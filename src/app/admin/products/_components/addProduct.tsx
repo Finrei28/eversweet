@@ -23,7 +23,6 @@ import {
 } from "~/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFormStatus } from "react-dom";
 import { formatCurrency } from "~/lib/formatters";
 import { addSchema } from "~/app/components/schemas";
 import { api } from "~/trpc/react";

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  ColumnDef,
   ColumnFiltersState,
   SortingState,
   flexRender,
@@ -23,20 +22,31 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Input } from "~/components/ui/input";
+import { getOrderColumns } from "./columns";
+import { api } from "~/trpc/react";
+import { useState } from "react";
+import CustomerDetails from "./_components/customerDetails";
+import OrderDetails from "./_components/orderDetails";
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
-}
-
-export function DataTable<TData, TValue>({
-  columns,
-  data,
-}: DataTableProps<TData, TValue>) {
+export function DataTable() {
+  const [customerDetailsOpen, setCustomerDetailsOpen] = useState({
+    id: "",
+    open: false,
+  });
+  const [orderDetailsOpen, setOrderDetailsOpen] = useState({
+    id: "",
+    open: false,
+  });
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
+
+  const columns = getOrderColumns({
+    setCustomerDetailsOpen,
+    setOrderDetailsOpen,
+  });
+  const [data] = api.order.getAllCurrentOrders.useSuspenseQuery();
 
   const table = useReactTable({
     data,
@@ -53,27 +63,34 @@ export function DataTable<TData, TValue>({
     },
   });
 
+  const [searchValue, setSearchValue] = React.useState("");
+
+  const handleChangeOpen = () => {
+    setCustomerDetailsOpen({ id: "", open: false });
+    setOrderDetailsOpen({ id: "", open: false });
+  };
+
   return (
     <div>
       <div className="flex items-center py-4">
         <Input
-          placeholder="Search by customer or Id"
-          value={
-            (table.getColumn("customer")?.getFilterValue() as string) ??
-            (table.getColumn("id")?.getFilterValue() as string) ??
-            ""
-          }
+          placeholder="Search by customer or Order number"
+          value={searchValue}
           onChange={(event) => {
             const value = event.target.value;
+            setSearchValue(value); // Update local state
 
-            // Set filter for both customer and id columns
             if (isNaN(Number(value))) {
-              // If the value is not a number, it's likely a customer name
+              // If it's a name (non-numeric)
               table.getColumn("customer")?.setFilterValue(value);
-              table.getColumn("id")?.setFilterValue(""); // Clear ID filter
+              table.getColumn("orderNumber")?.setFilterValue(""); // Clear orderNumber filter
+            } else if (!value) {
+              // if no value
+              table.getColumn("orderNumber")?.setFilterValue("");
+              table.getColumn("customer")?.setFilterValue(""); // Clear customer filter
             } else {
-              // If the value is a number, it's likely an ID
-              table.getColumn("id")?.setFilterValue(value);
+              // If it's an order number (numeric)
+              table.getColumn("orderNumber")?.setFilterValue(Number(value));
               table.getColumn("customer")?.setFilterValue(""); // Clear customer filter
             }
           }}
@@ -102,21 +119,28 @@ export function DataTable<TData, TValue>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const customisationsExist = row.original.desserts.some(
+                  (dessert) => dessert.customisations.length > 0,
+                );
+                const status = row.original.status;
+                return (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className={`${status === "COMPLETED" ? "bg-green-500" : status === "PICKED_UP" ? "bg-red-500" : customisationsExist ? "bg-orange-200" : ""}`}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell
@@ -147,6 +171,19 @@ export function DataTable<TData, TValue>({
         >
           Next
         </Button>
+
+        {customerDetailsOpen && (
+          <CustomerDetails
+            customerDetailsOpen={customerDetailsOpen}
+            handleChangeOpen={handleChangeOpen}
+          />
+        )}
+        {orderDetailsOpen && (
+          <OrderDetails
+            orderDetailsOpen={orderDetailsOpen}
+            handleChangeOpen={handleChangeOpen}
+          />
+        )}
       </div>
     </div>
   );

@@ -61,19 +61,25 @@ export function Navbar({
   }, [isOpen, isCartOpen]);
 
   useEffect(() => {
+    setIsOpen(false);
+  }, [pathName]);
+
+  useEffect(() => {
     if (cart?.cart) {
       const total = cart.cart.reduce((acc, item) => acc + item.quantity, 0);
       setCartQuantity(total);
     }
   }, [cart?.cart]);
+
   return (
     <>
       {/* Desktop Navbar */}
       <nav className="hidden items-center justify-center py-10 text-primary lg:flex">
         <div className="relative mx-auto flex w-full max-w-7xl items-center px-4">
           {/* Logo */}
+
           <div className="absolute lg:left-0 xl:left-4">
-            <Link href={"/"}>
+            <Link href={pathName.startsWith("/admin") ? `${pathName}` : "/"}>
               <img
                 src="/eversweetLogo.jpg"
                 alt="logo"
@@ -107,7 +113,10 @@ export function Navbar({
 
       {/* Mobile navbar */}
       <div className="flex w-full justify-between px-4 text-primary lg:hidden">
-        <Link href={"/"} className="pt-4">
+        <Link
+          href={pathName.startsWith("/admin") ? `${pathName}` : "/"}
+          className="pt-4"
+        >
           <img
             src="/eversweetLogo.jpg"
             alt="logo"

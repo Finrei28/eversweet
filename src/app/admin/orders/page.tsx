@@ -1,18 +1,21 @@
-import { orders } from "sampleData";
 import { DataTable } from "./data-table";
-import { columns } from "./columns";
 import { auth } from "~/server/auth";
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { api, HydrateClient } from "~/trpc/server";
 
 export default async function PastOrdersPage() {
   const session = await auth();
   if (!session?.user) {
-    redirect("/");
+    return notFound();
   }
-  const newOrders = orders.filter((order) => order.completed === false);
+
+  void api.order.getAllCurrentOrders.prefetch();
+
   return (
-    <div className="container mx-auto py-10">
-      <DataTable columns={columns} data={newOrders} />
-    </div>
+    <HydrateClient>
+      <div className="container mx-auto py-10">
+        <DataTable />
+      </div>
+    </HydrateClient>
   );
 }
