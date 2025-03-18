@@ -13,46 +13,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import type { $Enums } from "@prisma/client";
 import { api } from "~/trpc/react";
 import { useCallback } from "react";
-
-// This type is used to define the shape of our data.
-export type OrderType = {
-  id: string;
-  tempOrderId: string;
-  priceInCents: number;
-  createdAt: Date;
-  updatedAt: Date;
-  customerFirstName: string;
-  customerLastName: string;
-  customerEmail: string;
-  customerPhoneNumber: string;
-  completedAt: Date | null;
-  pickedUpAt: Date | null;
-  status: $Enums.Status; // Assuming $Enums.Status refers to an enum for order status
-  desserts: {
-    id: string;
-    dessertId: string;
-    orderId: string;
-    quantity: number;
-    dessert: {
-      id: string;
-      name: string;
-      chineseName: string;
-    };
-    customisations: {
-      customisationId: string;
-      quantity: number;
-      customisation: {
-        id: string;
-        name: string;
-        priceInCents: number;
-        isAvailableForPurchase: boolean;
-      };
-    }[];
-  }[];
-};
+import { OrderType } from "~/app/components/types";
 
 type ColumnProps = {
   setCustomerDetailsOpen: React.Dispatch<
@@ -124,7 +87,7 @@ export function getOrderColumns({
       header: "Desserts",
       cell: ({ row }) => {
         const desserts = row.original.desserts
-          .map((dessert) => dessert.dessert.name)
+          .map((dessert) => `${dessert.dessert.name}(${dessert.quantity})`)
           .join(", ");
         return <div className="font-medium">{desserts}</div>;
       },

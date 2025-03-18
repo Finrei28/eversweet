@@ -13,12 +13,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { OrderType } from "../orders/columns";
 import { api } from "~/trpc/react";
 import { useCallback } from "react";
-
-// This type is used to define the shape of our data.
-// You can use a Zod schema here if you want.
+import { OrderType } from "~/app/components/types";
 
 type ColumnProps = {
   setCustomerDetailsOpen: React.Dispatch<

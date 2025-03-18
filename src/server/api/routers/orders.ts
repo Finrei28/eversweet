@@ -1,12 +1,17 @@
 import { Status } from "@prisma/client";
 import { z } from "zod";
 import { orderSchema } from "~/app/components/schemas";
+import EmailOrderConfirmation from "~/email/orderConfirmation";
 
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY as string);
 
 export const orderRouter = createTRPCRouter({
   create: publicProcedure
@@ -21,7 +26,7 @@ export const orderRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.order.create({
+      const order = await ctx.db.order.create({
         data: {
           tempOrderId: String(Math.floor(Math.random() * 100000)),
           customerFirstName: input.customerFirstName,
@@ -64,6 +69,15 @@ export const orderRouter = createTRPCRouter({
           },
         },
       });
+
+      resend.emails.send({
+        from: '"Eversweet" <eversweet@eversweet.co.nz>',
+        to: input.customerEmail,
+        subject: "Order Confirmation",
+        react: EmailOrderConfirmation({ order }),
+      });
+
+      return order;
     }),
 
   getOrder: publicProcedure
@@ -218,4 +232,29 @@ export const orderRouter = createTRPCRouter({
         },
       });
     }),
+
+  // getFirstOrder: publicProcedure.query(async ({ ctx }) => {
+  //   const order = await ctx.db.order.findFirst({
+  //     include: {
+  //       desserts: {
+  //         include: {
+  //           dessert: true,
+  //           customisations: {
+  //             include: { customisation: true },
+  //           },
+  //         },
+  //       },
+  //     },
+  //   });
+  //   if (!order) {
+  //     return;
+  //   }
+  //   resend.emails.send({
+  //     from: "eversweet@eversweet.co.nz",
+  //     to: order.customerEmail,
+  //     subject: "Order Confirmation",
+  //     react: EmailOrderConfirmation({ order }),
+  //   });
+  //   return order;
+  // }),
 });

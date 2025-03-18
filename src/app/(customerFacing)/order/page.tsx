@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
-import { formatCurrency } from "~/lib/formatters";
+import {
+  formatCurrency,
+  formatDate,
+  getCollectionTime,
+} from "~/lib/formatters";
 import {
   Card,
   CardContent,
@@ -60,30 +64,6 @@ export default function OrderPage() {
   }
 
   // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("en-NZ", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-    }).format(date);
-  };
-
-  // Calculate collection time (30 minutes after order time)
-  const getCollectionTime = (dateString: string) => {
-    const orderDate = new Date(dateString);
-    const collectionDate = new Date(orderDate.getTime() + 30 * 60000); // Add 30 minutes
-    return new Intl.DateTimeFormat("en-NZ", {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-    }).format(collectionDate);
-  };
 
   // Handle printing the receipt
   const handlePrint = () => {

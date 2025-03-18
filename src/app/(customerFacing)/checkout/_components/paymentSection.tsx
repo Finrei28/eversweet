@@ -32,7 +32,7 @@ export default function PaymentSection({
 }: paymentSectionProps) {
   const router = useRouter();
   const stripePromise = loadStripe(
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string,
+    process.env.NEXT_PUBLIC_STRIPE_LIVE_PUBLISHABLE_KEY as string,
   );
   return (
     <Card>

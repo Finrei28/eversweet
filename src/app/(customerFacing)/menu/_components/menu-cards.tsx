@@ -22,9 +22,7 @@ export default function MenuCards() {
     null,
   );
   const [filter, setFilter] = useState("All");
-  useEffect(() => {
-    console.log(filter);
-  }, [filter]);
+
   return (
     <>
       <div className="flex gap-5 pb-5">

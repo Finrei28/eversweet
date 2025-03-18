@@ -68,7 +68,6 @@ export default function CheckoutForm({
     }
 
     if (!nzPhoneRegex.test(customerInfo.phone.trim())) {
-      console.log(customerInfo.phone);
       setPaymentError("Please enter a valid New Zealand phone number.");
       return;
     }

@@ -1,3 +1,5 @@
+import { $Enums } from "@prisma/client";
+
 export type Dessert = {
   id: string;
   name: string;
@@ -25,4 +27,79 @@ export type CustomerInfo = {
   lastName: string;
   email: string;
   phone: string;
+};
+
+export type OrderType = {
+  id: string;
+  tempOrderId: string;
+  priceInCents: number;
+  createdAt: Date;
+  updatedAt: Date;
+  customerFirstName: string;
+  customerLastName: string;
+  customerEmail: string;
+  customerPhoneNumber: string;
+  completedAt: Date | null;
+  pickedUpAt: Date | null;
+  status: $Enums.Status; // Assuming $Enums.Status refers to an enum for order status
+  desserts: {
+    id: string;
+    dessertId: string;
+    orderId: string;
+    quantity: number;
+    dessert: {
+      id: string;
+      name: string;
+      chineseName: string;
+    };
+    customisations: {
+      customisationId: string;
+      quantity: number;
+      customisation: {
+        id: string;
+        name: string;
+        priceInCents: number;
+        isAvailableForPurchase: boolean;
+      };
+    }[];
+  }[];
+};
+
+export type FullOrderType = {
+  id: string;
+  tempOrderId: string;
+  priceInCents: number;
+  createdAt: Date;
+  updatedAt: Date;
+  customerFirstName: string;
+  customerLastName: string;
+  customerEmail: string;
+  customerPhoneNumber: string;
+  completedAt: Date | null;
+  pickedUpAt: Date | null;
+  status: $Enums.Status; // Assuming $Enums.Status refers to an enum for order status
+  desserts: {
+    id: string;
+    dessertId: string;
+    orderId: string;
+    quantity: number;
+    dessert: {
+      id: string;
+      name: string;
+      chineseName: string;
+      imagePath: string;
+      priceInCents: number;
+    };
+    customisations: {
+      id: string;
+      customisationId: string;
+      quantity: number;
+      customisation: {
+        id: string;
+        name: string;
+        priceInCents: number;
+        isAvailableForPurchase: boolean;
+      };
+    }[];
+  }[];
 };
