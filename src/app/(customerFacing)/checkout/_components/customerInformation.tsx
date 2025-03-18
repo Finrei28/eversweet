@@ -4,14 +4,13 @@ import { CustomerInfo } from "~/app/components/types";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import PhoneInput, { CountryData } from "react-phone-input-2";
+import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 
 type customerInformationProps = {
   customerInfo: CustomerInfo;
   handleCustomerInfoChange: (
     value: string | React.ChangeEvent<HTMLInputElement>,
-    data?: {} | CountryData,
   ) => void;
 };
 

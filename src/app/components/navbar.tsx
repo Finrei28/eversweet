@@ -8,6 +8,7 @@ import { Menu, Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { CartContext } from "./cartContext";
 import { formatCurrency } from "~/lib/formatters";
+import Image from "next/image";
 
 export function Navbar({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -65,6 +66,8 @@ export function Navbar({ children }: { children: React.ReactNode }) {
     }
   }, [cart?.cart]);
 
+  console.log(process.env.NEXT_PUBLIC_LOGO_URL as string);
+
   return (
     <>
       {/* Desktop Navbar */}
@@ -74,10 +77,12 @@ export function Navbar({ children }: { children: React.ReactNode }) {
 
           <div className="absolute lg:left-0 xl:left-4">
             <Link href={pathName.startsWith("/admin") ? `${pathName}` : "/"}>
-              <img
-                src={process.env.NEXT_PUBLIC_LOGO_URL}
+              <Image
+                src={process.env.NEXT_PUBLIC_LOGO_URL as string}
                 alt="logo"
-                className="h-32 rounded-full"
+                width={150}
+                height={150}
+                className="h-full w-full rounded-full"
               />
             </Link>
           </div>
@@ -111,10 +116,12 @@ export function Navbar({ children }: { children: React.ReactNode }) {
           href={pathName.startsWith("/admin") ? `${pathName}` : "/"}
           className="pt-4"
         >
-          <img
-            src={process.env.NEXT_PUBLIC_LOGO_URL}
+          <Image
+            src={process.env.NEXT_PUBLIC_LOGO_URL as string}
             alt="logo"
-            className="h-20 rounded-full"
+            width={150}
+            height={150}
+            className="h-full w-full rounded-full"
           />
         </Link>
 

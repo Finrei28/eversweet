@@ -1,4 +1,3 @@
-import { auth } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
 import { TopDesserts } from "../_components/top-desserts";
 import Link from "next/link";

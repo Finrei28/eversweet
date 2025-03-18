@@ -47,7 +47,7 @@ export default function OrderPage() {
     isLoading,
     error,
   } = api.order.getOrder.useQuery(
-    { id: orderId || "" },
+    { id: orderId ?? "" },
     { enabled: !!orderId && isClient },
   );
 
@@ -216,7 +216,7 @@ export default function OrderPage() {
                     <div className="relative h-16 w-16 flex-shrink-0 self-start overflow-hidden rounded-md border border-gray-200">
                       {item.dessert.imagePath ? (
                         <Image
-                          src={item.dessert.imagePath || "/placeholder.svg"}
+                          src={item.dessert.imagePath ?? "/placeholder.svg"}
                           alt={item.dessert.name}
                           fill
                           className="object-cover"

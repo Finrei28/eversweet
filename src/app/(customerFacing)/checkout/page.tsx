@@ -9,7 +9,6 @@ import Link from "next/link";
 import PaymentSection from "./_components/paymentSection";
 import CustomerInformation from "./_components/customerInformation";
 import OrderSummary from "./_components/orderSummary";
-import { CountryData } from "react-phone-input-2";
 
 export default function CheckoutPage() {
   const cart = useContext(CartContext);
@@ -52,7 +51,6 @@ export default function CheckoutPage() {
 
   const handleCustomerInfoChange = (
     value: string | React.ChangeEvent<HTMLInputElement>,
-    data?: {} | CountryData,
   ) => {
     if (typeof value === "string") {
       // Handle phone input separately

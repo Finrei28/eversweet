@@ -99,5 +99,4 @@ export const authConfig = {
     },
   },
   secret: process.env.AUTH_SECRET, // AUTH_SECRET in .env file
-  debug: true, // Enable debug logs for troubleshooting
 } satisfies NextAuthConfig;
