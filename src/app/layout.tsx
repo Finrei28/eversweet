@@ -4,7 +4,6 @@ import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 
 import { TRPCReactProvider } from "~/trpc/react";
-import { Navbar, NavbarLink } from "./components/navbar";
 import { cn } from "~/lib/utils";
 
 export const metadata: Metadata = {

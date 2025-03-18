@@ -9,13 +9,7 @@ import { Button } from "~/components/ui/button";
 import { CartContext } from "./cartContext";
 import { formatCurrency } from "~/lib/formatters";
 
-export function Navbar({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+export function Navbar({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -81,7 +75,7 @@ export function Navbar({
           <div className="absolute lg:left-0 xl:left-4">
             <Link href={pathName.startsWith("/admin") ? `${pathName}` : "/"}>
               <img
-                src="/eversweetLogo.jpg"
+                src={process.env.NEXT_PUBLIC_LOGO_URL}
                 alt="logo"
                 className="h-32 rounded-full"
               />
@@ -118,7 +112,7 @@ export function Navbar({
           className="pt-4"
         >
           <img
-            src="/eversweetLogo.jpg"
+            src={process.env.NEXT_PUBLIC_LOGO_URL}
             alt="logo"
             className="h-20 rounded-full"
           />

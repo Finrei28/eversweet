@@ -1,5 +1,3 @@
-import { Session } from "next-auth";
-import { useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,

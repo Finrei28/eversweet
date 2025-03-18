@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Navbar, NavbarLink } from "../components/navbar";
 
 export default function CustomerFacingLayout({

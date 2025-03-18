@@ -11,16 +11,16 @@ import {
 import { formatCurrency } from "~/lib/formatters";
 import Image from "next/image";
 import { Button } from "~/components/ui/button";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Soup } from "lucide-react";
 import { Snowflake } from "lucide-react";
 import CustomisationDialog from "./customisation";
 
 export default function MenuCards() {
   const [menuItems] = api.dessert.getProductsForMenu.useSuspenseQuery();
-  const [filteredItems, setFilteredItems] = useState<typeof menuItems | null>(
-    null,
-  );
+  // const [filteredItems, setFilteredItems] = useState<typeof menuItems | null>(
+  //   null,
+  // );
   const [filter, setFilter] = useState("All");
 
   return (

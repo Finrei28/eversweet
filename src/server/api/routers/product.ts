@@ -1,12 +1,9 @@
 import { TRPCError } from "@trpc/server";
-import { randomUUID } from "crypto";
 import { z } from "zod";
 import {
-  addSchema,
   createProductSchema,
   updateProductSchema,
 } from "~/app/components/schemas";
-import fs from "fs/promises";
 
 import {
   createTRPCRouter,
