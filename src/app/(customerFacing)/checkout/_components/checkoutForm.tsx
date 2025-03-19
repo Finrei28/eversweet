@@ -119,7 +119,6 @@ export default function CheckoutForm({
       },
       redirect: "if_required",
     });
-    console.log(paymentIntent?.amount);
 
     if (submitError) {
       setPaymentError(

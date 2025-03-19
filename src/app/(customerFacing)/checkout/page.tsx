@@ -30,10 +30,8 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
-    console.log(cart?.totalPrice);
-    console.log(isClient);
     if (!cart?.totalPrice || !isClient) return;
-    console.log("new stripe");
+
     setIsLoading(true);
     fetch("/api/checkout_sessions", {
       method: "POST",

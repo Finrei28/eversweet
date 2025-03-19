@@ -93,8 +93,6 @@ export function EditCustomisation() {
     prevDialogOpen.current = dialogOpen; // Update previous value
   }, [dialogOpen, dessertCustomisations]);
 
-  console.log(error);
-
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
