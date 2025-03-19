@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     }
 
     const session = await stripe.paymentIntents.create({
-      amount: amount * 100,
+      amount: amount,
       currency: "nzd",
       payment_method_types: ["card"],
     });

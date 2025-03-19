@@ -10,6 +10,7 @@ import SuperJSON from "superjson";
 import { type AppRouter } from "~/server/api/root";
 import { createQueryClient } from "./query-client";
 import { CartProvider } from "~/app/components/cartContext";
+import { LanguageProvider } from "~/app/components/language";
 
 let clientQueryClientSingleton: QueryClient | undefined = undefined;
 const getQueryClient = () => {
@@ -64,7 +65,9 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <api.Provider client={trpcClient} queryClient={queryClient}>
-        <CartProvider>{props.children}</CartProvider>
+        <LanguageProvider>
+          <CartProvider>{props.children}</CartProvider>
+        </LanguageProvider>
       </api.Provider>
     </QueryClientProvider>
   );

@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Input } from "~/components/ui/input";
-import { getOrderColumns } from "./columns";
+import { GetOrderColumns } from "./columns";
 import { api } from "~/trpc/react";
 import { useState } from "react";
 import CustomerDetails from "./_components/customerDetails";
@@ -42,7 +42,7 @@ export function DataTable() {
     [],
   );
 
-  const columns = getOrderColumns({
+  const columns = GetOrderColumns({
     setCustomerDetailsOpen,
     setOrderDetailsOpen,
   });

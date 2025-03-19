@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, SetStateAction, Dispatch } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -26,6 +26,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { formatCurrency } from "~/lib/formatters";
 import { addSchema } from "~/app/components/schemas";
 import { api } from "~/trpc/react";
+import { Textarea } from "~/components/ui/textarea";
 
 // Validation schemas
 
@@ -64,7 +65,7 @@ export function AddProduct({
       setDialogOpen(false);
     },
     onError: (error) => {
-      setError(JSON.parse(error.message)[0].message);
+      setError(JSON.parse(error.message)[0].message ?? error.message);
     },
   });
 
@@ -118,7 +119,7 @@ export function AddProduct({
       setError(null);
     }
     prevDialogOpen.current = dialogOpen; // Update previous value
-  }, [dialogOpen]);
+  }, [dialogOpen, addForm]);
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
@@ -172,6 +173,14 @@ export function AddProduct({
                                     }
                                   }}
                                 />
+                              ) : id === "description" ||
+                                id === "ingredients" ? (
+                                <Textarea
+                                  draggable="false"
+                                  value={field.value?.toString()}
+                                  onChange={field.onChange}
+                                  className="resize-none"
+                                />
                               ) : (
                                 <FormInput
                                   {...field}
@@ -180,9 +189,7 @@ export function AddProduct({
                                   onChange={
                                     id === "priceInCents"
                                       ? (e) => {
-                                          if (
-                                            e.target.value.charAt(0) === "0"
-                                          ) {
+                                          if (e.target.value.startsWith("0")) {
                                             e.target.value =
                                               e.target.value.slice(1);
                                           }
@@ -252,11 +259,7 @@ export function AddProduct({
             )}
             <DialogFooter>
               <div className="flex w-full flex-col items-center justify-center">
-                <SubmitButton
-                  submitText={submitText}
-                  setAddLoading={setAddLoading}
-                  addLoading={addLoading}
-                />
+                <SubmitButton submitText={submitText} addLoading={addLoading} />
               </div>
             </DialogFooter>
           </form>
@@ -268,11 +271,9 @@ export function AddProduct({
 
 function SubmitButton({
   submitText,
-  setAddLoading,
   addLoading,
 }: {
   submitText: string;
-  setAddLoading: Dispatch<SetStateAction<boolean>>;
   addLoading: boolean;
 }) {
   return (

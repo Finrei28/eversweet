@@ -29,7 +29,7 @@ export default function ProductDialogContext({
             {
               id: "description",
               label: "Description",
-              value: product.description,
+              value: product.description ?? "",
             },
             {
               id: "ingredients",
@@ -59,7 +59,7 @@ export default function ProductDialogContext({
             id: product.id,
             name: product.name,
             chineseName: product.chineseName,
-            description: product.description,
+            description: product.description ?? "",
             ingredients: product.ingredients.join(","),
             priceInCents: product.priceInCents,
             imagePath: product.imagePath,

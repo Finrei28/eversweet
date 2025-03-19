@@ -1,23 +1,19 @@
 "use client";
 
 import { createContext, useState, useEffect, ReactNode } from "react";
+import { dessertOnClient } from "./types";
 
-type CartItem = {
+type customisations = {
   id: string;
-  customisations: {
-    id: string;
-    name: string;
-    quantity: number;
-  }[];
-  dessert: {
-    description: string;
-    name: string;
-    id: string;
-    chineseName: string;
-    priceInCents: number;
-    imagePath: string;
-    ingredients: string[];
-  };
+  chineseName: string;
+  name: string;
+  quantity: number;
+}[];
+
+export type CartItem = {
+  id: string;
+  customisations: customisations;
+  dessert: dessertOnClient;
   priceInCents: number;
   quantity: number;
 };
@@ -30,6 +26,7 @@ export type CartContextType = {
   removeAllItemFromCart: (id: string) => void;
   clearCart: () => void;
   totalPrice: number;
+  updateItemFromCart: (id: string, item: CartItem) => void;
 };
 
 export const CartContext = createContext<CartContextType | null>(null);
@@ -47,19 +44,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
 
+  const areListsEqual = (list1: customisations, list2: customisations) => {
+    if (list1.length !== list2.length) return false;
+
+    const sortedList1 = [...list1].sort((a, b) => a.id.localeCompare(b.id));
+    const sortedList2 = [...list2].sort((a, b) => a.id.localeCompare(b.id));
+
+    return sortedList1.every(
+      (item, index) =>
+        JSON.stringify(item) === JSON.stringify(sortedList2[index]),
+    );
+  };
+
   const addToCart = (item: CartItem) => {
     setCart((prev) => {
-      const areListsEqual = (list1: any[], list2: any[]) => {
-        if (list1.length !== list2.length) return false;
-
-        const sortedList1 = [...list1].sort((a, b) => a.id.localeCompare(b.id));
-        const sortedList2 = [...list2].sort((a, b) => a.id.localeCompare(b.id));
-
-        return sortedList1.every(
-          (item, index) =>
-            JSON.stringify(item) === JSON.stringify(sortedList2[index]),
-        );
-      };
       const exists = prev.find(
         (cartItem) =>
           areListsEqual(cartItem.customisations, item.customisations) &&
@@ -98,6 +96,33 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCart((prev) => prev.filter((item) => item.id != id));
   };
 
+  const updateItemFromCart = (id: string, item: CartItem) => {
+    setCart((prev) => {
+      // Find an item with the same customisations and dessert name (but allow same ID)
+      const matchesOtherItemInCart = prev.find(
+        (cartItem) =>
+          areListsEqual(cartItem.customisations, item.customisations) &&
+          cartItem.dessert.name === item.dessert.name,
+      );
+
+      if (matchesOtherItemInCart && matchesOtherItemInCart.id !== id) {
+        // If merging with another item, increase quantity and remove old item
+        return prev
+          .map((cartItem) =>
+            cartItem.id === matchesOtherItemInCart.id
+              ? { ...cartItem, quantity: cartItem.quantity + item.quantity }
+              : cartItem,
+          )
+          .filter((cartItem) => cartItem.id !== id); // Remove only if merging
+      } else {
+        // If editing the same item, update it normally
+        return prev.map((cartItem) =>
+          cartItem.id === id ? { ...cartItem, ...item } : cartItem,
+        );
+      }
+    });
+  };
+
   const clearCart = () => setCart([]);
 
   const totalPrice = cart.reduce(
@@ -115,6 +140,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         removeAllItemFromCart,
         clearCart,
         totalPrice,
+        updateItemFromCart,
       }}
     >
       {children}

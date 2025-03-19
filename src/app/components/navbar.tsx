@@ -9,6 +9,9 @@ import { Button } from "~/components/ui/button";
 import { CartContext } from "./cartContext";
 import { formatCurrency } from "~/lib/formatters";
 import Image from "next/image";
+import { Switch } from "~/components/ui/switch";
+import { useLanguage } from "./language";
+import { Label } from "~/components/ui/label";
 
 export function Navbar({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,6 +22,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
   const [cartQuantity, setCartQuantity] = useState<number | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const pathName = usePathname();
+  const { language, toggleLanguage } = useLanguage();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
@@ -66,8 +70,6 @@ export function Navbar({ children }: { children: React.ReactNode }) {
     }
   }, [cart?.cart]);
 
-  console.log(process.env.NEXT_PUBLIC_LOGO_URL as string);
-
   return (
     <>
       {/* Desktop Navbar */}
@@ -95,7 +97,8 @@ export function Navbar({ children }: { children: React.ReactNode }) {
           {/* Shopping cart */}
           {cartQuantity !== null &&
             cartQuantity > 0 &&
-            pathName !== "/checkout" && (
+            pathName !== "/checkout" &&
+            !pathName.startsWith("/admin") && (
               <div className="absolute right-4">
                 <ShoppingCart
                   size={"2rem"}
@@ -108,6 +111,16 @@ export function Navbar({ children }: { children: React.ReactNode }) {
               </div>
             )}
         </div>
+        {!pathName.startsWith("/admin") && (
+          <div className="absolute right-10 flex items-center gap-1">
+            <Label>EN</Label>
+            <Switch
+              onCheckedChange={toggleLanguage}
+              checked={language === "en" ? false : true}
+            />
+            <Label>ZH</Label>
+          </div>
+        )}
       </nav>
 
       {/* Mobile navbar */}
@@ -135,7 +148,8 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         </Button>
         {cartQuantity !== null &&
           cartQuantity > 0 &&
-          pathName !== "/checkout" && (
+          pathName !== "/checkout" &&
+          !pathName.startsWith("/admin") && (
             <div className="relative top-24 flex justify-end pr-5 md:pr-7">
               <ShoppingCart
                 size={"2rem"}
@@ -161,6 +175,11 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         )}
       >
         {children}
+        {!pathName.startsWith("/admin") && (
+          <span onClick={toggleLanguage} className="py-2">
+            {language === "en" ? "中文" : "English"}
+          </span>
+        )}
       </div>
 
       {/* Cart Modal */}
@@ -171,7 +190,9 @@ export function Navbar({ children }: { children: React.ReactNode }) {
             className="relative mx-4 max-h-[90vh] w-full max-w-md overflow-auto rounded-lg bg-white p-6 shadow-xl"
           >
             <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-4">
-              <h2 className="text-2xl font-bold text-primary">Your Cart</h2>
+              <h2 className="text-2xl font-bold text-primary">
+                {language === "en" ? "Your Cart" : "您的购物车"}
+              </h2>
               <Button
                 variant="ghost"
                 size="icon"
@@ -185,68 +206,82 @@ export function Navbar({ children }: { children: React.ReactNode }) {
             {cart && cartQuantity && cartQuantity > 0 ? (
               <>
                 <div className="max-h-[50vh] space-y-4 overflow-y-auto py-2">
-                  {cart?.cart.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-4 border-b border-gray-100 pb-4"
-                    >
-                      <div className="flex flex-1 flex-col">
-                        <h3 className="text-sm font-medium text-gray-900">
-                          {item.dessert.name}
-                        </h3>
-                        {item.customisations?.map((customisation) => (
-                          <p
-                            className="ml-1 mt-1 items-center text-sm text-gray-500"
-                            key={customisation.id}
-                          >
-                            {customisation.quantity > 1
-                              ? `+${customisation.quantity} ${customisation.name}`
-                              : customisation.quantity === 1
-                                ? `+${customisation.name}`
-                                : `-${customisation.name}`}
-                          </p>
-                        ))}
-                        <p className="mt-1 text-sm text-gray-500">
-                          {formatCurrency(item.priceInCents / 100)}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7 rounded-full p-0"
-                          onClick={() => cart.removeFromCart(item.id)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-6 text-center">{item.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7 rounded-full p-0"
-                          onClick={() => cart.addExtraToCart(item.id)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                        onClick={() => cart.removeAllItemFromCart(item.id)}
+                  {cart?.cart.map((item) => {
+                    const dessertName =
+                      language === "en"
+                        ? item.dessert.name
+                        : item.dessert.chineseName;
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-4 border-b border-gray-100 pb-4"
                       >
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex flex-1 flex-col">
+                          <h3 className="text-sm font-medium text-gray-900">
+                            {dessertName}
+                          </h3>
+                          {item.customisations?.map((customisation) => {
+                            const customisationName =
+                              language === "en"
+                                ? customisation.name
+                                : customisation.chineseName;
+                            return (
+                              <p
+                                className="ml-1 mt-1 items-center text-sm text-gray-500"
+                                key={customisation.id}
+                              >
+                                {customisation.quantity > 1
+                                  ? `+${customisation.quantity} ${customisationName}`
+                                  : customisation.quantity === 1
+                                    ? `+${customisationName}`
+                                    : `-${customisationName}`}
+                              </p>
+                            );
+                          })}
+                          <p className="mt-1 text-sm text-gray-500">
+                            {formatCurrency(item.priceInCents / 100)}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7 rounded-full p-0"
+                            onClick={() => cart.removeFromCart(item.id)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-6 text-center">
+                            {item.quantity}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7 rounded-full p-0"
+                            onClick={() => cart.addExtraToCart(item.id)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                          onClick={() => cart.removeAllItemFromCart(item.id)}
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="mt-6 space-y-4">
                   <div className="flex items-center justify-between border-t border-gray-200 pt-4">
                     <span className="text-base font-medium text-gray-900">
-                      Subtotal
+                      {language === "en" ? "Total" : "总计"}
                     </span>
                     <span className="text-lg font-bold text-primary">
                       {formatCurrency(cart.totalPrice / 100)}
@@ -259,7 +294,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                         className="w-full bg-primary text-white hover:bg-primary/90 hover:text-primary"
                         onClick={() => setIsCartOpen(false)}
                       >
-                        Checkout
+                        {language === "en" ? "Checkout" : "买单"}
                       </Button>
                     </Link>
 
@@ -268,7 +303,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                       className="w-full border-primary text-primary hover:bg-primary/10"
                       onClick={() => setIsCartOpen(false)}
                     >
-                      Continue Shopping
+                      {language === "en" ? "Continue Adding" : "继续购物"}
                     </Button>
                   </div>
                 </div>
@@ -277,16 +312,20 @@ export function Navbar({ children }: { children: React.ReactNode }) {
               <div className="flex flex-col items-center justify-center py-12">
                 <ShoppingCart className="mb-4 h-16 w-16 text-gray-300" />
                 <h3 className="mb-2 text-xl font-medium text-gray-900">
-                  Your cart is empty
+                  {language === "en"
+                    ? "Your cart is empty"
+                    : "您的购物车是空的"}
                 </h3>
                 <p className="mb-6 text-center text-gray-500">
-                  Looks like you haven't added any items to your cart yet.
+                  {language === "en"
+                    ? "Looks like you haven't added any items to your cart yet."
+                    : "看起来您还没有将任何商品添加到购物车中。"}
                 </p>
                 <Button
                   onClick={() => setIsCartOpen(false)}
                   className="bg-primary text-white hover:bg-primary/90"
                 >
-                  Start Shopping
+                  {language === "en" ? "Start Adding" : "开始购物"}
                 </Button>
               </div>
             )}

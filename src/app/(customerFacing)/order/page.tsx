@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "~/trpc/react";
 import {
@@ -31,8 +31,10 @@ import {
   CheckCircle,
   Loader2,
 } from "lucide-react";
+import { useLanguage } from "~/app/components/language";
 
-export default function OrderPage() {
+function OrderDetails() {
+  const { language } = useLanguage();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
   const [isClient, setIsClient] = useState(false);
@@ -119,11 +121,13 @@ export default function OrderPage() {
         <div className="flex items-center justify-center">
           <CheckCircle className="mr-2 h-6 w-6 text-green-500" />
           <h2 className="text-xl font-semibold text-green-700">
-            Order Confirmed
+            {language === "en" ? "Order Confirmed" : "订单已确认"}
           </h2>
         </div>
         <p className="mt-1 text-green-600">
-          Your order has been received and is being prepared.
+          {language === "en"
+            ? "Your order has been received and is being prepared."
+            : "您的订单已收到并正在准备中。"}
         </p>
       </div>
 
@@ -134,7 +138,7 @@ export default function OrderPage() {
             <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
               <div>
                 <CardTitle className="text-2xl">
-                  Order #{order.tempOrderId}
+                  {language === "en" ? "Order " : "单号 "} #{order.tempOrderId}
                 </CardTitle>
                 <CardDescription className="mt-1 flex items-center">
                   <Calendar className="mr-1 h-4 w-4" />
@@ -144,7 +148,7 @@ export default function OrderPage() {
               <div className="print:hidden">
                 <Button variant="outline" size="sm" onClick={handlePrint}>
                   <Printer className="mr-2 h-4 w-4" />
-                  Print Receipt
+                  {language === "en" ? "Print Receipt" : "打印收据"}
                 </Button>
               </div>
             </div>
@@ -156,22 +160,28 @@ export default function OrderPage() {
           <div className="mb-6 rounded-lg bg-amber-50 p-4 print:border print:border-dashed print:border-amber-300 print:bg-transparent">
             <h3 className="flex items-center text-lg font-semibold text-amber-800">
               <Clock className="mr-2 h-5 w-5" />
-              Collection Information
+              {language === "en" ? "Collection Information" : "取时间"}
             </h3>
             <p className="mt-2 text-amber-700">
-              Your order will be ready for collection at{" "}
+              {language === "en"
+                ? "Your order will be ready for collection at "
+                : "您的订单将在以下时间准备好 "}
               <span className="font-bold">
                 {getCollectionTime(order.createdAt.toISOString())}
               </span>
             </p>
             <p className="mt-1 text-sm text-amber-600">
-              Please have your order number ready when you arrive.
+              {language === "en"
+                ? "Please have your order number ready when you arrive."
+                : "来取的时候，请准备好您的订单号"}
             </p>
           </div>
 
           {/* Customer Details */}
           <div className="mb-6">
-            <h3 className="mb-3 text-lg font-semibold">Customer Details</h3>
+            <h3 className="mb-3 text-lg font-semibold">
+              {language === "en" ? "Customer Details" : "客户详情"}
+            </h3>
             <div className="grid gap-2">
               <div className="flex items-center">
                 <User className="mr-2 h-4 w-4 text-gray-500" />
@@ -196,7 +206,7 @@ export default function OrderPage() {
           <div>
             <h3 className="mb-4 flex items-center text-lg font-semibold">
               <ShoppingBag className="mr-2 h-5 w-5" />
-              Order Items
+              {language === "en" ? "Order Items" : "订购商品"}
             </h3>
 
             <div className="space-y-4">
@@ -216,8 +226,12 @@ export default function OrderPage() {
                     <div className="relative h-16 w-16 flex-shrink-0 self-start overflow-hidden rounded-md border border-gray-200">
                       {item.dessert.imagePath ? (
                         <Image
-                          src={item.dessert.imagePath ?? "/placeholder.svg"}
-                          alt={item.dessert.name}
+                          src={item.dessert.imagePath}
+                          alt={
+                            language === "en"
+                              ? item.dessert.name
+                              : item.dessert.chineseName
+                          }
                           fill
                           className="object-cover"
                         />
@@ -228,21 +242,32 @@ export default function OrderPage() {
                       )}
                     </div>
                     <div className="flex flex-1 flex-col">
-                      <h4 className="font-medium">{item.dessert.name}</h4>
-                      {item.customisations?.map((customisation) => (
-                        <p
-                          className="ml-1 mt-1 text-sm text-gray-500"
-                          key={customisation.id}
-                        >
-                          {customisation.quantity > 1
-                            ? `+${customisation.quantity} ${customisation.customisation.name}`
-                            : customisation.quantity === 1
-                              ? `+${customisation.customisation.name}`
-                              : `-${customisation.customisation.name}`}
-                        </p>
-                      ))}
+                      <h4 className="font-medium">
+                        {language === "en"
+                          ? item.dessert.name
+                          : item.dessert.chineseName}
+                      </h4>
+                      {item.customisations?.map((customisation) => {
+                        const customisationName =
+                          language === "en"
+                            ? customisation.customisation.name
+                            : customisation.customisation.chineseName;
+                        return (
+                          <p
+                            className="ml-1 mt-1 text-sm text-gray-500"
+                            key={customisation.id}
+                          >
+                            {customisation.quantity > 1
+                              ? `+${customisation.quantity} ${customisationName}`
+                              : customisation.quantity === 1
+                                ? `+${customisationName}`
+                                : `-${customisationName}`}
+                          </p>
+                        );
+                      })}
                       <p className="text-sm text-gray-500">
-                        Quantity: {item.quantity}
+                        {language === "en" ? "Quantity: " : "数量: "}
+                        {item.quantity}
                       </p>
                     </div>
                     <div className="self-start text-right">
@@ -263,10 +288,10 @@ export default function OrderPage() {
             {/* Order Summary */}
             <div className="mt-4 space-y-2">
               <div className="flex justify-between">
-                <span>GST included</span>
+                <span>{language === "en" ? "GST included" : "包含消费税"}</span>
               </div>
               <div className="flex justify-between font-bold">
-                <span>Total</span>
+                <span>{language === "en" ? "Total" : "总计"}</span>
                 <span>{formatCurrency(order.priceInCents / 100)}</span>
               </div>
             </div>
@@ -279,26 +304,46 @@ export default function OrderPage() {
         <Link href="/menu">
           <Button variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Menu
+            {language === "en" ? "Back to Menu" : "返回菜单"}
           </Button>
         </Link>
         <div className="flex gap-4">
           <Link href="/contact">
-            <Button variant="outline">Need Help?</Button>
+            <Button variant="outline">
+              {language === "en" ? "Need Help?" : "需要帮助吗"}
+            </Button>
           </Link>
           <Link href="/">
-            <Button>Return to Home</Button>
+            <Button>{language === "en" ? "Return to Home" : "返回首页"}</Button>
           </Link>
         </div>
       </div>
 
       {/* Print-only footer */}
       <div className="mt-8 hidden text-center text-sm text-gray-500 print:block">
-        <p>Thank you for your order!</p>
+        <p>
+          {language === "en" ? "Thank you for your order!" : "感谢您的订购"}
+        </p>
         <p className="mt-1">
-          For any questions, please contact us at support@eversweet.com
+          {language === "en"
+            ? "For any questions, please contact us at eversweet@eversweet.com"
+            : "如有任何疑问，请联系我们: eversweet@eversweet.com"}
         </p>
       </div>
     </div>
+  );
+}
+
+export default function OrderPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-[15%]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <OrderDetails />
+    </Suspense>
   );
 }

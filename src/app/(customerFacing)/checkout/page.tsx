@@ -9,9 +9,11 @@ import Link from "next/link";
 import PaymentSection from "./_components/paymentSection";
 import CustomerInformation from "./_components/customerInformation";
 import OrderSummary from "./_components/orderSummary";
+import { useLanguage } from "~/app/components/language";
 
 export default function CheckoutPage() {
   const cart = useContext(CartContext);
+  const { language } = useLanguage();
   const [clientSecret, setClientSecret] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -28,8 +30,10 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
+    console.log(cart?.totalPrice);
+    console.log(isClient);
     if (!cart?.totalPrice || !isClient) return;
-
+    console.log("new stripe");
     setIsLoading(true);
     fetch("/api/checkout_sessions", {
       method: "POST",
@@ -71,7 +75,7 @@ export default function CheckoutPage() {
   // Show loading state during server rendering and initial client render
   if (!isClient) {
     return (
-      <div className="flex justify-center py-20">
+      <div className="flex min-h-[calc(100vh-20rem)] flex-col items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -79,14 +83,18 @@ export default function CheckoutPage() {
 
   if (!cart?.cart || cart.cart.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
+      <div className="flex min-h-[calc(100vh-20rem)] flex-col items-center justify-center">
         <ShoppingBag className="mb-4 h-16 w-16 text-gray-300" />
-        <h2 className="mb-2 text-2xl font-medium">Your cart is empty</h2>
+        <h2 className="mb-2 text-2xl font-medium">
+          {language === "en" ? "Your cart is empty" : "您的购物车是空的"}
+        </h2>
         <p className="mb-8 text-center text-gray-500">
-          You don't have any items in your cart yet.
+          {language === "en"
+            ? "You don't have any items in your cart yet."
+            : "您的购物车中还没有任何商品"}
         </p>
         <Link href="/menu">
-          <Button>Browse Menu</Button>
+          <Button>{language === "en" ? "Browse Menu" : "浏览菜单"}</Button>
         </Link>
       </div>
     );
@@ -94,7 +102,9 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10">
-      <h1 className="mb-8 text-center text-3xl font-bold">Checkout</h1>
+      <h1 className="mb-8 text-center text-3xl font-bold">
+        {language === "en" ? "Checkout" : "付款台"}
+      </h1>
 
       <div className="grid gap-8 md:grid-cols-2">
         {/* Order Summary */}

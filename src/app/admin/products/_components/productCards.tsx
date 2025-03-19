@@ -36,12 +36,15 @@ export function ProductCards() {
               <p>
                 <span>{formatCurrency(dessert.priceInCents / 100)}</span>
               </p>
-              <div>
-                <p className="font-medium">Description:</p>
-                <p className="line-clamp-2 text-gray-400">
-                  {dessert.description}
-                </p>
-              </div>
+              {dessert.description && (
+                <div>
+                  <p className="font-medium">Description:</p>
+                  <p className="line-clamp-2 text-gray-400">
+                    {dessert.description}
+                  </p>
+                </div>
+              )}
+
               <div>
                 <p className="font-medium">Ingredients:</p>
                 <p className="line-clamp-2 text-gray-400">

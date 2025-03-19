@@ -23,7 +23,7 @@ import {
 } from "~/components/ui/table";
 import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
-import { getPastOrderColumns } from "./columns";
+import { GetPastOrderColumns } from "./columns";
 import { useState } from "react";
 import CustomerDetails from "../orders/_components/customerDetails";
 import OrderDetails from "../orders/_components/orderDetails";
@@ -42,7 +42,7 @@ export function DataTable() {
     [],
   );
   const [data] = api.order.getAllPastOrders.useSuspenseQuery();
-  const columns = getPastOrderColumns({
+  const columns = GetPastOrderColumns({
     setCustomerDetailsOpen,
     setOrderDetailsOpen,
   });

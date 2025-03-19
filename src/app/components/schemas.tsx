@@ -9,7 +9,7 @@ export const addSchema = z.object({
   name: z.string().min(1),
   chineseName: z.string().min(1),
   priceInCents: z.coerce.number().int().min(1),
-  description: z.string().min(1),
+  description: z.string().optional(),
   ingredients: z.string().min(1),
   image: imageSchema.refine((file) => file.size > 0, "Image is Required"),
 });
@@ -18,7 +18,7 @@ export const createProductSchema = z.object({
   name: z.string().min(1),
   chineseName: z.string().min(1),
   priceInCents: z.coerce.number().int().min(1),
-  description: z.string().min(1),
+  description: z.string().optional(),
   ingredients: z.string().min(1),
   imagePath: z.string().min(1),
   imagePublicId: z.string().min(1),
@@ -44,6 +44,7 @@ export const dessertSchema = z.object({
 export const customisationSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
+  chineseName: z.string(),
   quantity: z.number().int().positive(),
 });
 

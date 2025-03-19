@@ -32,7 +32,7 @@ type ColumnProps = {
   >;
 };
 
-export function getPastOrderColumns({
+export function GetPastOrderColumns({
   setCustomerDetailsOpen,
   setOrderDetailsOpen,
 }: ColumnProps): ColumnDef<OrderType>[] {
@@ -57,7 +57,7 @@ export function getPastOrderColumns({
         const orderNumber = row.original.tempOrderId;
         return <div className="font-medium">{orderNumber}</div>;
       },
-      filterFn: (row, columnId, filterValue) => {
+      filterFn: (row, columnId, filterValue: string) => {
         const orderNumber = row.original.tempOrderId;
         return orderNumber.startsWith(filterValue);
       },
@@ -74,7 +74,7 @@ export function getPastOrderColumns({
           </div>
         );
       },
-      filterFn: (row, columnId, filterValue) => {
+      filterFn: (row, columnId, filterValue: string) => {
         const firstName = row.original.customerFirstName.toLowerCase();
         const lastName = row.original.customerLastName.toLowerCase();
         const fullName = `${firstName} ${lastName}`;

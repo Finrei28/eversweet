@@ -105,7 +105,7 @@ model Dessert {
     id                      String   @id @default(cuid())
     name                    String
     chineseName             String
-    description             String
+    description             String?
     priceInCents            Int
     imagePath               String
     imagePublicId           String
@@ -120,6 +120,7 @@ model Dessert {
 model DessertCustomisation {
     id          String  @id @default(cuid())
     name        String  // Customisation name (e.g., "Extra Chocolate")
+    chineseName String
     priceInCents Int    // Additional price for this customisation
     isAvailableForPurchase Boolean @default(false)
     desserts    DessertCustomisationOnDessert[]

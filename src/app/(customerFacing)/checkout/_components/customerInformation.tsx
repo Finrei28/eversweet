@@ -6,6 +6,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import { useLanguage } from "~/app/components/language";
 
 type customerInformationProps = {
   customerInfo: CustomerInfo;
@@ -18,15 +19,20 @@ export default function CustomerInformation({
   customerInfo,
   handleCustomerInfoChange,
 }: customerInformationProps) {
+  const { language } = useLanguage();
   return (
     <Card className="mt-6">
       <CardHeader>
-        <CardTitle>Your Information</CardTitle>
+        <CardTitle>
+          {language === "en" ? "Your Information" : "您的信息"}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="firstName">First Name</Label>
+            <Label htmlFor="firstName">
+              {language === "en" ? "First Name" : "前名"}
+            </Label>
             <Input
               id="firstName"
               name="firstName"
@@ -36,7 +42,9 @@ export default function CustomerInformation({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="lastName">Last Name</Label>
+            <Label htmlFor="lastName">
+              {language === "en" ? "Last Name" : "姓名"}
+            </Label>
             <Input
               id="lastName"
               name="lastName"
@@ -46,7 +54,9 @@ export default function CustomerInformation({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">
+              {language === "en" ? "Email" : "电子邮件"}
+            </Label>
             <Input
               id="email"
               name="email"
@@ -57,7 +67,9 @@ export default function CustomerInformation({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor="phone">
+              {language === "en" ? "Phone Number" : "手机号码"}
+            </Label>
             <PhoneInput
               country={"nz"} // Automatically sets +64 and NZ flag
               value={customerInfo.phone}

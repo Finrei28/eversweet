@@ -191,4 +191,77 @@ export const productRouter = createTRPCRouter({
 
       return { message: "Product updated successfully" };
     }),
+
+  scanCart: publicProcedure
+    .input(
+      z.object({
+        dessertIds: z.array(z.string().min(1)),
+        customisationIds: z.array(z.string().min(1)),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Fetch available desserts
+
+      const desserts = await ctx.db.dessert.findMany({
+        where: { id: { in: input.dessertIds } },
+        select: { id: true, name: true, isAvailableForPurchase: true },
+      });
+
+      // Fetch available customisations
+      const customisations = await ctx.db.dessertCustomisation.findMany({
+        where: {
+          id: { in: input.customisationIds },
+        },
+        select: { id: true, name: true, isAvailableForPurchase: true },
+      });
+
+      // Convert found items to Sets for quick lookup
+      const DessertIdsInDB = new Set(desserts.map((d) => d.id));
+      const CustomisationIdsInDB = new Set(customisations.map((c) => c.id));
+      // Find missing desserts/customisations
+      const notFoundDesserts = input.dessertIds.filter(
+        (id) => !DessertIdsInDB.has(id),
+      );
+
+      const notFoundCustomisations = input.customisationIds.filter(
+        (id) => !CustomisationIdsInDB.has(id),
+      );
+
+      if (notFoundDesserts.length > 0 || notFoundCustomisations.length > 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `One of your items have been removed or updated, please remove your items from your cart and add them from the menu again. If this persists, please contact eversweet@eversweet.co.nz`,
+        });
+      }
+      // Find unavailable dessert/customisations
+      const unavailableDessert = desserts.filter(
+        (d) =>
+          input.dessertIds.includes(d.id) && d.isAvailableForPurchase === false,
+      );
+
+      const unavailableCustomisation = customisations.filter(
+        (c) =>
+          input.customisationIds.includes(c.id) &&
+          c.isAvailableForPurchase === false,
+      );
+
+      const unavailableDessertNames = unavailableDessert.map(
+        (dessert) => dessert.name,
+      );
+      const unavailableCustomisationNames = unavailableCustomisation.map(
+        (customisation) => customisation.name,
+      );
+
+      if (
+        unavailableDessert.length > 0 ||
+        unavailableCustomisation.length > 0
+      ) {
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: `The following items are unavailable or have sold out: ${unavailableDessert.length > 0 ? `Desserts: ${unavailableDessertNames.join(", ")}. ` : ""}${unavailableCustomisation.length > 0 ? `Customisations: ${unavailableCustomisationNames.join(", ")}.` : ""} Please check your cart and update your selections.`,
+        });
+      }
+
+      return { desserts, customisations };
+    }),
 });

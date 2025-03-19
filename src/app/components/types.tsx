@@ -1,6 +1,6 @@
 import { $Enums } from "@prisma/client";
 
-export type Dessert = {
+export type DessertOnForm = {
   id: string;
   name: string;
   chineseName: string;
@@ -15,10 +15,20 @@ export type dessertFromDB = {
   id: string;
   name: string;
   chineseName: string;
-  description: string;
+  description: string | null;
   ingredients: string[];
   priceInCents: number;
   isAvailableForPurchase: boolean;
+  imagePath: string;
+};
+
+export type dessertOnClient = {
+  id: string;
+  name: string;
+  chineseName: string;
+  description: string | null;
+  ingredients: string[];
+  priceInCents: number;
   imagePath: string;
 };
 

@@ -6,7 +6,7 @@ export default function AdminLayout({
   return (
     <>
       <Navbar>
-        <NavbarLink href={"/admin"}>Dashboard</NavbarLink>
+        <NavbarLink href={"/admin"}>Dashbaord</NavbarLink>
         <NavbarLink href={"/admin/products"}>Products</NavbarLink>
         <NavbarLink href={"/admin/orders"}>Orders</NavbarLink>
         <NavbarLink href={"/admin/past-orders"}>Past Orders</NavbarLink>

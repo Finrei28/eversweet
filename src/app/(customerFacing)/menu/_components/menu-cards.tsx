@@ -11,17 +11,37 @@ import {
 import { formatCurrency } from "~/lib/formatters";
 import Image from "next/image";
 import { Button } from "~/components/ui/button";
-import { useState } from "react";
-import { Soup } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, Soup } from "lucide-react";
 import { Snowflake } from "lucide-react";
 import CustomisationDialog from "./customisation";
+import { useLanguage } from "~/app/components/language";
 
 export default function MenuCards() {
-  const [menuItems] = api.dessert.getProductsForMenu.useSuspenseQuery();
-  // const [filteredItems, setFilteredItems] = useState<typeof menuItems | null>(
-  //   null,
-  // );
+  const { data: menuItems, isLoading } =
+    api.dessert.getProductsForMenu.useQuery();
+  const { language } = useLanguage();
   const [filter, setFilter] = useState("All");
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-[20%]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!menuItems || menuItems.length === 0) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center">
+        <p className="text-lg">
+          {language === "en"
+            ? "Sorry, we currently have no desserts for sale"
+            : "抱歉，我们目前没有甜点出售"}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -30,30 +50,30 @@ export default function MenuCards() {
           className={`${filter === "All" && "bg-secondary"}`}
           onClick={() => setFilter("All")}
         >
-          ALL
+          {language === "en" ? "ALL" : "全部"}
         </Button>
         <Button
           className={`${filter === "Cold" && "bg-secondary"}`}
           onClick={() => setFilter("Cold")}
         >
-          COLD
+          {language === "en" ? "COLD" : "冷"}
           <Snowflake />
         </Button>
         <Button
           className={`${filter === "Warm" && "bg-secondary"}`}
           onClick={() => setFilter("Warm")}
         >
-          WARM
+          {language === "en" ? "WARM" : "温"}
           <Soup />
         </Button>
       </div>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-        {menuItems.map((dessert) => (
+        {menuItems?.map((dessert) => (
           <Card key={dessert.id} className="flex flex-col">
             <div className="relative aspect-square w-full">
               <Image
                 src={dessert.imagePath || "/placeholder.svg"}
-                alt={dessert.name}
+                alt={language === "en" ? dessert.name : dessert.chineseName}
                 fill
                 className="rounded-t-xl object-cover"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -61,7 +81,8 @@ export default function MenuCards() {
             </div>
             <CardHeader className="flex-grow">
               <CardTitle>
-                {dessert.name} {formatCurrency(dessert.priceInCents / 100)}
+                {language === "en" ? dessert.name : dessert.chineseName}{" "}
+                {formatCurrency(dessert.priceInCents / 100)}
               </CardTitle>
               <CardDescription className="line-clamp-2">
                 {dessert.description}

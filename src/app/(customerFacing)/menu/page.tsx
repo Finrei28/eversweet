@@ -1,10 +1,8 @@
-import MenuCards from "~/app/(customerFacing)/menu/_components/menu-cards";
 import MaxWidthWapper from "~/app/components/maxWidthWrapper";
 import { api, HydrateClient } from "~/trpc/server";
+import MenuCards from "./_components/menu-cards";
 
 export default function MenuPage() {
-  void api.dessert.getProductsForMenu.prefetch();
-  void api.productCustomisation.availableDessertCustomisations.prefetch();
   return (
     <HydrateClient>
       <MaxWidthWapper>

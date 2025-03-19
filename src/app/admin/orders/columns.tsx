@@ -32,7 +32,7 @@ type ColumnProps = {
   >;
 };
 
-export function getOrderColumns({
+export function GetOrderColumns({
   setCustomerDetailsOpen,
   setOrderDetailsOpen,
 }: ColumnProps): ColumnDef<OrderType>[] {
@@ -58,7 +58,7 @@ export function getOrderColumns({
         const orderNumber = row.original.tempOrderId;
         return <div className="font-medium">{orderNumber}</div>;
       },
-      filterFn: (row, columnId, filterValue) => {
+      filterFn: (row, columnId, filterValue: string) => {
         const orderNumber = row.original.tempOrderId;
         return orderNumber.startsWith(filterValue);
       },
@@ -75,7 +75,7 @@ export function getOrderColumns({
           </div>
         );
       },
-      filterFn: (row, columnId, filterValue) => {
+      filterFn: (row, columnId, filterValue: string) => {
         const firstName = row.original.customerFirstName.toLowerCase();
         const lastName = row.original.customerLastName.toLowerCase();
         const fullName = `${firstName} ${lastName}`;

@@ -27,8 +27,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { formatCurrency } from "~/lib/formatters";
 import { editSchema } from "~/app/components/schemas";
-import type { Dessert } from "~/app/components/types";
+import type { DessertOnForm } from "~/app/components/types";
 import { api } from "~/trpc/react";
+import { Textarea } from "~/components/ui/textarea";
 
 interface Field {
   id: string;
@@ -43,7 +44,7 @@ interface EditProductProps {
   description: string;
   fields: Field[];
   submitText: string;
-  formDefaultValues: Dessert;
+  formDefaultValues: DessertOnForm;
 }
 
 export function EditProduct({
@@ -134,7 +135,7 @@ export function EditProduct({
       setError(null);
     }
     prevDialogOpen.current = dialogOpen; // Update previous value
-  }, [dialogOpen]);
+  }, [dialogOpen, editForm, formDefaultValues]);
 
   return (
     <>
@@ -204,6 +205,14 @@ export function EditProduct({
                                         }
                                       }}
                                     />
+                                  ) : id === "description" ||
+                                    id === "ingredients" ? (
+                                    <Textarea
+                                      draggable="false"
+                                      value={field.value?.toString()}
+                                      onChange={field.onChange}
+                                      className="resize-none"
+                                    />
                                   ) : (
                                     <FormInput
                                       {...field}
@@ -213,7 +222,7 @@ export function EditProduct({
                                         id === "priceInCents"
                                           ? (e) => {
                                               if (
-                                                e.target.value.charAt(0) === "0"
+                                                e.target.value.startsWith("0")
                                               ) {
                                                 e.target.value =
                                                   e.target.value.slice(1);

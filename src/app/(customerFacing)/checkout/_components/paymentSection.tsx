@@ -14,6 +14,7 @@ import { CustomerInfo } from "~/app/components/types";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import { useLanguage } from "~/app/components/language";
 
 type paymentSectionProps = {
   clientSecret: string;
@@ -23,6 +24,10 @@ type paymentSectionProps = {
   error: string;
 };
 
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string,
+);
+
 export default function PaymentSection({
   clientSecret,
   cart,
@@ -30,10 +35,9 @@ export default function PaymentSection({
   isLoading,
   error,
 }: paymentSectionProps) {
+  const { language } = useLanguage();
   const router = useRouter();
-  const stripePromise = loadStripe(
-    process.env.NEXT_PUBLIC_STRIPE_LIVE_PUBLISHABLE_KEY as string,
-  );
+
   return (
     <Card>
       <CardHeader>
@@ -41,7 +45,11 @@ export default function PaymentSection({
       </CardHeader>
       <CardContent>
         {clientSecret && (
-          <Elements options={{ clientSecret }} stripe={stripePromise}>
+          <Elements
+            key={clientSecret}
+            options={{ clientSecret }}
+            stripe={stripePromise}
+          >
             <CheckoutForm
               cart={cart}
               totalPriceInCents={cart.totalPrice || 0}
@@ -66,7 +74,7 @@ export default function PaymentSection({
               onClick={() => window.location.reload()}
               className="mt-2"
             >
-              Try Again
+              {language === "en" ? "Try Again" : "重试"}
             </Button>
           </div>
         )}
@@ -74,11 +82,12 @@ export default function PaymentSection({
       <CardFooter className="flex flex-col space-y-4 text-sm text-gray-500">
         <p className="flex items-center gap-2">
           <CheckCircle className="h-4 w-4 text-green-500" />
-          Secure payment processing
+          {language === "en" ? "Secure payment processing" : "安全支付处理"}
         </p>
         <p>
-          By completing your purchase, you agree to our Terms of Service and
-          Privacy Policy.
+          {language === "en"
+            ? "By completing your purchase, you agree to our Terms of Service and Privacy Policy."
+            : "完成购买即表示您同意我们的服务条款和隐私政策。"}
         </p>
       </CardFooter>
     </Card>

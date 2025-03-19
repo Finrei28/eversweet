@@ -70,7 +70,7 @@ export const orderRouter = createTRPCRouter({
         },
       });
 
-      resend.emails.send({
+      await resend.emails.send({
         from: '"Eversweet" <eversweet@eversweet.co.nz>',
         to: input.customerEmail,
         subject: "Order Confirmation",

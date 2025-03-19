@@ -71,8 +71,8 @@ export const authConfig = {
 
         // If no 2FA or expired 2FA, set user data in the token
         token.role = user.role;
-        token.email = user.email as string;
-        token.id = user.id as string;
+        token.email = user.email ?? "";
+        token.id = user.id ?? "";
         token.requires2FAExpiresAt = user.requires2FAExpiresAt;
       }
       return token;
@@ -94,7 +94,7 @@ export const authConfig = {
 
       return session;
     },
-    async redirect({ url, baseUrl }) {
+    async redirect({ baseUrl }) {
       return `${baseUrl}/admin`;
     },
   },

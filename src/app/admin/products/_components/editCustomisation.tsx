@@ -29,6 +29,7 @@ export function EditCustomisation() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newCustomisation, setNewCustomisation] = useState({
     name: "",
+    chineseName: "",
     priceInCents: "",
   });
   const [addNewCustomisation, setAddNewCustomisation] = useState(false);
@@ -39,14 +40,14 @@ export function EditCustomisation() {
     api.productCustomisation.create.useMutation({
       onSuccess: async () => {
         await utils.productCustomisation.invalidate();
-        setNewCustomisation({ name: "", priceInCents: "" });
+        setNewCustomisation({ name: "", chineseName: "", priceInCents: "" });
         setEditCustomisations(dessertCustomisations);
         setAddNewCustomisation(false);
         setSaving(false);
         setDialogOpen(false);
       },
       onError: (error) => {
-        setError(JSON.parse(error.message)[0].message);
+        setError(error.message);
       },
     });
   const updateDessertCustomisation =
@@ -90,7 +91,9 @@ export function EditCustomisation() {
       setAddNewCustomisation(false);
     }
     prevDialogOpen.current = dialogOpen; // Update previous value
-  }, [dialogOpen]);
+  }, [dialogOpen, dessertCustomisations]);
+
+  console.log(error);
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -105,11 +108,11 @@ export function EditCustomisation() {
             changes.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex max-h-[40vh] flex-col gap-5 overflow-y-auto px-2 py-4">
-          <div className="space-y-2 p-5">
+        <div className="flex max-h-[40vh] flex-col overflow-y-auto py-4">
+          <div className="space-y-2 p-2">
             {editCustomisations.map((customisation) => (
               <div
-                className="grid grid-cols-[auto_1fr_auto] items-center gap-4"
+                className="grid grid-cols-[auto_1fr_auto] items-center gap-1"
                 key={customisation.id}
               >
                 <Switch
@@ -122,9 +125,18 @@ export function EditCustomisation() {
                     })
                   }
                 />
-                <Label id={customisation.name} htmlFor={customisation.name}>
-                  {customisation.name}
-                </Label>
+                <div className="flex items-center">
+                  <Label id={customisation.name} htmlFor={customisation.name}>
+                    {customisation.name}
+                  </Label>
+                  <Label
+                    id={customisation.chineseName}
+                    htmlFor={customisation.chineseName}
+                  >
+                    ({customisation.chineseName})
+                  </Label>
+                </div>
+
                 <div className="flex items-center gap-2">
                   <span className="min-w-[3rem] text-right text-base text-gray-600">
                     {formatCurrency(Number(customisation.priceInCents) / 100)}
@@ -134,7 +146,7 @@ export function EditCustomisation() {
                     name="priceInCents"
                     value={customisation.priceInCents}
                     onChange={(e) => {
-                      if (e.target.value.charAt(0) === "0") {
+                      if (e.target.value.charAt(0).startsWith("0")) {
                         e.target.value = e.target.value.slice(1);
                       }
                       // Check if the value is a valid number and does not start with '0' unless it's exactly '0'
@@ -167,6 +179,7 @@ export function EditCustomisation() {
                 e.preventDefault();
                 createDessertCustomisation.mutate({
                   name: newCustomisation.name,
+                  chineseName: newCustomisation.chineseName,
                   priceInCents: Number(newCustomisation.priceInCents),
                 });
               }}
@@ -181,6 +194,28 @@ export function EditCustomisation() {
                     setNewCustomisation((prev) => ({
                       ...prev,
                       name: e.target.value,
+                    }))
+                  }
+                />
+                <div className="invisible flex gap-2">
+                  <Button>
+                    <Check />
+                  </Button>
+                  <Button>
+                    <X />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="定制名"
+                  value={newCustomisation.chineseName}
+                  onChange={(e) =>
+                    setNewCustomisation((prev) => ({
+                      ...prev,
+                      chineseName: e.target.value,
                     }))
                   }
                 />

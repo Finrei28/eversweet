@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import {
@@ -11,20 +12,33 @@ export const productCustomisationRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(1),
+        chineseName: z.string(),
         priceInCents: z.coerce.number().int().min(1),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.dessertCustomisation.create({
+      const exists = await ctx.db.dessertCustomisation.findFirst({
+        where: {
+          OR: [{ name: input.name }, { chineseName: input.chineseName }],
+        },
+      });
+      if (exists) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Customisation already exists | 定制已有",
+        });
+      }
+      return await ctx.db.dessertCustomisation.create({
         data: {
           name: input.name,
+          chineseName: input.chineseName,
           priceInCents: input.priceInCents,
         },
       });
     }),
 
   dessertCustomisations: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.dessertCustomisation.findMany();
+    return await ctx.db.dessertCustomisation.findMany();
   }),
 
   update: protectedProcedure
@@ -54,11 +68,12 @@ export const productCustomisationRouter = createTRPCRouter({
     }),
 
   availableDessertCustomisations: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.dessertCustomisation.findMany({
+    return await ctx.db.dessertCustomisation.findMany({
       where: { isAvailableForPurchase: true },
       orderBy: { priceInCents: "asc" },
       select: {
         id: true,
+        chineseName: true,
         name: true,
         priceInCents: true,
       },

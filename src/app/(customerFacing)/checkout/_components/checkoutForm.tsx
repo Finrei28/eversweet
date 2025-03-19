@@ -9,6 +9,7 @@ import { CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { CartContextType } from "~/app/components/cartContext";
+import { useLanguage } from "~/app/components/language";
 import { CustomerInfo } from "~/app/components/types";
 import { Button } from "~/components/ui/button";
 import { formatCurrency } from "~/lib/formatters";
@@ -27,11 +28,23 @@ export default function CheckoutForm({
   router,
   cart,
 }: checkoutFormProps) {
+  const { language } = useLanguage();
   const stripe = useStripe();
   const elements = useElements();
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  let dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
+
+  let customisationIds = [
+    ...new Set(
+      cart.cart.flatMap((dessert) =>
+        dessert.customisations.map((customisation) => customisation.id),
+      ),
+    ),
+  ];
+
   const utils = api.useUtils();
   const createOrder = api.order.create.useMutation({
     onSuccess: async (data) => {
@@ -42,11 +55,32 @@ export default function CheckoutForm({
     },
   });
 
+  const { error, refetch } = api.dessert.scanCart.useQuery(
+    { dessertIds, customisationIds },
+    { enabled: false }, // Prevents automatic execution
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPaymentError("");
+    dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
+
+    customisationIds = [
+      ...new Set(
+        cart.cart.flatMap((dessert) =>
+          dessert.customisations.map((customisation) => customisation.id),
+        ),
+      ),
+    ];
+
+    refetch();
 
     if (!stripe || !elements) {
+      return;
+    }
+
+    if (error) {
+      setPaymentError(error.message);
       return;
     }
 
@@ -72,9 +106,12 @@ export default function CheckoutForm({
       return;
     }
 
+    if (cart.cart.length === 0) {
+      return;
+    }
+
     setPaymentLoading(true);
     setPaymentError("");
-
     const { error: submitError, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
@@ -82,6 +119,7 @@ export default function CheckoutForm({
       },
       redirect: "if_required",
     });
+    console.log(paymentIntent?.amount);
 
     if (submitError) {
       setPaymentError(
@@ -116,13 +154,23 @@ export default function CheckoutForm({
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <CheckCircle className="mb-4 h-16 w-16 text-green-500" />
-        <h3 className="mb-2 text-xl font-medium">Payment Successful!</h3>
+        <h3 className="mb-2 text-xl font-medium">
+          {language === "en" ? "Payment Successful!" : "付款成功！"}
+        </h3>
         <p className="mb-6 text-gray-500">
-          Thank you for your order. You will be redirected to the confirmation
-          page.
+          {language === "en"
+            ? "Thank you for your order. You will be redirected to the confirmation page."
+            : "感谢您的订购。您将被重定向至确认页面"}
+        </p>
+        <p className="mb-4 text-gray-500">
+          {language === "en"
+            ? "If not directed, you can click the button below to view your order details."
+            : "如果没有指示，您可以点击下面的按钮查看您的订单详情。"}
         </p>
         <Link href="/order-confirmation">
-          <Button>View Order Details</Button>
+          <Button>
+            {language === "en" ? "View Order Details" : "查看订单详情"}
+          </Button>
         </Link>
       </div>
     );
@@ -147,10 +195,10 @@ export default function CheckoutForm({
           {paymentLoading ? (
             <>
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Processing...
+              {language === "en" ? "Processing..." : "正在处理"}
             </>
           ) : (
-            `Pay ${formatCurrency(totalPriceInCents / 100)}`
+            `${language === "en" ? "Pay " : "支付 "}${formatCurrency(totalPriceInCents / 100)}`
           )}
         </Button>
       </div>
