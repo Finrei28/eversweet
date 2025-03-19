@@ -471,20 +471,21 @@ export default function EmailOrderConfirmation({
                   </svg>
                   {order.customerEmail}
                 </Text>
-
-                <Text className="flex items-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="black"
-                    width="18"
-                    height="18"
-                    className="mr-2"
-                  >
-                    <path d="M6.62 10.79a15.91 15.91 0 0 0 6.59 6.59l2.2-2.2c.27-.27.66-.36 1.02-.26 1.12.3 2.32.46 3.57.46.55 0 1 .45 1 1v3.5c0 .55-.45 1-1 1-10.49 0-19-8.51-19-19 0-.55.45-1 1-1H6.5c.55 0 1 .45 1 1 0 1.25.16 2.45.46 3.57.1.36.01.75-.26 1.02l-2.2 2.2z" />
-                  </svg>
-                  +{order.customerPhoneNumber}
-                </Text>
+                {order.customerPhoneNumber && (
+                  <Text className="flex items-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="black"
+                      width="18"
+                      height="18"
+                      className="mr-2"
+                    >
+                      <path d="M6.62 10.79a15.91 15.91 0 0 0 6.59 6.59l2.2-2.2c.27-.27.66-.36 1.02-.26 1.12.3 2.32.46 3.57.46.55 0 1 .45 1 1v3.5c0 .55-.45 1-1 1-10.49 0-19-8.51-19-19 0-.55.45-1 1-1H6.5c.55 0 1 .45 1 1 0 1.25.16 2.45.46 3.57.1.36.01.75-.26 1.02l-2.2 2.2z" />
+                    </svg>
+                    +{order.customerPhoneNumber}
+                  </Text>
+                )}
               </Row>
             </Section>
 

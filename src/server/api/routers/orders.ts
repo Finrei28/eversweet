@@ -21,7 +21,7 @@ export const orderRouter = createTRPCRouter({
         customerFirstName: z.string().min(1),
         customerLastName: z.string().min(1),
         customerEmail: z.string().email(),
-        customerPhoneNumber: z.string(),
+        customerPhoneNumber: z.string().optional(),
         totalPriceInCents: z.coerce.number().int().min(1),
       }),
     )
@@ -32,7 +32,7 @@ export const orderRouter = createTRPCRouter({
           customerFirstName: input.customerFirstName,
           customerLastName: input.customerLastName,
           customerEmail: input.customerEmail,
-          customerPhoneNumber: input.customerPhoneNumber,
+          customerPhoneNumber: input.customerPhoneNumber ?? null,
           priceInCents: input.totalPriceInCents,
           status: "PENDING",
           desserts: {

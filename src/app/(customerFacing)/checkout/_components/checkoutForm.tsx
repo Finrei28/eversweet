@@ -85,12 +85,11 @@ export default function CheckoutForm({
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const nzPhoneRegex = /^\+?64[2-9]\d{7,8}$/;
+    const nzPhoneRegex = /^\+?64[2-9]\d{8,10}$/;
     if (
       !customerInfo.firstName?.trim() ||
       !customerInfo.lastName?.trim() ||
-      !customerInfo.email?.trim() ||
-      !customerInfo.phone?.trim()
+      !customerInfo.email?.trim()
     ) {
       setPaymentError("Please fill in all customer information fields.");
       return;
@@ -101,7 +100,10 @@ export default function CheckoutForm({
       return;
     }
 
-    if (!nzPhoneRegex.test(customerInfo.phone.trim())) {
+    if (
+      customerInfo.phone.trim() &&
+      !nzPhoneRegex.test(customerInfo.phone.trim())
+    ) {
       setPaymentError("Please enter a valid New Zealand phone number.");
       return;
     }

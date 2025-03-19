@@ -146,7 +146,7 @@ model Order {
     customerFirstName   String
     customerLastName    String
     customerEmail       String
-    customerPhoneNumber String
+    customerPhoneNumber String?
     completedAt         DateTime?
     pickedUpAt          DateTime?
     status              Status

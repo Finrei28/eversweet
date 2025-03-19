@@ -48,7 +48,7 @@ export type OrderType = {
   customerFirstName: string;
   customerLastName: string;
   customerEmail: string;
-  customerPhoneNumber: string;
+  customerPhoneNumber: string | null;
   completedAt: Date | null;
   pickedUpAt: Date | null;
   status: $Enums.Status; // Assuming $Enums.Status refers to an enum for order status
@@ -84,7 +84,7 @@ export type FullOrderType = {
   customerFirstName: string;
   customerLastName: string;
   customerEmail: string;
-  customerPhoneNumber: string;
+  customerPhoneNumber: string | null;
   completedAt: Date | null;
   pickedUpAt: Date | null;
   status: $Enums.Status; // Assuming $Enums.Status refers to an enum for order status
