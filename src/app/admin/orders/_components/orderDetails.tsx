@@ -1,9 +1,9 @@
-import { Button } from "~/components/ui/button";
+"use client";
+
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
@@ -19,12 +19,9 @@ export default function CustomerDetails({
   orderDetailsOpen,
   handleChangeOpen,
 }: CustomerDetailsProps) {
-  let order;
-  if (orderDetailsOpen.id) {
-    [order] = api.order.getOrderDetails.useSuspenseQuery({
-      id: orderDetailsOpen.id,
-    });
-  }
+  const [order] = api.order.getOrderDetails.useSuspenseQuery({
+    id: orderDetailsOpen.id,
+  });
 
   const getPickedUpTime = (dateString: string) => {
     const pickedUpTime = new Date(dateString);
@@ -59,13 +56,13 @@ export default function CustomerDetails({
                     />
                   )}
                 </div>
-                <div className="flex flex-1 flex-col">
-                  <h3 className="text-lg font-medium text-gray-900">
+                <div className="flex flex-1 flex-col text-xl 2xl:text-base">
+                  <h3 className="font-medium text-gray-900">
                     {dessert.dessert.name} x{dessert.quantity}
                   </h3>
                   {dessert.customisations?.map((customisation) => (
                     <p
-                      className="ml-1 items-center text-lg text-gray-500"
+                      className="ml-1 items-center text-gray-500"
                       key={customisation.id}
                     >
                       {customisation.quantity > 1
@@ -84,9 +81,6 @@ export default function CustomerDetails({
               </p>
             )}
           </div>
-          <DialogFooter>
-            <Button type="submit">Save changes</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     )

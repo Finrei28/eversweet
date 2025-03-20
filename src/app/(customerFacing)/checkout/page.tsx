@@ -19,10 +19,10 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
+    customerFirstName: "",
+    customerLastName: "",
+    customerEmail: "",
+    customerPhoneNumber: "",
   });
 
   useEffect(() => {

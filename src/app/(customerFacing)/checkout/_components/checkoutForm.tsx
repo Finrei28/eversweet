@@ -87,22 +87,22 @@ export default function CheckoutForm({
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const nzPhoneRegex = /^\+?64[2-9]\d{8,10}$/;
     if (
-      !customerInfo.firstName?.trim() ||
-      !customerInfo.lastName?.trim() ||
-      !customerInfo.email?.trim()
+      !customerInfo.customerFirstName?.trim() ||
+      !customerInfo.customerLastName?.trim() ||
+      !customerInfo.customerEmail?.trim()
     ) {
       setPaymentError("Please fill in all customer information fields.");
       return;
     }
 
-    if (!emailRegex.test(customerInfo.email.trim())) {
+    if (!emailRegex.test(customerInfo.customerEmail.trim())) {
       setPaymentError("Please enter a valid email address.");
       return;
     }
 
     if (
-      customerInfo.phone.trim() &&
-      !nzPhoneRegex.test(customerInfo.phone.trim())
+      customerInfo.customerPhoneNumber &&
+      !nzPhoneRegex.test(customerInfo.customerPhoneNumber.trim())
     ) {
       setPaymentError("Please enter a valid New Zealand phone number.");
       return;
@@ -140,10 +140,10 @@ export default function CheckoutForm({
         })) ?? [];
       createOrder.mutate({
         dessert: mappedDesserts,
-        customerFirstName: customerInfo.firstName,
-        customerLastName: customerInfo.lastName,
-        customerEmail: customerInfo.email,
-        customerPhoneNumber: customerInfo.phone,
+        customerFirstName: customerInfo.customerFirstName,
+        customerLastName: customerInfo.customerLastName,
+        customerEmail: customerInfo.customerEmail,
+        customerPhoneNumber: customerInfo.customerPhoneNumber,
         totalPriceInCents: totalPriceInCents,
       });
     } else {

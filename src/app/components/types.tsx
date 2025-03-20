@@ -33,10 +33,10 @@ export type dessertOnClient = {
 };
 
 export type CustomerInfo = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
+  customerFirstName: string;
+  customerLastName: string;
+  customerEmail: string;
+  customerPhoneNumber: string | null;
 };
 
 export type OrderType = {

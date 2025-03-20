@@ -36,7 +36,7 @@ export default function CustomerInformation({
             <Input
               id="firstName"
               name="firstName"
-              value={customerInfo.firstName}
+              value={customerInfo.customerFirstName}
               onChange={handleCustomerInfoChange}
               required
             />
@@ -48,7 +48,7 @@ export default function CustomerInformation({
             <Input
               id="lastName"
               name="lastName"
-              value={customerInfo.lastName}
+              value={customerInfo.customerLastName}
               onChange={handleCustomerInfoChange}
               required
             />
@@ -61,7 +61,7 @@ export default function CustomerInformation({
               id="email"
               name="email"
               type="email"
-              value={customerInfo.email}
+              value={customerInfo.customerEmail}
               onChange={handleCustomerInfoChange}
               required
             />
@@ -72,7 +72,7 @@ export default function CustomerInformation({
             </Label>
             <PhoneInput
               country={"nz"} // Automatically sets +64 and NZ flag
-              value={customerInfo.phone}
+              value={customerInfo.customerPhoneNumber}
               onChange={handleCustomerInfoChange}
               inputStyle={{ width: "100%", paddingLeft: "50px" }} // Adjust input styling
               onlyCountries={["nz"]} // Restrict to only NZ numbers

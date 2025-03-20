@@ -21,7 +21,7 @@ export const orderRouter = createTRPCRouter({
         customerFirstName: z.string().min(1),
         customerLastName: z.string().min(1),
         customerEmail: z.string().email(),
-        customerPhoneNumber: z.string().optional(),
+        customerPhoneNumber: z.string().nullable(),
         totalPriceInCents: z.coerce.number().int().min(1),
       }),
     )
