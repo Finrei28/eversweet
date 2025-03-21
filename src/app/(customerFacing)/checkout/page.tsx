@@ -85,6 +85,7 @@ export default function CheckoutPage() {
       }));
     }
   };
+  console.log(customerInfo);
 
   // Show loading state during server rendering and initial client render
   if (!isClient) {

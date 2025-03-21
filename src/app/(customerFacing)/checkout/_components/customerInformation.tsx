@@ -30,36 +30,36 @@ export default function CustomerInformation({
       <CardContent>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="firstName">
+            <Label htmlFor="customerFirstName">
               {language === "en" ? "First Name" : "前名"}
             </Label>
             <Input
-              id="firstName"
-              name="firstName"
+              id="customerFirstName"
+              name="customerFirstName"
               value={customerInfo.customerFirstName}
               onChange={handleCustomerInfoChange}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="lastName">
+            <Label htmlFor="customerLastName">
               {language === "en" ? "Last Name" : "姓名"}
             </Label>
             <Input
-              id="lastName"
-              name="lastName"
+              id="customerLastName"
+              name="customerLastName"
               value={customerInfo.customerLastName}
               onChange={handleCustomerInfoChange}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">
+            <Label htmlFor="customerEmail">
               {language === "en" ? "Email" : "电子邮件"}
             </Label>
             <Input
-              id="email"
-              name="email"
+              id="customerEmail"
+              name="customerEmail"
               type="email"
               value={customerInfo.customerEmail}
               onChange={handleCustomerInfoChange}
