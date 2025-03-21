@@ -102,6 +102,9 @@ export const orderRouter = createTRPCRouter({
     return await ctx.db.order.findMany({
       where: {
         status: { in: ["PENDING", "COMPLETED"] },
+        pickUpTime: {
+          lte: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
+        },
         OR: [
           { completedAt: { gte: new Date(Date.now() - 12 * 60 * 60 * 1000) } }, // completed in the last 12 hours
           { completedAt: null },

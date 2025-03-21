@@ -46,7 +46,9 @@ export function DataTable() {
     setCustomerDetailsOpen,
     setOrderDetailsOpen,
   });
-  const [data] = api.order.getAllCurrentOrders.useSuspenseQuery();
+  const [data] = api.order.getAllCurrentOrders.useSuspenseQuery(undefined, {
+    refetchInterval: 60000, // Refetch every 60 seconds
+  });
 
   const table = useReactTable({
     data,
