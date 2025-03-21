@@ -74,7 +74,7 @@ function OrderDetails() {
 
   if (!isClient) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -82,7 +82,7 @@ function OrderDetails() {
 
   if (isLoading) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -339,7 +339,7 @@ export default function OrderPage() {
   return (
     <Suspense
       fallback={
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       }
