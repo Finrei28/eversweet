@@ -179,7 +179,7 @@ export const orderRouter = createTRPCRouter({
           status: input.status as Status,
           pickedUpAt: input.status === "PICKED_UP" ? new Date() : null,
           completedAt:
-            input.status === "COMPLETED"
+            input.status === "COMPLETED" || input.status === "PICKED_UP"
               ? new Date()
               : input.status === "PENDING"
                 ? null
