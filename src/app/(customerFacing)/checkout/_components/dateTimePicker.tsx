@@ -185,6 +185,14 @@ export function DateTimePicker({
             <ScrollArea className="w-64 sm:w-auto">
               <div className="flex p-2 sm:flex-col">
                 {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => {
+                  console.log(availableDates.getMinutes());
+                  const isNextValidTimeInSameCurrentHour =
+                    availableDates.getMinutes() > minute && sameMonthDayHour;
+                  const isNextValidTimeInNextHour =
+                    currentTime.getMinutes() >= 50 &&
+                    availableDates.getMinutes() > minute &&
+                    sameMonthDay &&
+                    currentTime.getHours() === availableDates.getHours() - 1;
                   return (
                     <Button
                       key={minute}
@@ -194,7 +202,7 @@ export function DateTimePicker({
                           ? "default"
                           : "ghost"
                       }
-                      className={`aspect-square shrink-0 sm:w-full ${availableDates.getMinutes() > minute && sameMonthDayHour && "hidden"}`}
+                      className={`aspect-square shrink-0 sm:w-full ${(isNextValidTimeInSameCurrentHour || isNextValidTimeInNextHour) && "hidden"}`}
                       onClick={() =>
                         handleTimeChange("minute", minute.toString())
                       }

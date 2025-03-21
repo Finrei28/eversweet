@@ -97,7 +97,7 @@ export default function CheckoutPage() {
 
   if (!cart?.cart || cart.cart.length === 0) {
     return (
-      <div className="flex min-h-[calc(100vh-20rem)] flex-col items-center justify-center">
+      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <ShoppingBag className="mb-4 h-16 w-16 text-gray-300" />
         <h2 className="mb-2 text-2xl font-medium">
           {language === "en" ? "Your cart is empty" : "您的购物车是空的"}

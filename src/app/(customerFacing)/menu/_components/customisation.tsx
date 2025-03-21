@@ -280,8 +280,8 @@ export default function CustomisationDialog({
         </DialogTrigger>
       )}
 
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader className="pb-2">
+      <DialogContent className="h-[80%] sm:max-w-[425px] md:h-auto">
+        <DialogHeader className="md:pb-2">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <DialogTitle className="mb-1 text-xl text-primary">
@@ -293,7 +293,7 @@ export default function CustomisationDialog({
             </div>
 
             {dessert.imagePath && (
-              <div className="relative ml-4 mr-2 mt-2 h-20 w-20 flex-shrink-0 overflow-hidden rounded-md">
+              <div className="relative ml-4 mr-4 mt-2 h-20 w-20 flex-shrink-0 overflow-hidden rounded-md">
                 <Image
                   src={dessert.imagePath}
                   alt={language === "en" ? dessert.name : dessert.chineseName}
@@ -304,7 +304,7 @@ export default function CustomisationDialog({
             )}
           </div>
 
-          <div className="mt-2 flex items-center">
+          <div className="flex items-center">
             <Badge variant="outline" className="mr-2 bg-primary/10">
               {formatCurrency(dessert.priceInCents / 100)}
             </Badge>
