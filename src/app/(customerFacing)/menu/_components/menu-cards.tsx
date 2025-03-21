@@ -11,7 +11,7 @@ import {
 import { formatCurrency } from "~/lib/formatters";
 import Image from "next/image";
 import { Button } from "~/components/ui/button";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Loader2, Soup } from "lucide-react";
 import { Snowflake } from "lucide-react";
 import CustomisationDialog from "./customisation";

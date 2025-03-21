@@ -26,7 +26,7 @@ export default function CheckoutPage() {
     customerPhoneNumber: "",
   });
   const getNextValidTime = () => {
-    let now = new Date();
+    const now = new Date();
     let nextTime = addMinutes(now, 15 - (now.getMinutes() % 5));
     nextTime = setSeconds(nextTime, 0);
     if (nextTime.getHours() < 10) {
