@@ -20,6 +20,7 @@ type checkoutFormProps = {
   customerInfo: CustomerInfo;
   router: any;
   cart: CartContextType;
+  pickUpTime: Date;
 };
 
 export default function CheckoutForm({
@@ -27,6 +28,7 @@ export default function CheckoutForm({
   customerInfo,
   router,
   cart,
+  pickUpTime,
 }: checkoutFormProps) {
   const { language } = useLanguage();
   const stripe = useStripe();
@@ -145,6 +147,7 @@ export default function CheckoutForm({
         customerEmail: customerInfo.customerEmail,
         customerPhoneNumber: customerInfo.customerPhoneNumber,
         totalPriceInCents: totalPriceInCents,
+        pickUpTime: pickUpTime,
       });
     } else {
       setPaymentLoading(false);

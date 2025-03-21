@@ -22,6 +22,7 @@ type paymentSectionProps = {
   customerInfo: CustomerInfo;
   isLoading: boolean;
   error: string;
+  pickUpTime: Date;
 };
 
 const stripePromise = loadStripe(
@@ -34,6 +35,7 @@ export default function PaymentSection({
   customerInfo,
   isLoading,
   error,
+  pickUpTime,
 }: paymentSectionProps) {
   const { language } = useLanguage();
   const router = useRouter();
@@ -41,7 +43,9 @@ export default function PaymentSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Payment Details</CardTitle>
+        <CardTitle>
+          {language === "en" ? "Payment Details" : "付款详情"}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {clientSecret && (
@@ -54,6 +58,7 @@ export default function PaymentSection({
               cart={cart}
               totalPriceInCents={cart.totalPrice || 0}
               customerInfo={customerInfo}
+              pickUpTime={pickUpTime}
               router={router}
             />
           </Elements>

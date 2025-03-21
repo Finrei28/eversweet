@@ -25,7 +25,7 @@ export default function MenuCards() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-[20%]">
+      <div className="flex min-h-[calc(100vh-20rem)] flex-col items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -33,7 +33,7 @@ export default function MenuCards() {
 
   if (!menuItems || menuItems.length === 0) {
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center">
+      <div className="flex min-h-[calc(100vh-20rem)] flex-col items-center justify-center">
         <p className="text-lg">
           {language === "en"
             ? "Sorry, we currently have no desserts for sale"

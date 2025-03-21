@@ -8,7 +8,7 @@ import { useLanguage } from "../components/language";
 export default function HomePageContent() {
   const { language } = useLanguage();
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="-mt-20 flex min-h-screen flex-col lg:mt-0">
       <main className="-mt-[10%] flex flex-grow flex-col items-center justify-center text-white">
         <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
           <TopDesserts />

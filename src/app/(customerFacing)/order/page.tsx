@@ -74,7 +74,7 @@ function OrderDetails() {
 
   if (!isClient) {
     return (
-      <div className="flex justify-center py-[15%]">
+      <div className="flex min-h-[calc(100vh-20rem)] flex-col items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -82,7 +82,7 @@ function OrderDetails() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-[15%]">
+      <div className="flex min-h-[calc(100vh-20rem)] flex-col items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -94,18 +94,19 @@ function OrderDetails() {
         <Card>
           <CardHeader>
             <CardTitle className="text-center text-red-500">
-              Order Not Found
+              {language === "en" ? "Order Not Found" : "未找到订单"}
             </CardTitle>
             <CardDescription className="text-center">
-              We couldn't find the order you're looking for. Please check the
-              order ID and try again.
+              {language === "en"
+                ? "We couldn't find the order you're looking for. Please check theorder ID and try again."
+                : "我们找不到您要查找的订单。请检查订单 ID 并重试。"}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
             <Link href="/">
               <Button>
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Return to Home
+                {language === "en" ? "Return to Home" : "返回首页"}
               </Button>
             </Link>
           </CardContent>
@@ -167,7 +168,7 @@ function OrderDetails() {
                 ? "Your order will be ready for collection at "
                 : "您的订单将在以下时间准备好 "}
               <span className="font-bold">
-                {getCollectionTime(order.createdAt.toISOString())}
+                {getCollectionTime(order.pickUpTime)}
               </span>
             </p>
             <p className="mt-1 text-sm text-amber-600">

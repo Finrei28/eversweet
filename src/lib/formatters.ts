@@ -27,14 +27,12 @@ export const formatDate = (dateString: string) => {
 };
 
 // Calculate collection time (30 minutes after order time)
-export const getCollectionTime = (dateString: string) => {
-  const orderDate = new Date(dateString);
-  const collectionDate = new Date(orderDate.getTime() + 30 * 60000); // Add 30 minutes
+export const getCollectionTime = (date: Date) => {
   return new Intl.DateTimeFormat("en-NZ", {
     year: "numeric",
     month: "numeric",
     day: "numeric",
     hour: "numeric",
     minute: "numeric",
-  }).format(collectionDate);
+  }).format(date);
 };

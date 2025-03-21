@@ -23,6 +23,7 @@ export const orderRouter = createTRPCRouter({
         customerEmail: z.string().email(),
         customerPhoneNumber: z.string().nullable(),
         totalPriceInCents: z.coerce.number().int().min(1),
+        pickUpTime: z.date(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -34,6 +35,7 @@ export const orderRouter = createTRPCRouter({
           customerEmail: input.customerEmail,
           customerPhoneNumber: input.customerPhoneNumber ?? null,
           priceInCents: input.totalPriceInCents,
+          pickUpTime: input.pickUpTime,
           status: "PENDING",
           desserts: {
             create: input.dessert.map((dessertItem) => ({

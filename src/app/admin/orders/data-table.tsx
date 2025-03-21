@@ -131,7 +131,7 @@ export function DataTable() {
                     className={`${status === "COMPLETED" ? "bg-green-500" : status === "PICKED_UP" ? "bg-red-500" : customisationsExist ? "bg-orange-200" : ""}`}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell key={cell.id} className="p-5">
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),

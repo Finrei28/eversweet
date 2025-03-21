@@ -426,9 +426,7 @@ export default function EmailOrderConfirmation({
 
                 <Text className="lg:text-base lg:text-orange-400">
                   Your order will be ready for collection at{" "}
-                  <strong>
-                    {getCollectionTime(order.createdAt.toISOString())}
-                  </strong>
+                  <strong>{getCollectionTime(order.pickUpTime)}</strong>
                 </Text>
 
                 <Text className="lg:text-base lg:text-orange-400">

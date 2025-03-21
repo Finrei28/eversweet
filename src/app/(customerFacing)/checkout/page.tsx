@@ -10,6 +10,7 @@ import PaymentSection from "./_components/paymentSection";
 import CustomerInformation from "./_components/customerInformation";
 import OrderSummary from "./_components/orderSummary";
 import { useLanguage } from "~/app/components/language";
+import { addMinutes, setSeconds } from "date-fns";
 
 export default function CheckoutPage() {
   const cart = useContext(CartContext);
@@ -24,13 +25,25 @@ export default function CheckoutPage() {
     customerEmail: "",
     customerPhoneNumber: "",
   });
+  const getNextValidTime = () => {
+    let now = new Date();
+    let nextTime = addMinutes(now, 15 - (now.getMinutes() % 5));
+    nextTime = setSeconds(nextTime, 0);
+    if (nextTime.getHours() < 10) {
+      nextTime.setHours(10, 0);
+    } else if (nextTime.getHours() >= 20) {
+      nextTime.setHours(10, 0);
+      nextTime.setDate(nextTime.getDate() + 1);
+    }
+
+    return nextTime;
+  };
+
+  const [pickUpTime, setPickUpTime] = useState<Date>(getNextValidTime());
 
   useEffect(() => {
+    if (!cart?.totalPrice) return;
     setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    if (!cart?.totalPrice || !isClient) return;
 
     setIsLoading(true);
     fetch("/api/checkout_sessions", {
@@ -107,7 +120,12 @@ export default function CheckoutPage() {
       <div className="grid gap-8 md:grid-cols-2">
         {/* Order Summary */}
         <div>
-          <OrderSummary cart={cart} />
+          <OrderSummary
+            cart={cart}
+            pickUpTime={pickUpTime}
+            setPickUpTime={setPickUpTime}
+            getNextValidTime={getNextValidTime}
+          />
 
           {/* Customer Information */}
           <CustomerInformation
@@ -122,6 +140,7 @@ export default function CheckoutPage() {
             clientSecret={clientSecret}
             cart={cart}
             customerInfo={customerInfo}
+            pickUpTime={pickUpTime}
             isLoading={isLoading}
             error={error}
           />

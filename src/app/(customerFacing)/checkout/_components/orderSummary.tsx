@@ -7,15 +7,25 @@ import { ShoppingBag } from "lucide-react";
 import { formatCurrency } from "~/lib/formatters";
 import { Separator } from "~/components/ui/separator";
 import { useLanguage } from "~/app/components/language";
-
 import CustomisationDialog from "../../menu/_components/customisation";
+
+import { DateTimePicker } from "./dateTimePicker";
 
 type orderSummaryProps = {
   cart: CartContextType;
+  pickUpTime: Date;
+  setPickUpTime: React.Dispatch<React.SetStateAction<Date>>;
+  getNextValidTime: () => Date;
 };
 
-export default function OrderSummary({ cart }: orderSummaryProps) {
+export default function OrderSummary({
+  cart,
+  pickUpTime,
+  setPickUpTime,
+  getNextValidTime,
+}: orderSummaryProps) {
   const { language } = useLanguage();
+
   return (
     <>
       <Card>
@@ -25,6 +35,11 @@ export default function OrderSummary({ cart }: orderSummaryProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <DateTimePicker
+            pickUpTime={pickUpTime}
+            setPickUpTime={setPickUpTime}
+            getNextValidTime={getNextValidTime}
+          />
           {cart.cart.map((item) => (
             <div key={item.id} className="flex gap-4">
               <div className="relative mt-2 h-16 w-16 flex-shrink-0 self-start overflow-hidden rounded-md border border-gray-200">
