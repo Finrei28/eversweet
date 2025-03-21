@@ -42,8 +42,11 @@ export default function CheckoutPage() {
   const [pickUpTime, setPickUpTime] = useState<Date>(getNextValidTime());
 
   useEffect(() => {
-    if (!cart?.totalPrice) return;
     setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!cart?.totalPrice) return;
 
     setIsLoading(true);
     fetch("/api/checkout_sessions", {
