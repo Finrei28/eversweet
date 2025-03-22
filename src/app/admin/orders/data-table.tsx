@@ -24,7 +24,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { GetOrderColumns } from "./columns";
 import { api } from "~/trpc/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CustomerDetails from "./_components/customerDetails";
 import OrderDetails from "./_components/orderDetails";
 
@@ -37,10 +37,8 @@ export function DataTable() {
     id: "",
     open: false,
   });
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
-  );
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const columns = GetOrderColumns({
     setCustomerDetailsOpen,
@@ -65,7 +63,23 @@ export function DataTable() {
     },
   });
 
-  const [searchValue, setSearchValue] = React.useState("");
+  const prevOrderCount = useRef(data?.length || 0);
+
+  useEffect(() => {
+    if (data.length > prevOrderCount.current) {
+      playNotificationSound();
+    }
+    prevOrderCount.current = data.length;
+  }, [data]);
+
+  const playNotificationSound = () => {
+    const audio = new Audio(
+      "/mixkit-melodical-flute-music-notification-2310.wav",
+    );
+    audio.play();
+  };
+
+  const [searchValue, setSearchValue] = useState("");
 
   const handleChangeOpen = () => {
     setCustomerDetailsOpen({ id: "", open: false });
