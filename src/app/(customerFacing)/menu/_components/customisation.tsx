@@ -280,7 +280,7 @@ export default function CustomisationDialog({
         </DialogTrigger>
       )}
 
-      <DialogContent className="h-[80%] sm:max-w-[425px] md:h-auto">
+      <DialogContent className="h-[95%] sm:max-w-[425px] md:h-auto">
         <DialogHeader className="md:pb-2">
           <div className="flex items-center justify-between">
             <div className="flex-1">
