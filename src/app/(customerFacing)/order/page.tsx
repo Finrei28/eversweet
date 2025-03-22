@@ -42,6 +42,18 @@ function OrderDetails() {
 
   useEffect(() => {
     setIsClient(true);
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+
+    //If no order id or order is picked up and its been 24 hours already then redirect user back to home page
+    if (
+      (order?.status === "PICKED_UP" &&
+        new Date().getTime() - new Date(order.createdAt).getTime() >
+          twentyFourHours) ||
+      !orderId
+    ) {
+      console.log(router);
+      router.push("/");
+    }
   }, []);
 
   const {
@@ -53,24 +65,7 @@ function OrderDetails() {
     { enabled: !!orderId && isClient },
   );
 
-  const twentyFourHours = 24 * 60 * 60 * 1000;
-
-  //If no order id or order is picked up and its been 24 hours already then redirect user back to home page
-  if (
-    (order?.status === "PICKED_UP" &&
-      new Date().getTime() - new Date(order.createdAt).getTime() >
-        twentyFourHours) ||
-    !orderId
-  ) {
-    router.push("/");
-  }
-
-  // Format date for display
-
   // Handle printing the receipt
-  const handlePrint = () => {
-    window.print();
-  };
 
   if (!isClient) {
     return (
@@ -88,9 +83,13 @@ function OrderDetails() {
     );
   }
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (error || !order) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-16">
+      <div className="fixed inset-0 mx-auto flex max-w-3xl items-center justify-center">
         <Card>
           <CardHeader>
             <CardTitle className="text-center text-red-500">
@@ -98,7 +97,7 @@ function OrderDetails() {
             </CardTitle>
             <CardDescription className="text-center">
               {language === "en"
-                ? "We couldn't find the order you're looking for. Please check theorder ID and try again."
+                ? "We couldn't find the order you're looking for. Please check the order ID and try again."
                 : "我们找不到您要查找的订单。请检查订单 ID 并重试。"}
             </CardDescription>
           </CardHeader>
