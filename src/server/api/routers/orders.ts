@@ -33,7 +33,7 @@ export const orderRouter = createTRPCRouter({
           customerFirstName: input.customerFirstName,
           customerLastName: input.customerLastName,
           customerEmail: input.customerEmail,
-          customerPhoneNumber: input.customerPhoneNumber ?? null,
+          customerPhoneNumber: input.customerPhoneNumber,
           priceInCents: input.totalPriceInCents,
           pickUpTime: input.pickUpTime,
           status: "PENDING",

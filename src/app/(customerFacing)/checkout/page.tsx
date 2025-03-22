@@ -23,7 +23,7 @@ export default function CheckoutPage() {
     customerFirstName: "",
     customerLastName: "",
     customerEmail: "",
-    customerPhoneNumber: "",
+    phone: "",
   });
   const getNextValidTime = () => {
     const now = new Date();
@@ -85,7 +85,6 @@ export default function CheckoutPage() {
       }));
     }
   };
-  console.log(customerInfo);
 
   // Show loading state during server rendering and initial client render
   if (!isClient) {
@@ -98,7 +97,7 @@ export default function CheckoutPage() {
 
   if (!cart?.cart || cart.cart.length === 0) {
     return (
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
+      <div className="fixed inset-0 mx-auto my-auto flex max-h-80 max-w-xs flex-col items-center justify-center md:max-w-md">
         <ShoppingBag className="mb-4 h-16 w-16 text-gray-300" />
         <h2 className="mb-2 text-2xl font-medium">
           {language === "en" ? "Your cart is empty" : "您的购物车是空的"}

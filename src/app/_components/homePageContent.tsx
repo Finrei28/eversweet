@@ -19,7 +19,7 @@ export default function HomePageContent() {
           </Button>
         </Link>
       </main>
-      <footer className="w-full bg-primary py-6 text-white">
+      <footer className="mt-auto w-full bg-primary py-6 text-white">
         <div className="container mx-auto flex flex-col items-center gap-4 text-center">
           <p className="text-sm">
             © {new Date().getFullYear()} Eversweet. All rights reserved.

@@ -36,7 +36,7 @@ export type CustomerInfo = {
   customerFirstName: string;
   customerLastName: string;
   customerEmail: string;
-  customerPhoneNumber: string | null;
+  phone: string | null;
 };
 
 export type OrderType = {

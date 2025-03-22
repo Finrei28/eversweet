@@ -51,7 +51,6 @@ function OrderDetails() {
           twentyFourHours) ||
       !orderId
     ) {
-      console.log(router);
       router.push("/");
     }
   }, []);

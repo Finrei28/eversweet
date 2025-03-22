@@ -26,7 +26,7 @@ type paymentSectionProps = {
 };
 
 const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_LIVE_PUBLISHABLE_KEY as string,
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string,
 );
 
 export default function PaymentSection({

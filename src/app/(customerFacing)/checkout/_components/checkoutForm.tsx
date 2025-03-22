@@ -102,10 +102,7 @@ export default function CheckoutForm({
       return;
     }
 
-    if (
-      customerInfo.customerPhoneNumber &&
-      !nzPhoneRegex.test(customerInfo.customerPhoneNumber.trim())
-    ) {
+    if (customerInfo.phone && !nzPhoneRegex.test(customerInfo.phone.trim())) {
       setPaymentError("Please enter a valid New Zealand phone number.");
       return;
     }
@@ -145,7 +142,7 @@ export default function CheckoutForm({
         customerFirstName: customerInfo.customerFirstName,
         customerLastName: customerInfo.customerLastName,
         customerEmail: customerInfo.customerEmail,
-        customerPhoneNumber: customerInfo.customerPhoneNumber,
+        customerPhoneNumber: customerInfo.phone,
         totalPriceInCents: totalPriceInCents,
         pickUpTime: pickUpTime,
       });

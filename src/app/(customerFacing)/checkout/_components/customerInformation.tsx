@@ -67,12 +67,12 @@ export default function CustomerInformation({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">
+            <Label htmlFor="customerPhoneNumber">
               {language === "en" ? "Phone Number" : "手机号码"}
             </Label>
             <PhoneInput
               country={"nz"} // Automatically sets +64 and NZ flag
-              value={customerInfo.customerPhoneNumber}
+              value={customerInfo.phone}
               onChange={handleCustomerInfoChange}
               inputStyle={{ width: "100%", paddingLeft: "50px" }} // Adjust input styling
               onlyCountries={["nz"]} // Restrict to only NZ numbers
