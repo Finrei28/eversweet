@@ -349,10 +349,17 @@ export default function CustomisationDialog({
                       className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
                       key={c.id}
                     >
-                      <div className="flex items-center">
-                        <span className="text-sm">
-                          {language === "en" ? c.name : c.chineseName}
-                        </span>
+                      <div className="flex items-start">
+                        <div>
+                          <span className="text-sm">
+                            {language === "en" ? c.name : c.chineseName}
+                          </span>
+                          <div className="text-sm text-gray-500">
+                            {formatCurrency(c.priceInCents / 100)}{" "}
+                            {language === "en" ? "each" : "每个"}
+                          </div>
+                        </div>
+
                         {isIncluded && (
                           <Badge
                             variant="secondary"

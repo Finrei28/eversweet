@@ -186,13 +186,13 @@ export function TopDesserts() {
               className="absolute left-0 top-0 h-full"
               onMouseDown={handleButtonClick}
             >
-              <CarouselPrevious className="relative left-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-14 md:translate-y-0 md:rounded-none" />
+              <CarouselPrevious className="relative left-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-16 md:translate-y-0 md:rounded-none" />
             </div>
             <div
               className="absolute right-0 top-0 h-full"
               onMouseDown={handleButtonClick}
             >
-              <CarouselNext className="relative right-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-14 md:translate-y-0 md:rounded-none" />
+              <CarouselNext className="relative right-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-16 md:translate-y-0 md:rounded-none" />
             </div>
           </Carousel>
         </div>

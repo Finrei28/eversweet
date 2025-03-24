@@ -41,6 +41,8 @@ export default function CheckoutPage() {
 
   const [pickUpTime, setPickUpTime] = useState<Date>(getNextValidTime());
 
+  //Check if admin wants ASAP pick up time?
+
   useEffect(() => {
     setIsClient(true);
   }, []);

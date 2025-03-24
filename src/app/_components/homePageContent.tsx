@@ -34,7 +34,7 @@ export default function HomePageContent() {
             <Link href="/feedback" className="hover:underline">
               {language === "en" ? "Feedback" : "反馈"}
             </Link>
-            <Link href="/privacy" className="hover:underline">
+            <Link href="/privacy-policy" className="hover:underline">
               {language === "en" ? "Privacy Policy" : "隐私政策"}
             </Link>
           </nav>
