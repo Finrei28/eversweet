@@ -1,22 +1,52 @@
+"use client";
+
+import { useLanguage } from "~/app/components/language";
+
 export default function OpeningHours() {
+  const { language } = useLanguage();
   return (
     <section className="p-8 text-center">
-      <h2 className="mb-4 text-3xl font-bold text-gray-900">Opening Hours</h2>
+      <h2 className="mb-4 text-3xl font-bold text-gray-900">
+        {language === "en" ? "Opening Hours" : "营业时间"}
+      </h2>
       <p className="mb-6 text-gray-600">
-        Come visit us during our working hours!
+        {language === "en"
+          ? "Come visit us during our working hours!"
+          : "在我们的工作时间内来访问我们！"}
       </p>
 
       <div className="overflow-x-auto">
         <table className="mx-auto w-full max-w-md border-collapse">
           <tbody>
             {[
-              { day: "Monday", hours: "10:00 AM - 6:00 PM" },
-              { day: "Tuesday", hours: "10:00 AM - 6:00 PM" },
-              { day: "Wednesday", hours: "10:00 AM - 6:00 PM" },
-              { day: "Thursday", hours: "10:00 AM - 6:00 PM" },
-              { day: "Friday", hours: "10:00 AM - 6:00 PM" },
-              { day: "Saturday", hours: "10:00 AM - 6:00 PM" },
-              { day: "Sunday", hours: "Closed" },
+              {
+                day: `${language === "en" ? "Monday" : "星期一"}`,
+                hours: "10:00 AM - 6:00 PM",
+              },
+              {
+                day: `${language === "en" ? "TuesdayTuesday" : "星期二"}`,
+                hours: "10:00 AM - 6:00 PM",
+              },
+              {
+                day: `${language === "en" ? "Wednesday" : "星期三"}`,
+                hours: "10:00 AM - 6:00 PM",
+              },
+              {
+                day: `${language === "en" ? "Thursday" : "星期四"}`,
+                hours: "10:00 AM - 6:00 PM",
+              },
+              {
+                day: `${language === "en" ? "Friday" : "星期五"}`,
+                hours: "10:00 AM - 6:00 PM",
+              },
+              {
+                day: `${language === "en" ? "Saturday" : "星期六"}`,
+                hours: "10:00 AM - 6:00 PM",
+              },
+              {
+                day: `${language === "en" ? "Sunday" : "星期日"}`,
+                hours: `${language === "en" ? "Closed" : "关闭"}`,
+              },
             ].map(({ day, hours }, index) => (
               <tr key={index} className="border-b border-gray-300">
                 <td className="px-4 py-3 font-semibold text-gray-800">{day}</td>
