@@ -18,22 +18,32 @@ import {
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { Checkbox } from "~/components/ui/checkbox";
+import { useLanguage } from "~/app/components/language";
 
-const formSchema = z.object({
-  name: z
-    .string()
-    .min(2, {
-      message: "Username must be at least 2 characters.",
-    })
-    .optional(),
-  email: z.string().email(),
-  anonymous: z.boolean().optional(),
-  message: z
-    .string()
-    .min(2, { message: "Please give us a proper feedback..." }),
-});
+const formSchema = z
+  .object({
+    name: z.string().optional(),
+    email: z.string().email(),
+    anonymous: z.boolean(),
+    message: z
+      .string()
+      .min(2, { message: "Please give us a proper feedback..." }),
+  })
+  .refine(
+    (data) => {
+      if (data.anonymous) {
+        data.name = "";
+      }
+      return data.anonymous || (data.name && data.name.length >= 2);
+    },
+    {
+      message: "Name must be at least 2 characters.",
+      path: ["name"], // Attach the error to the 'name' field
+    },
+  );
 
 export default function FeedbackPage() {
+  const { language } = useLanguage();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -45,21 +55,23 @@ export default function FeedbackPage() {
   });
 
   // 2. Define a submit handler.
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  function onSubmit(data: z.infer<typeof formSchema>) {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    console.log(values);
+    console.log(data);
   }
 
   return (
     <div>
       <div className="mx-auto flex h-24 flex-col items-center justify-center bg-secondary">
-        <h1 className="text-4xl">Feedback</h1>
+        <h1 className="text-4xl">{language === "en" ? "Feedback" : "反馈"}</h1>
       </div>
       <MaxWidthWapper>
         <section className="mx-auto mt-10 max-w-xl">
           <h2 className="text-xl font-semibold">
-            We would love to hear your feedback!
+            {language === "en"
+              ? "We would love to hear your feedback!"
+              : "我们很乐意听到您的反馈！"}
           </h2>
           <div className="rounded-xl pt-10">
             <Form {...form}>
@@ -75,9 +87,14 @@ export default function FeedbackPage() {
                       <FormItem
                         className={`${form.getValues().anonymous === true ? "invisible" : ""}`}
                       >
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel>
+                          {language === "en" ? "Name" : "名字"}
+                        </FormLabel>
                         <FormControl>
-                          <Input placeholder="name" {...field} />
+                          <Input
+                            placeholder={language === "en" ? "Name" : "名字"}
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -95,7 +112,9 @@ export default function FeedbackPage() {
                               onCheckedChange={field.onChange}
                             />
                           </FormControl>
-                          <FormLabel className="ml-2">Anonymous</FormLabel>
+                          <FormLabel className="ml-2">
+                            {language === "en" ? "Anonymous" : "匿名"}
+                          </FormLabel>
                         </div>
                         <FormMessage />
                       </FormItem>
@@ -108,11 +127,20 @@ export default function FeedbackPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>
+                        {language === "en" ? "Email" : "电子邮件"}
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="name" {...field} />
+                        <Input
+                          placeholder={language === "en" ? "Email" : "电子邮件"}
+                          {...field}
+                        />
                       </FormControl>
-                      <FormDescription>This is your email.</FormDescription>
+                      <FormDescription>
+                        {language === "en"
+                          ? "This is your email."
+                          : "这是您的电子邮件"}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -122,10 +150,14 @@ export default function FeedbackPage() {
                   name="message"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Feedback message</FormLabel>
+                      <FormLabel>
+                        {language === "en" ? "Feedback message" : "反馈留言"}
+                      </FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="message"
+                          placeholder={
+                            language === "en" ? "Feedback message" : "反馈留言"
+                          }
                           {...field}
                           onInput={(e) => {
                             const target = e.target as HTMLTextAreaElement;
@@ -135,7 +167,11 @@ export default function FeedbackPage() {
                           className="resize-none overflow-hidden"
                         />
                       </FormControl>
-                      <FormDescription>This is your message.</FormDescription>
+                      <FormDescription>
+                        {language === "en"
+                          ? "This is your message."
+                          : "这是您的反馈留言"}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -144,7 +180,7 @@ export default function FeedbackPage() {
                   type="submit"
                   className="mx-auto flex w-2/3 justify-center"
                 >
-                  Submit
+                  {language === "en" ? "Submit" : "提交"}
                 </Button>
               </form>
             </Form>

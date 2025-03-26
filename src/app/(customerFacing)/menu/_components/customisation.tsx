@@ -331,7 +331,7 @@ export default function CustomisationDialog({
           </div>
         </DialogHeader>
 
-        <Separator className="my-2" />
+        <Separator className="lg:my-2" />
 
         <div className="max-h-[40vh] overflow-y-auto px-1 py-2">
           {includedCustomisations.length > 0 && (
@@ -461,7 +461,7 @@ export default function CustomisationDialog({
           )}
         </div>
 
-        <Separator className="my-2" />
+        <Separator className="lg:my-2" />
 
         <div className="mt-2 flex items-center justify-between">
           <div className="flex items-center gap-2">

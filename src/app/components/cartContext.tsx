@@ -42,7 +42,22 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
+    localStorage.setItem("cartTimestamp", Date.now().toString());
   }, [cart]);
+
+  useEffect(() => {
+    const timestamp = localStorage.getItem("cartTimestamp");
+
+    if (timestamp) {
+      const lastModified = parseInt(timestamp, 10);
+      const now = Date.now();
+
+      if (now - lastModified > 12 * 60 * 60 * 1000) {
+        localStorage.removeItem("cart");
+        localStorage.removeItem("cartTimestamp");
+      }
+    }
+  }, []);
 
   const areListsEqual = (list1: customisations, list2: customisations) => {
     if (list1.length !== list2.length) return false;

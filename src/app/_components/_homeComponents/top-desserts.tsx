@@ -13,10 +13,10 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "~/components/ui/carousel";
-import CustomisationDialog from "../(customerFacing)/menu/_components/customisation";
+import CustomisationDialog from "../../(customerFacing)/menu/_components/customisation";
 import { formatCurrency } from "~/lib/formatters";
 import { Skeleton } from "~/components/ui/skeleton";
-import { useLanguage } from "../components/language";
+import { useLanguage } from "../../components/language";
 
 type dessert = {
   id: string;

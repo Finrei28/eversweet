@@ -23,7 +23,9 @@ export default function AboutUsPage() {
           </p>
         </section>
         <section className="mt-10">
-          <h2 className="ml-2 text-xl font-semibold">Our shop location</h2>
+          <h2 className="ml-2 text-xl font-semibold">
+            {language === "en" ? "Our shop location" : "我们店的位置"}
+          </h2>
           <div className="rounded-xl bg-secondary p-4">
             <p>
               We are located at 5D/119 Meadowland Drive, Somerville, Auckland
@@ -33,7 +35,9 @@ export default function AboutUsPage() {
           </div>
         </section>
         <section className="mt-10">
-          <h2 className="ml-2 text-xl font-semibold">Our opening hours</h2>
+          <h2 className="ml-2 text-xl font-semibold">
+            {language === "en" ? "Our opening hours" : "我们的营业时间"}
+          </h2>
           <p className="rounded-xl bg-secondary p-4">
             Owner still needs to decide.
           </p>

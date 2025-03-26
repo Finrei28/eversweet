@@ -77,7 +77,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         <div className="relative mx-auto flex w-full max-w-7xl items-center px-4">
           {/* Logo */}
 
-          <div className="absolute lg:left-0 xl:left-4">
+          <div className="absolute lg:h-28 xl:left-4 xl:h-32">
             <Link href={pathName.startsWith("/admin") ? `${pathName}` : "/"}>
               <Image
                 src={process.env.NEXT_PUBLIC_LOGO_URL as string}
@@ -99,7 +99,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
             cartQuantity > 0 &&
             pathName !== "/checkout" &&
             !pathName.startsWith("/admin") && (
-              <div className="absolute right-4">
+              <div className="absolute right-4 hidden 2xl:flex">
                 <ShoppingCart
                   size={"2rem"}
                   className="hover:cursor-pointer"
@@ -146,22 +146,23 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         >
           {isOpen ? <X size={30} /> : <Menu size={30} />}
         </Button>
-        {cartQuantity !== null &&
-          cartQuantity > 0 &&
-          pathName !== "/checkout" &&
-          !pathName.startsWith("/admin") && (
-            <div className="relative top-24 flex justify-end pr-5 md:pr-7">
-              <ShoppingCart
-                size={"2rem"}
-                className="hover:cursor-pointer"
-                onClick={() => setIsCartOpen(true)}
-              />
-              <span className="absolute -top-2 right-2 rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white">
-                {cartQuantity}
-              </span>
-            </div>
-          )}
       </div>
+      {cartQuantity !== null &&
+        cartQuantity > 0 &&
+        pathName !== "/checkout" &&
+        !pathName.startsWith("/admin") && (
+          <div className="fixed bottom-16 right-5 z-50 flex pr-5 sm:max-w-lg md:max-w-md md:pr-7 lg:max-w-lg 2xl:hidden">
+            <Button
+              className="border-primary bg-secondary text-base hover:cursor-pointer lg:p-6 lg:text-xl"
+              onClick={() => setIsCartOpen(true)}
+            >
+              View Cart
+            </Button>
+            <span className="absolute -top-2 right-2 rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white">
+              {cartQuantity}
+            </span>
+          </div>
+        )}
 
       {/* Mobile Menu */}
       <div
