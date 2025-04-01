@@ -53,10 +53,13 @@ export default function Menu() {
       {/* Modal */}
       {selectedImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-4"
+          className="fixed inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 p-4"
           onClick={() => setSelectedImage(null)} // Close modal on background click
         >
-          <div className="relative" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="animate-fade-in-zoom-in relative"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Image
               src={selectedImage}
               alt="Enlarged Image"
