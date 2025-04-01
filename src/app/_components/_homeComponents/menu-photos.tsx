@@ -66,6 +66,7 @@ export default function Menu() {
               width={1200}
               height={1200}
               className="h-auto max-h-[95vh] w-auto max-w-[95vw] rounded-lg object-cover"
+              draggable={false}
             />
             <Button
               className="absolute right-1 top-1 lg:right-4 lg:top-4"
