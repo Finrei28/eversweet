@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "~/components/ui/button";
 import { X } from "lucide-react";
+import Link from "next/link";
+import { useLanguage } from "~/app/components/language";
 
 export default function Menu() {
+  const { language } = useLanguage();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,6 +43,12 @@ export default function Menu() {
           </div>
         ))}
       </div>
+
+      <Link href={"/menu"} className="mt-2">
+        <Button className="p-7 text-2xl lg:p-8 lg:text-3xl">
+          {language === "en" ? "ORDER NOW" : "立即点菜"}
+        </Button>
+      </Link>
 
       {/* Modal */}
       {selectedImage && (

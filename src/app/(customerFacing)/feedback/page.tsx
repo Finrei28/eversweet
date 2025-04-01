@@ -58,7 +58,7 @@ export default function FeedbackPage() {
   function onSubmit(data: z.infer<typeof formSchema>) {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    console.log(data);
+    // console.log(data);
   }
 
   return (

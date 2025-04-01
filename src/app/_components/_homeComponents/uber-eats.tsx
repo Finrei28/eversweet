@@ -10,8 +10,8 @@ export default function UberEats() {
       <Image
         src="/uber-eats.png"
         alt="Uber Eats Logo"
-        width={150}
-        height={50}
+        width={200}
+        height={100}
         className="mb-4"
       />
       <h2 className="mb-2 text-2xl font-bold text-gray-900">

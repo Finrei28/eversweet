@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useState, useEffect, ReactNode, useRef } from "react";
 import { dessertOnClient } from "./types";
 
 type customisations = {
@@ -39,20 +39,25 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
     return [];
   });
+  const prevCartRef = useRef(cart);
 
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cart));
-    localStorage.setItem("cartTimestamp", Date.now().toString());
+    // Check if the cart contents actually changed
+    if (JSON.stringify(prevCartRef.current) !== JSON.stringify(cart)) {
+      localStorage.setItem("cart", JSON.stringify(cart));
+      localStorage.setItem("cartTimestamp", Date.now().toString());
+      prevCartRef.current = cart; // Update previous cart reference
+    }
   }, [cart]);
 
   useEffect(() => {
     const timestamp = localStorage.getItem("cartTimestamp");
-
     if (timestamp) {
       const lastModified = parseInt(timestamp, 10);
       const now = Date.now();
-
       if (now - lastModified > 12 * 60 * 60 * 1000) {
+        // Clear cart if older than 12 hours
+
         localStorage.removeItem("cart");
         localStorage.removeItem("cartTimestamp");
       }
