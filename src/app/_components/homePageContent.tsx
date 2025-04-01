@@ -7,6 +7,7 @@ import { useLanguage } from "../components/language";
 import { Separator } from "~/components/ui/separator";
 import UberEats from "./_homeComponents/uber-eats";
 import OpeningHours from "./_homeComponents/opening-hours";
+import MenuPhotos from "./_homeComponents/menu-photos";
 
 export default function HomePageContent() {
   const { language } = useLanguage();
@@ -22,6 +23,8 @@ export default function HomePageContent() {
           </Button>
         </Link>
       </main>
+      <Separator className="my-10 bg-secondary" />
+      <MenuPhotos />
       <Separator className="my-10 bg-secondary" />
       <UberEats />
       <Separator className="my-10 bg-secondary" />
