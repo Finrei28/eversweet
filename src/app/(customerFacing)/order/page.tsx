@@ -39,22 +39,6 @@ function OrderDetails() {
   const orderId = searchParams.get("orderId");
   const [isClient, setIsClient] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    setIsClient(true);
-    const twentyFourHours = 24 * 60 * 60 * 1000;
-
-    //If no order id or order is picked up and its been 24 hours already then redirect user back to home page
-    if (
-      (order?.status === "PICKED_UP" &&
-        new Date().getTime() - new Date(order.createdAt).getTime() >
-          twentyFourHours) ||
-      !orderId
-    ) {
-      router.push("/");
-    }
-  }, []);
-
   const {
     data: order,
     isLoading,
@@ -63,6 +47,15 @@ function OrderDetails() {
     { id: orderId ?? "" },
     { enabled: !!orderId && isClient },
   );
+  const twentyFourHours = 24 * 60 * 60 * 1000;
+
+  useEffect(() => {
+    setIsClient(true);
+    //If no order id or order is picked up and its been 24 hours already then redirect user back to home page
+    if (!orderId) {
+      router.push("/");
+    }
+  }, []);
 
   // Handle printing the receipt
 
@@ -86,7 +79,38 @@ function OrderDetails() {
     window.print();
   };
 
-  if (error || !order) {
+  if (order?.status === "PICKED_UP") {
+    return (
+      <div className="fixed inset-0 mx-auto flex max-w-3xl items-center justify-center">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center text-red-500">
+              {language === "en" ? "Order picked up" : "订单已取"}
+            </CardTitle>
+            <CardDescription className="text-center">
+              {language === "en"
+                ? "Seems like your order has already been picked up. Thank you for your order!"
+                : "看起来您的订单已经被取走了。谢谢您的订购!"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Link href="/">
+              <Button>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {language === "en" ? "Return to Home" : "返回首页"}
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (
+    error ||
+    !order ||
+    new Date().getTime() - new Date(order.createdAt).getTime() > twentyFourHours
+  ) {
     return (
       <div className="fixed inset-0 mx-auto flex max-w-3xl items-center justify-center">
         <Card>
@@ -96,7 +120,7 @@ function OrderDetails() {
             </CardTitle>
             <CardDescription className="text-center">
               {language === "en"
-                ? "We couldn't find the order you're looking for. Please check the order ID and try again."
+                ? "Looks like your order has expired or does not exist. Please check the order ID and try again."
                 : "我们找不到您要查找的订单。请检查订单 ID 并重试。"}
             </CardDescription>
           </CardHeader>
