@@ -1,3 +1,5 @@
+"use client";
+
 import { FullOrderType } from "~/app/components/types";
 
 import {

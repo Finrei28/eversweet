@@ -274,7 +274,7 @@ export default function CustomisationDialog({
             {pathName === "/checkout" ? (
               <SquarePen className="mt-1 h-5 w-5 hover:cursor-pointer" />
             ) : (
-              `${language === "en" ? "Customise goodie" : "定制"}`
+              `${language === "en" ? "Add " : "添加 "} ${formatCurrency(dessert.priceInCents / 100)}`
             )}
           </Button>
         </DialogTrigger>

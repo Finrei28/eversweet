@@ -5,8 +5,8 @@ import { useLanguage } from "~/app/components/language";
 export default function OpeningHours() {
   const { language } = useLanguage();
   return (
-    <section className="p-8 text-center">
-      <h2 className="mb-4 text-3xl font-bold text-gray-900">
+    <section className="p-8 text-center text-primary">
+      <h2 className="mb-4 text-3xl font-bold">
         {language === "en" ? "Opening Hours" : "营业时间"}
       </h2>
       <p className="mb-6 text-gray-600">
@@ -24,7 +24,7 @@ export default function OpeningHours() {
                 hours: "10:00 AM - 6:00 PM",
               },
               {
-                day: `${language === "en" ? "TuesdayTuesday" : "星期二"}`,
+                day: `${language === "en" ? "Tuesday" : "星期二"}`,
                 hours: "10:00 AM - 6:00 PM",
               },
               {

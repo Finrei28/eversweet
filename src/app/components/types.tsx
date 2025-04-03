@@ -9,6 +9,10 @@ export type DessertOnForm = {
   ingredients: string;
   imagePath: string;
   isAvailableForPurchase: boolean;
+  category: {
+    id: string;
+    name: string;
+  };
 };
 
 export type dessertFromDB = {
@@ -20,6 +24,10 @@ export type dessertFromDB = {
   priceInCents: number;
   isAvailableForPurchase: boolean;
   imagePath: string;
+  category: {
+    id: string;
+    name: string;
+  };
 };
 
 export type dessertOnClient = {
@@ -113,4 +121,18 @@ export type FullOrderType = {
       };
     }[];
   }[];
+};
+
+export type Category = {
+  id: string;
+  name: string;
+};
+
+export type Customisation = {
+  name: string;
+  chineseName: string;
+  priceInCents: string;
+  id?: string;
+  isAvailableForPurchase?: boolean;
+  categories: Category[];
 };

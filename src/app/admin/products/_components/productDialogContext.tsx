@@ -3,6 +3,7 @@
 import { dessertFromDB } from "~/app/components/types";
 import { AddProduct } from "./addProduct";
 import { EditProduct } from "./editProduct";
+import { api } from "~/trpc/react";
 
 type ProductDialogContextProps = {
   product?: dessertFromDB;
@@ -11,6 +12,7 @@ type ProductDialogContextProps = {
 export default function ProductDialogContext({
   product,
 }: ProductDialogContextProps) {
+  const [categories] = api.dessert.getCategories.useSuspenseQuery();
   return (
     <>
       {product ? (
@@ -35,6 +37,11 @@ export default function ProductDialogContext({
               id: "ingredients",
               label: "Ingredients",
               value: product.ingredients.join(","),
+            },
+            {
+              id: "categoryId",
+              label: "Category",
+              value: product.category.id,
             },
             {
               id: "priceInCents",
@@ -64,7 +71,12 @@ export default function ProductDialogContext({
             priceInCents: product.priceInCents,
             imagePath: product.imagePath,
             isAvailableForPurchase: product.isAvailableForPurchase,
+            category: {
+              id: product.category.id,
+              name: product.category.name,
+            },
           }}
+          categories={categories}
         />
       ) : (
         <AddProduct
@@ -76,10 +88,12 @@ export default function ProductDialogContext({
             { id: "chineseName", label: "Chinese name" },
             { id: "description", label: "Description" },
             { id: "ingredients", label: "Ingredients" },
+            { id: "categoryId", label: "Category" },
             { id: "priceInCents", label: "Price in cents" },
             { id: "image", label: "Image", type: "file" },
           ]}
           submitText="Add"
+          categories={categories}
         />
       )}
     </>

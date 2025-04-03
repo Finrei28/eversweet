@@ -22,8 +22,8 @@ export default function Menu() {
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
-      <h2 className="mb-4 text-3xl font-bold text-gray-900">
-        Take a look at our menu
+      <h2 className="mb-4 text-3xl font-bold text-primary">
+        {language === "en" ? "Our menu" : "我们的菜单"}
       </h2>
 
       <div className="grid h-auto w-full grid-cols-1 gap-6 overflow-hidden rounded-lg py-5 xl:grid-cols-2">
@@ -57,7 +57,7 @@ export default function Menu() {
           onClick={() => setSelectedImage(null)} // Close modal on background click
         >
           <div
-            className="animate-fade-in-zoom-in relative"
+            className="relative animate-fade-in-zoom-in"
             onClick={(e) => e.stopPropagation()}
           >
             <Image

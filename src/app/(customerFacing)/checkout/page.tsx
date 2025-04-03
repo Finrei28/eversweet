@@ -63,7 +63,7 @@ export default function CheckoutPage() {
         setClientSecret(data.clientSecret);
         setIsLoading(false);
       })
-      .catch((error) => {
+      .catch(() => {
         setError("Failed to initialize payment. Please try again.");
         setIsLoading(false);
       });

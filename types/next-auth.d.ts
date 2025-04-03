@@ -7,7 +7,14 @@ import NextAuth, {
   User as DefaultUser,
   Default,
 } from "next-auth";
+import { AdapterUser } from "@auth/core/adapters";
 import { JWT as DefaultJWTType } from "next-auth/jwt";
+
+declare module "@auth/core/adapters" {
+  interface AdapterUser {
+    role: Role; // Add the role property here
+  }
+}
 
 declare module "next-auth" {
   interface Session {
@@ -20,9 +27,7 @@ declare module "next-auth" {
   }
 
   interface User extends DefaultUser {
-    id: string;
     role: Role;
-    email: string;
     requires2FAExpiresAt?: Date | string | null;
   }
 

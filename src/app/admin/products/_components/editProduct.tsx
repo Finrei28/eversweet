@@ -27,9 +27,18 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { formatCurrency } from "~/lib/formatters";
 import { editSchema } from "~/app/components/schemas";
-import type { DessertOnForm } from "~/app/components/types";
+import type { Category, DessertOnForm } from "~/app/components/types";
 import { api } from "~/trpc/react";
 import { Textarea } from "~/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 
 interface Field {
   id: string;
@@ -45,6 +54,7 @@ interface EditProductProps {
   fields: Field[];
   submitText: string;
   formDefaultValues: DessertOnForm;
+  categories: Category[];
 }
 
 export function EditProduct({
@@ -54,6 +64,7 @@ export function EditProduct({
   fields,
   submitText,
   formDefaultValues,
+  categories,
 }: EditProductProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [priceInCents, setPriceInCents] = useState<number | null>(null);
@@ -81,12 +92,20 @@ export function EditProduct({
   // Forms
   const editForm = useForm<z.infer<typeof editSchema>>({
     resolver: zodResolver(editSchema),
-    defaultValues: { ...formDefaultValues, image: new File([], "") },
+    defaultValues: {
+      ...formDefaultValues,
+      categoryId: formDefaultValues.category.id,
+      image: new File([], ""),
+    },
   });
 
   useEffect(() => {
     // Reset form values if formDefaultValues change
-    editForm.reset({ ...formDefaultValues, image: new File([], "") });
+    editForm.reset({
+      ...formDefaultValues,
+      categoryId: formDefaultValues.category.id,
+      image: new File([], ""),
+    });
     setImagePreview(formDefaultValues.imagePath); // Update the image preview
     setPriceInCents(formDefaultValues.priceInCents || null); // Update price if available
   }, [formDefaultValues, editForm]);
@@ -113,6 +132,8 @@ export function EditProduct({
         setError(result.error);
       }
     }
+    console.log(formDefaultValues.category.id);
+    console.log(data.categoryId);
     editProduct.mutate({
       productToUpdate: {
         ...data,
@@ -126,6 +147,7 @@ export function EditProduct({
   const prevDialogOpen = useRef(dialogOpen);
 
   useEffect(() => {
+    console.log(editForm.getValues().categoryId);
     if (prevDialogOpen.current && !dialogOpen) {
       // ✅ Runs only when closing the dialog
       editForm.clearErrors();
@@ -144,7 +166,7 @@ export function EditProduct({
         <DialogTrigger asChild>
           <Button className="rounded-xl">{triggerText}</Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="h-[95vh] sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>
@@ -154,7 +176,7 @@ export function EditProduct({
           <Form {...editForm}>
             <form
               onSubmit={editForm.handleSubmit(handleEditSubmit)} // Fix the submit handler to use handleAddSubmit for adding
-              className="grid gap-4"
+              className={`${error && "h-[80vh] overflow-y-auto"} flex flex-col gap-4 pb-2 pr-1`}
             >
               {fields.map(({ id, label, type = "text", value }) => (
                 <div key={id} className="grid grid-cols-4 items-center">
@@ -173,6 +195,7 @@ export function EditProduct({
                             | "ingredients"
                             | "image"
                             | "isAvailableForPurchase"
+                            | "categoryId"
                         }
                         render={({ field }) => (
                           <>
@@ -213,6 +236,36 @@ export function EditProduct({
                                       onChange={field.onChange}
                                       className="resize-none"
                                     />
+                                  ) : id === "categoryId" ? (
+                                    <Select
+                                      defaultValue={
+                                        formDefaultValues.category.id
+                                      }
+                                      onValueChange={(value) =>
+                                        field.onChange(value)
+                                      }
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue
+                                        // placeholder="Select a category"
+                                        />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectGroup>
+                                          <SelectLabel>Category</SelectLabel>
+                                          {categories.map((category) => {
+                                            return (
+                                              <SelectItem
+                                                key={category.id}
+                                                value={category.id}
+                                              >
+                                                {category.name}
+                                              </SelectItem>
+                                            );
+                                          })}
+                                        </SelectGroup>
+                                      </SelectContent>
+                                    </Select>
                                   ) : (
                                     <FormInput
                                       {...field}
@@ -291,7 +344,7 @@ export function EditProduct({
                 </div>
               ))}
               {error && (
-                <span className="flex flex-col items-center justify-center text-destructive">
+                <span className="max-w-sm whitespace-normal break-words text-destructive">
                   {error}
                 </span>
               )}

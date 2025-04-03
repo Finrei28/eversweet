@@ -27,6 +27,16 @@ import { formatCurrency } from "~/lib/formatters";
 import { addSchema } from "~/app/components/schemas";
 import { api } from "~/trpc/react";
 import { Textarea } from "~/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import { Category } from "~/app/components/types";
 
 // Validation schemas
 
@@ -43,6 +53,7 @@ interface AddProductProps {
   description: string;
   fields: Field[];
   submitText: string;
+  categories: Category[];
 }
 
 export function AddProduct({
@@ -51,6 +62,7 @@ export function AddProduct({
   description,
   fields,
   submitText,
+  categories,
 }: AddProductProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [priceInCents, setPriceInCents] = useState<number | null>(null);
@@ -76,6 +88,7 @@ export function AddProduct({
       name: "",
       chineseName: "",
       description: "",
+      categoryId: "",
       ingredients: "",
       priceInCents: 0,
       image: new File([], ""),
@@ -84,6 +97,7 @@ export function AddProduct({
 
   // Handle submit for add form
   const handleAddSubmit = async (data: z.infer<typeof addSchema>) => {
+    console.log(data);
     setAddLoading(true);
     setError(null);
     const formData = new FormData();
@@ -120,6 +134,7 @@ export function AddProduct({
     }
     prevDialogOpen.current = dialogOpen; // Update previous value
   }, [dialogOpen, addForm]);
+
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
@@ -150,6 +165,7 @@ export function AddProduct({
                         | "description"
                         | "ingredients"
                         | "image"
+                        | "categoryId"
                     }
                     render={({ field }) => (
                       <>
@@ -181,6 +197,31 @@ export function AddProduct({
                                   onChange={field.onChange}
                                   className="resize-none"
                                 />
+                              ) : id === "categoryId" ? (
+                                <Select
+                                  onValueChange={(value) =>
+                                    field.onChange(value)
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select a category" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectGroup>
+                                      <SelectLabel>Category</SelectLabel>
+                                      {categories.map((category) => {
+                                        return (
+                                          <SelectItem
+                                            key={category.id}
+                                            value={category.id}
+                                          >
+                                            {category.name}
+                                          </SelectItem>
+                                        );
+                                      })}
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
                               ) : (
                                 <FormInput
                                   {...field}
@@ -278,9 +319,9 @@ function SubmitButton({
 }) {
   return (
     <Button
-      type="submit"
       disabled={addLoading}
       className="mt-5 w-10/12 rounded-xl"
+      // onClick={() => console.log("clicked")}
     >
       {addLoading ? "Submitting..." : submitText}
     </Button>

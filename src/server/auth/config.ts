@@ -1,8 +1,8 @@
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { type NextAuthConfig } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "~/server/db";
 import bcrypt from "bcryptjs";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 
 export const authConfig = {
   providers: [
@@ -70,8 +70,8 @@ export const authConfig = {
         // }
 
         // If no 2FA or expired 2FA, set user data in the token
-        token.role = user.role;
         token.email = user.email ?? "";
+        token.role = user.role;
         token.id = user.id ?? "";
         token.requires2FAExpiresAt = user.requires2FAExpiresAt;
       }

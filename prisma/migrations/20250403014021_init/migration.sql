@@ -1,6 +1,9 @@
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('ADMIN', 'USER');
 
+-- CreateEnum
+CREATE TYPE "Status" AS ENUM ('PENDING', 'COMPLETED', 'PICKED_UP');
+
 -- CreateTable
 CREATE TABLE "Post" (
     "id" SERIAL NOT NULL,
@@ -84,7 +87,7 @@ CREATE TABLE "Dessert" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "chineseName" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
+    "description" TEXT,
     "priceInCents" INTEGER NOT NULL,
     "imagePath" TEXT NOT NULL,
     "imagePublicId" TEXT NOT NULL,
@@ -92,14 +95,25 @@ CREATE TABLE "Dessert" (
     "isAvailableForPurchase" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "categoryId" TEXT NOT NULL,
 
     CONSTRAINT "Dessert_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Category" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "chineseName" TEXT NOT NULL,
+
+    CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "DessertCustomisation" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "chineseName" TEXT NOT NULL,
     "priceInCents" INTEGER NOT NULL,
     "isAvailableForPurchase" BOOLEAN NOT NULL DEFAULT false,
 
@@ -124,9 +138,11 @@ CREATE TABLE "Order" (
     "customerFirstName" TEXT NOT NULL,
     "customerLastName" TEXT NOT NULL,
     "customerEmail" TEXT NOT NULL,
-    "customerPhoneNumber" INTEGER NOT NULL,
+    "customerPhoneNumber" TEXT,
     "completedAt" TIMESTAMP(3),
-    "completed" BOOLEAN NOT NULL DEFAULT false,
+    "pickedUpAt" TIMESTAMP(3),
+    "status" "Status" NOT NULL,
+    "pickUpTime" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
 );
@@ -149,6 +165,16 @@ CREATE TABLE "OrderDessert" (
     "quantity" INTEGER NOT NULL,
 
     CONSTRAINT "OrderDessert_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Feedback" (
+    "id" TEXT NOT NULL,
+    "rating" INTEGER NOT NULL,
+    "comment" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Feedback_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -176,6 +202,9 @@ CREATE UNIQUE INDEX "VerificationToken_token_key" ON "VerificationToken"("token"
 CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "VerificationToken"("identifier", "token");
 
 -- CreateIndex
+CREATE INDEX "Order_status_idx" ON "Order"("status");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "OrderDessert_orderId_dessertId_id_key" ON "OrderDessert"("orderId", "dessertId", "id");
 
 -- AddForeignKey
@@ -189,6 +218,9 @@ ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId"
 
 -- AddForeignKey
 ALTER TABLE "Authenticator" ADD CONSTRAINT "Authenticator_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Dessert" ADD CONSTRAINT "Dessert_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "DessertCustomisationOnDessert" ADD CONSTRAINT "DessertCustomisationOnDessert_dessertId_fkey" FOREIGN KEY ("dessertId") REFERENCES "Dessert"("id") ON DELETE CASCADE ON UPDATE CASCADE;

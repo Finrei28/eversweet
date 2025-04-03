@@ -1,13 +1,15 @@
 import MaxWidthWapper from "~/app/components/maxWidthWrapper";
 import ProductDialogContext from "./_components/productDialogContext";
 import { ProductCards } from "./_components/productCards";
-import { EditCustomisation } from "./_components/editCustomisation";
+import { EditCustomisation } from "./_components/customisations/Customisation";
 import { auth } from "~/server/auth";
 import { notFound } from "next/navigation";
 import { api, HydrateClient } from "~/trpc/server";
 
 export default async function ProductsPage() {
   void api.dessert.getProducts.prefetch();
+  void api.dessert.getCategories.prefetch();
+  void api.productCustomisation.dessertCustomisations.prefetch();
   const session = await auth();
 
   if (!session?.user) {

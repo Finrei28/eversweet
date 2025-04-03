@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { formatCurrency } from "~/lib/formatters";
 import Image from "next/image";
 import { Button } from "~/components/ui/button";
 import { useState } from "react";
@@ -18,8 +17,8 @@ import CustomisationDialog from "./customisation";
 import { useLanguage } from "~/app/components/language";
 
 export default function MenuCards() {
-  const { data: menuItems, isLoading } =
-    api.dessert.getProductsForMenu.useQuery();
+  const { data: productCategory, isLoading } =
+    api.dessert.getProductsForMenuByCategory.useQuery();
   const { language } = useLanguage();
   const [filter, setFilter] = useState("All");
 
@@ -31,7 +30,7 @@ export default function MenuCards() {
     );
   }
 
-  if (!menuItems || menuItems.length === 0) {
+  if (!productCategory || productCategory.length === 0) {
     return (
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <p className="text-lg">
@@ -67,31 +66,41 @@ export default function MenuCards() {
           <Soup />
         </Button>
       </div>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-        {menuItems?.map((dessert) => (
-          <Card key={dessert.id} className="flex flex-col">
-            <div className="relative aspect-square w-full">
-              <Image
-                src={dessert.imagePath || "/placeholder.svg"}
-                alt={language === "en" ? dessert.name : dessert.chineseName}
-                fill
-                className="rounded-t-xl object-cover"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              />
+      <div>
+        {productCategory?.map((category) => (
+          <div key={category.id}>
+            <h2 className="pb-4 pt-10 text-3xl font-bold text-primary underline">
+              {language === "en" ? category.name : category.chineseName}
+            </h2>
+            <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4">
+              {category.desserts.map((dessert) => (
+                <Card key={dessert.id} className="flex flex-col">
+                  <div className="relative aspect-square w-full">
+                    <Image
+                      src={dessert.imagePath}
+                      alt={
+                        language === "en" ? dessert.name : dessert.chineseName
+                      }
+                      fill
+                      className="rounded-t-xl object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                  </div>
+                  <CardHeader className="flex-grow">
+                    <CardTitle>
+                      {language === "en" ? dessert.name : dessert.chineseName}
+                    </CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      {dessert.ingredients.join(" + ")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="mt-auto">
+                    <CustomisationDialog dessert={dessert} />
+                  </CardFooter>
+                </Card>
+              ))}
             </div>
-            <CardHeader className="flex-grow">
-              <CardTitle>
-                {language === "en" ? dessert.name : dessert.chineseName}{" "}
-                {formatCurrency(dessert.priceInCents / 100)}
-              </CardTitle>
-              <CardDescription className="line-clamp-2">
-                {dessert.description}
-              </CardDescription>
-            </CardHeader>
-            <CardFooter className="mt-auto">
-              <CustomisationDialog dessert={dessert} />
-            </CardFooter>
-          </Card>
+          </div>
         ))}
       </div>
     </>

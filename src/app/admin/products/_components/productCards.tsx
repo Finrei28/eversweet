@@ -13,16 +13,15 @@ export function ProductCards() {
       {products.map((dessert) => (
         <div
           key={dessert.id}
-          className="relative flex h-[28rem] flex-col overflow-hidden rounded-lg bg-white shadow-lg"
+          className="relative flex flex-col overflow-hidden rounded-lg bg-white shadow-lg"
         >
           <div className="relative h-40 w-full">
             {dessert.imagePath ? (
               <Image
-                src={dessert.imagePath || "/placeholder.svg"}
+                src={dessert.imagePath}
                 alt={dessert.name}
                 fill
                 className="object-cover"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
             ) : (
               <div className="h-full w-full bg-gray-200" />

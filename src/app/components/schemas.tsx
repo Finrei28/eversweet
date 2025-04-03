@@ -12,6 +12,7 @@ export const addSchema = z.object({
   description: z.string().optional(),
   ingredients: z.string().min(1),
   image: imageSchema.refine((file) => file.size > 0, "Image is Required"),
+  categoryId: z.string().min(1),
 });
 
 export const createProductSchema = z.object({
@@ -22,6 +23,7 @@ export const createProductSchema = z.object({
   ingredients: z.string().min(1),
   imagePath: z.string().min(1),
   imagePublicId: z.string().min(1),
+  categoryId: z.string().min(1),
 });
 
 export const editSchema = addSchema.extend({

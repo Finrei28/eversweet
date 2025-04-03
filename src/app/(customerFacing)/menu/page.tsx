@@ -1,15 +1,19 @@
 import MaxWidthWapper from "~/app/components/maxWidthWrapper";
 import { HydrateClient } from "~/trpc/server";
 import MenuCards from "./_components/menu-cards";
+import ServerComponent from "./_components/serverComponent";
 
 export default function MenuPage() {
   return (
-    <HydrateClient>
-      <MaxWidthWapper>
-        <div className="py-10">
-          <MenuCards />
-        </div>
-      </MaxWidthWapper>
-    </HydrateClient>
+    <>
+      <HydrateClient>
+        <ServerComponent />
+        <MaxWidthWapper>
+          <div className="py-10">
+            <MenuCards />
+          </div>
+        </MaxWidthWapper>
+      </HydrateClient>
+    </>
   );
 }

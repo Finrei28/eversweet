@@ -14,6 +14,7 @@ export const productCustomisationRouter = createTRPCRouter({
         name: z.string().min(1),
         chineseName: z.string(),
         priceInCents: z.coerce.number().int().min(1),
+        categories: z.array(z.string()),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -28,20 +29,49 @@ export const productCustomisationRouter = createTRPCRouter({
           message: "Customisation already exists | 定制已有",
         });
       }
+
+      if (!input.categories.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "At least one category is required | 至少需要一个类别",
+        });
+      }
+      console.log(input.categories);
       return await ctx.db.dessertCustomisation.create({
         data: {
           name: input.name,
           chineseName: input.chineseName,
           priceInCents: input.priceInCents,
+          categories: {
+            create: input.categories.map((categoryId) => ({
+              category: { connect: { id: categoryId } },
+            })),
+          },
         },
       });
     }),
 
   dessertCustomisations: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db.dessertCustomisation.findMany();
+    const customisations = await ctx.db.dessertCustomisation.findMany({
+      include: {
+        categories: {
+          include: {
+            category: {
+              select: { id: true, name: true },
+            },
+          },
+        },
+      },
+    });
+
+    // Map over the result to extract just the `category` objects
+    return customisations.map((customisation) => ({
+      ...customisation,
+      categories: customisation.categories.map((c) => c.category),
+    }));
   }),
 
-  update: protectedProcedure
+  updateMany: protectedProcedure
     .input(
       z.object({
         updates: z.array(
@@ -65,6 +95,71 @@ export const productCustomisationRouter = createTRPCRouter({
       );
 
       return await ctx.db.$transaction(updatePromises);
+    }),
+
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().min(1),
+        isAvailableForPurchase: z.boolean().optional(),
+        priceInCents: z.coerce.number().int().min(1),
+        name: z.string().min(1),
+        chineseName: z.string().min(1),
+        categories: z.array(z.string().min(1)),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existingCustomisation =
+        await ctx.db.dessertCustomisation.findUnique({
+          where: { id: input.id },
+          include: { categories: true }, // Get linked categories
+        });
+
+      // Extract current category IDs
+      const existingCategoryIds =
+        existingCustomisation?.categories.map((c) => c.categoryId) || [];
+
+      // Sort and stringify arrays to compare
+      const categoriesChanged =
+        JSON.stringify(existingCategoryIds.sort()) !==
+        JSON.stringify(input.categories.sort());
+
+      // Prepare base update data
+      const updateData: any = {
+        isAvailableForPurchase: input.isAvailableForPurchase,
+        priceInCents: input.priceInCents,
+        name: input.name,
+        chineseName: input.chineseName,
+      };
+
+      // If categories changed, include delete & create logic
+      if (categoriesChanged) {
+        updateData.categories = {
+          deleteMany: {}, // Remove all existing categories
+          create: input.categories.map((categoryId) => ({
+            category: { connect: { id: categoryId } },
+          })),
+        };
+      }
+
+      // Perform update
+      const updatedCustomisations = await ctx.db.dessertCustomisation.update({
+        where: { id: input.id },
+        data: updateData,
+        include: {
+          categories: {
+            include: {
+              category: {
+                select: { id: true, name: true },
+              },
+            },
+          },
+        },
+      });
+      return {
+        ...updatedCustomisations,
+        categories: updatedCustomisations.categories.map((c) => c.category),
+      };
     }),
 
   availableDessertCustomisations: publicProcedure.query(async ({ ctx }) => {

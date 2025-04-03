@@ -113,16 +113,38 @@ model Dessert {
     updatedAt               DateTime @updatedAt
     orders                  OrderDessert[]
     customisations          DessertCustomisationOnDessert[]
+    categoryId              String
+    category                Category @relation(fields: [categoryId], references: [id])
 }
 
+model Category {
+    id             String   @id @default(cuid())
+    name           String   // Category name (e.g., "Sago Series")
+    chineseName    String
+    desserts       Dessert[]
+    customisations CategoryCustomisation[]
+}
+
+
 model DessertCustomisation {
-    id          String  @id @default(cuid())
-    name        String  // Customisation name (e.g., "Extra Chocolate")
-    chineseName String
-    priceInCents Int    // Additional price for this customisation
+    id                     String  @id @default(cuid())
+    name                   String  // Customisation name (e.g., "Extra Chocolate")
+    chineseName            String
+    priceInCents           Int    // Additional price for this customisation
     isAvailableForPurchase Boolean @default(false)
-    desserts    DessertCustomisationOnDessert[]
-    orderCustomisations OrderDessertCustomisation[]
+    desserts               DessertCustomisationOnDessert[]
+    orderCustomisations    OrderDessertCustomisation[]
+    categories             CategoryCustomisation[]
+}
+
+model CategoryCustomisation {
+    id                  String              @id @default(cuid())
+    categoryId          String
+    customisationId     String
+    category            Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+    customisation       DessertCustomisation @relation(fields: [customisationId], references: [id], onDelete: Cascade)
+
+    @@unique([categoryId, customisationId])
 }
 
 model DessertCustomisationOnDessert {
@@ -181,4 +203,13 @@ model OrderDessert {
     customisations OrderDessertCustomisation[] // To track each customisation for a dessert for an order.
 
     @@unique([orderId, dessertId, id])  // Composite primary key
+}
+
+//Feedback
+
+model Feedback {
+    id        String   @id @default(cuid())
+    rating     Int
+    comment    String
+    createdAt  DateTime @default(now())
 }

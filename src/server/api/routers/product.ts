@@ -49,22 +49,22 @@ export const productRouter = createTRPCRouter({
   }),
 
   //get products for menu display
-  getProductsForMenu: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db.dessert.findMany({
-      where: {
-        isAvailableForPurchase: true,
-      },
-      orderBy: {
-        priceInCents: "asc",
-      },
-      select: {
-        id: true,
-        name: true,
-        chineseName: true,
-        priceInCents: true,
-        imagePath: true,
-        ingredients: true,
-        description: true,
+  getProductsForMenuByCategory: publicProcedure.query(async ({ ctx }) => {
+    return await ctx.db.category.findMany({
+      include: {
+        desserts: {
+          where: { isAvailableForPurchase: true },
+          orderBy: { priceInCents: "asc" },
+          select: {
+            id: true,
+            name: true,
+            chineseName: true,
+            priceInCents: true,
+            imagePath: true,
+            ingredients: true,
+            description: true,
+          },
+        },
       },
     });
   }),
@@ -109,6 +109,11 @@ export const productRouter = createTRPCRouter({
           ingredients: ingredientsArray,
           imagePath: data.imagePath,
           imagePublicId: data.imagePublicId,
+          category: {
+            connect: {
+              id: data.categoryId,
+            },
+          },
         },
       });
 
@@ -129,6 +134,12 @@ export const productRouter = createTRPCRouter({
         ingredients: true,
         description: true,
         isAvailableForPurchase: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
   }),
@@ -174,6 +185,9 @@ export const productRouter = createTRPCRouter({
         ? data.ingredients.split(",").map((i) => i.trim())
         : [];
 
+      console.log(data.categoryId);
+      console.log(exists.categoryId);
+
       // Save to database
       await ctx.db.dessert.update({
         where: { id: data.id },
@@ -186,6 +200,9 @@ export const productRouter = createTRPCRouter({
           imagePath: imagePath,
           imagePublicId: imagePublicId,
           isAvailableForPurchase: data.isAvailableForPurchase,
+          category: {
+            connect: { id: data.categoryId }, // Change category
+          },
         },
       });
 
@@ -264,4 +281,13 @@ export const productRouter = createTRPCRouter({
 
       return { desserts, customisations };
     }),
+
+  getCategories: protectedProcedure.query(async ({ ctx }) => {
+    return await ctx.db.category.findMany({
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+  }),
 });
