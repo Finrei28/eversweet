@@ -69,7 +69,7 @@ export default function Menu() {
               draggable={false}
             />
             <Button
-              className="absolute right-1 top-1 lg:right-4 lg:top-4"
+              className="absolute right-1 top-1 hidden lg:right-4 lg:top-4 lg:block"
               variant={"ghost"}
               onClick={() => setSelectedImage(null)} // Close modal on button click
             >
