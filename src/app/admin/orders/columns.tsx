@@ -39,7 +39,7 @@ export function GetOrderColumns({
   const utils = api.useUtils();
   const changeStatus = api.order.changeStatus.useMutation({
     onSuccess: async () => {
-      await utils.order.invalidate();
+      await utils.order.getAllCurrentOrders.invalidate();
     },
   });
 
@@ -138,9 +138,7 @@ export function GetOrderColumns({
                 className={
                   row.original.status === "PENDING" ? "bg-green-500" : ""
                 }
-                onClick={() =>
-                  handleOrderStatusChange(row.original.id, statusToChange)
-                }
+                onClick={() => handleOrderStatusChange(id, statusToChange)}
               >
                 {statusToChange}
               </DropdownMenuItem>

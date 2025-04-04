@@ -39,7 +39,7 @@ export function GetPastOrderColumns({
   const utils = api.useUtils();
   const changeStatus = api.order.changeStatus.useMutation({
     onSuccess: async () => {
-      await utils.order.invalidate();
+      await utils.order.getAllPastOrders.invalidate();
     },
   });
 
