@@ -14,7 +14,7 @@ export default function HomePageContent() {
   return (
     <div className="flex min-h-screen flex-col lg:mt-0">
       <main className="flex flex-grow flex-col items-center justify-center py-5 text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
+        <div className="container flex flex-col items-center justify-center gap-12 py-16 text-center">
           <TopDesserts />
         </div>
         <Link href={"/menu"}>

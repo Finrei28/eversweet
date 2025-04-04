@@ -32,6 +32,7 @@ export default function CustomerInformation({
           <div className="space-y-2">
             <Label htmlFor="customerFirstName">
               {language === "en" ? "First Name" : "前名"}
+              <span className="ml-1 text-destructive">*</span>
             </Label>
             <Input
               id="customerFirstName"
@@ -44,6 +45,7 @@ export default function CustomerInformation({
           <div className="space-y-2">
             <Label htmlFor="customerLastName">
               {language === "en" ? "Last Name" : "姓名"}
+              <span className="ml-1 text-destructive">*</span>
             </Label>
             <Input
               id="customerLastName"
@@ -56,6 +58,7 @@ export default function CustomerInformation({
           <div className="space-y-2">
             <Label htmlFor="customerEmail">
               {language === "en" ? "Email" : "电子邮件"}
+              <span className="ml-1 text-destructive">*</span>
             </Label>
             <Input
               id="customerEmail"

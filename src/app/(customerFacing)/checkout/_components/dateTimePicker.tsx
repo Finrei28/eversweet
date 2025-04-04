@@ -20,12 +20,16 @@ type DateTimePickerProps = {
   pickUpTime: Date;
   setPickUpTime: React.Dispatch<React.SetStateAction<Date>>;
   getNextValidTime: () => Date;
+  setASAP: React.Dispatch<React.SetStateAction<boolean>>;
+  ASAP: boolean;
 };
 
 export function DateTimePicker({
   pickUpTime,
   setPickUpTime,
   getNextValidTime,
+  setASAP,
+  ASAP,
 }: DateTimePickerProps) {
   const { language } = useLanguage();
   const [availableDates, setAvailableDates] =
@@ -85,7 +89,7 @@ export function DateTimePicker({
         selectedDate.getMonth() === currentTime.getMonth() &&
         selectedDate.getDate() === currentTime.getDate();
       setPickUpTimeChanged(true);
-
+      setASAP(false);
       setPickUpTime((prev) => {
         return prev.getHours() < availableDates.getHours() &&
           isSelectedSameMonthDay
@@ -103,6 +107,7 @@ export function DateTimePicker({
   const handleTimeChange = (type: "hour" | "minute", value: string) => {
     if (pickUpTime) {
       setPickUpTimeChanged(true);
+      setASAP(false);
       const newDate = new Date(pickUpTime);
 
       if (type === "hour") {
@@ -192,12 +197,15 @@ export function DateTimePicker({
                     availableDates.getMinutes() > minute &&
                     sameMonthDay &&
                     currentTime.getHours() === availableDates.getHours() - 1;
+
                   return (
                     <Button
                       key={minute}
                       size="icon"
                       variant={
-                        pickUpTime && pickUpTime.getMinutes() === minute
+                        pickUpTime &&
+                        pickUpTime.getMinutes() === minute &&
+                        !ASAP
                           ? "default"
                           : "ghost"
                       }

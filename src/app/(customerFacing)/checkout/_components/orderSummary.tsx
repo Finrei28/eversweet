@@ -16,6 +16,8 @@ type orderSummaryProps = {
   pickUpTime: Date;
   setPickUpTime: React.Dispatch<React.SetStateAction<Date>>;
   getNextValidTime: () => Date;
+  setASAP: React.Dispatch<React.SetStateAction<boolean>>;
+  ASAP: boolean;
 };
 
 export default function OrderSummary({
@@ -23,6 +25,8 @@ export default function OrderSummary({
   pickUpTime,
   setPickUpTime,
   getNextValidTime,
+  setASAP,
+  ASAP,
 }: orderSummaryProps) {
   const { language } = useLanguage();
 
@@ -39,6 +43,8 @@ export default function OrderSummary({
             pickUpTime={pickUpTime}
             setPickUpTime={setPickUpTime}
             getNextValidTime={getNextValidTime}
+            setASAP={setASAP}
+            ASAP={ASAP}
           />
           {cart.cart.map((item) => (
             <div key={item.id} className="flex gap-4">

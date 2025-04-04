@@ -23,6 +23,7 @@ type paymentSectionProps = {
   isLoading: boolean;
   error: string;
   pickUpTime: Date;
+  ASAP: boolean;
 };
 
 const stripePromise = loadStripe(
@@ -36,6 +37,7 @@ export default function PaymentSection({
   isLoading,
   error,
   pickUpTime,
+  ASAP,
 }: paymentSectionProps) {
   const { language } = useLanguage();
   const router = useRouter();
@@ -59,6 +61,7 @@ export default function PaymentSection({
               totalPriceInCents={cart.totalPrice || 0}
               customerInfo={customerInfo}
               pickUpTime={pickUpTime}
+              ASAP={ASAP}
               router={router}
             />
           </Elements>

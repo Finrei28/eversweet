@@ -9,6 +9,7 @@ import {
 } from "~/components/ui/dialog";
 import { api } from "~/trpc/react";
 import Image from "next/image";
+import { Loader2 } from "lucide-react";
 
 type CustomerDetailsProps = {
   orderDetailsOpen: { id: string; open: boolean };
@@ -19,9 +20,13 @@ export default function CustomerDetails({
   orderDetailsOpen,
   handleChangeOpen,
 }: CustomerDetailsProps) {
-  const [order] = api.order.getOrderDetails.useSuspenseQuery({
+  const { data: order, isLoading } = api.order.getOrderDetails.useQuery({
     id: orderDetailsOpen.id,
   });
+
+  if (!orderDetailsOpen.id) {
+    return;
+  }
 
   const getPickedUpTime = (dateString: string) => {
     const pickedUpTime = new Date(dateString);
@@ -33,7 +38,21 @@ export default function CustomerDetails({
       minute: "numeric",
     }).format(pickedUpTime);
   };
-  return (
+  return isLoading ? (
+    <Dialog open={orderDetailsOpen.open} onOpenChange={handleChangeOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="flex justify-center text-xl">
+            Order #{orderDetailsOpen.id}
+          </DialogTitle>
+          <DialogDescription />
+        </DialogHeader>
+        <div className="flex h-16 w-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DialogContent>
+    </Dialog>
+  ) : (
     order && (
       <Dialog open={orderDetailsOpen.open} onOpenChange={handleChangeOpen}>
         <DialogContent className="sm:max-w-[425px]">

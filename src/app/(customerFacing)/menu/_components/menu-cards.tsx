@@ -15,6 +15,7 @@ import { Loader2, Soup } from "lucide-react";
 import { Snowflake } from "lucide-react";
 import CustomisationDialog from "./customisation";
 import { useLanguage } from "~/app/components/language";
+import { Sparkles } from "lucide-react";
 
 export default function MenuCards() {
   const { data: productCategory, isLoading } =
@@ -44,7 +45,7 @@ export default function MenuCards() {
 
   return (
     <>
-      <div className="flex gap-5 pb-5">
+      {/* <div className="flex gap-5 pb-5">
         <Button
           className={`${filter === "All" && "bg-secondary"}`}
           onClick={() => setFilter("All")}
@@ -65,6 +66,13 @@ export default function MenuCards() {
           {language === "en" ? "WARM" : "温"}
           <Soup />
         </Button>
+      </div> */}
+      <div className="flex items-center justify-center gap-1 pb-5 text-primary">
+        <Sparkles />
+        <h1 className="text-5xl font-bold">
+          {language === "en" ? "Menu" : "菜单"}
+        </h1>
+        <Sparkles />
       </div>
       <div>
         {productCategory?.map((category) => (
@@ -90,7 +98,7 @@ export default function MenuCards() {
                     <CardTitle>
                       {language === "en" ? dessert.name : dessert.chineseName}
                     </CardTitle>
-                    <CardDescription className="line-clamp-2">
+                    <CardDescription className="line-clamp-2 text-xs">
                       {dessert.ingredients.join(" + ")}
                     </CardDescription>
                   </CardHeader>

@@ -40,6 +40,7 @@ export default function CheckoutPage() {
   };
 
   const [pickUpTime, setPickUpTime] = useState<Date>(getNextValidTime());
+  const [ASAP, setASAP] = useState(true); // Check if customer wants ASAP pick up time?
 
   //Check if admin wants ASAP pick up time?
 
@@ -129,6 +130,8 @@ export default function CheckoutPage() {
             cart={cart}
             pickUpTime={pickUpTime}
             setPickUpTime={setPickUpTime}
+            setASAP={setASAP}
+            ASAP={ASAP}
             getNextValidTime={getNextValidTime}
           />
 
@@ -146,6 +149,7 @@ export default function CheckoutPage() {
             cart={cart}
             customerInfo={customerInfo}
             pickUpTime={pickUpTime}
+            ASAP={ASAP}
             isLoading={isLoading}
             error={error}
           />

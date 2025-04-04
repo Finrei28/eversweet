@@ -21,6 +21,7 @@ type checkoutFormProps = {
   router: any;
   cart: CartContextType;
   pickUpTime: Date;
+  ASAP: boolean;
 };
 
 export default function CheckoutForm({
@@ -29,6 +30,7 @@ export default function CheckoutForm({
   router,
   cart,
   pickUpTime,
+  ASAP,
 }: checkoutFormProps) {
   const { language } = useLanguage();
   const stripe = useStripe();
@@ -36,6 +38,7 @@ export default function CheckoutForm({
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
 
   let dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
 
@@ -50,9 +53,11 @@ export default function CheckoutForm({
   const utils = api.useUtils();
   const createOrder = api.order.create.useMutation({
     onSuccess: async (data) => {
-      const orderId = data.id;
-      await utils.order.invalidate();
+      setPaymentSuccess(true);
       cart?.clearCart();
+      const orderId = data.id;
+      setOrderId(orderId);
+      await utils.order.invalidate();
       router.push(`/order?orderId=${orderId}`);
     },
   });
@@ -121,13 +126,18 @@ export default function CheckoutForm({
       redirect: "if_required",
     });
 
+    const tenMinutesLater = new Date(Date.now() + 10 * 60 * 1000);
+
+    if (pickUpTime.getTime() < tenMinutesLater.getTime() || ASAP) {
+      pickUpTime = tenMinutesLater;
+    }
+
     if (submitError) {
       setPaymentError(
         submitError.message || "Payment failed. Please try again.",
       );
       setPaymentLoading(false);
     } else if (paymentIntent && paymentIntent.status === "succeeded") {
-      setPaymentSuccess(true);
       const mappedDesserts =
         cart?.cart?.map((item) => ({
           dessert: {
@@ -137,6 +147,7 @@ export default function CheckoutForm({
           priceInCents: item.priceInCents,
           customisations: item.customisations, // Default to empty array if undefined
         })) ?? [];
+
       createOrder.mutate({
         dessert: mappedDesserts,
         customerFirstName: customerInfo.customerFirstName,
@@ -168,7 +179,7 @@ export default function CheckoutForm({
             ? "If not directed, you can click the button below to view your order details."
             : "如果没有指示，您可以点击下面的按钮查看您的订单详情。"}
         </p>
-        <Link href="/order-confirmation">
+        <Link href={`/order?orderId=${orderId}`}>
           <Button>
             {language === "en" ? "View Order Details" : "查看订单详情"}
           </Button>
