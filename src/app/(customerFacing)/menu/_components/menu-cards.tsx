@@ -21,7 +21,7 @@ export default function MenuCards() {
   const { data: productCategory, isLoading } =
     api.dessert.getProductsForMenuByCategory.useQuery();
   const { language } = useLanguage();
-  const [filter, setFilter] = useState("All");
+  // const [filter, setFilter] = useState("All");  add filter if required by owner
 
   if (isLoading) {
     return (
@@ -75,41 +75,48 @@ export default function MenuCards() {
         <Sparkles />
       </div>
       <div>
-        {productCategory?.map((category) => (
-          <div key={category.id}>
-            <h2 className="pb-4 pt-10 text-3xl font-bold text-primary underline">
-              {language === "en" ? category.name : category.chineseName}
-            </h2>
-            <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4">
-              {category.desserts.map((dessert) => (
-                <Card key={dessert.id} className="flex flex-col">
-                  <div className="relative aspect-square w-full">
-                    <Image
-                      src={dessert.imagePath}
-                      alt={
-                        language === "en" ? dessert.name : dessert.chineseName
-                      }
-                      fill
-                      className="rounded-t-xl object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
-                  </div>
-                  <CardHeader className="flex-grow">
-                    <CardTitle>
-                      {language === "en" ? dessert.name : dessert.chineseName}
-                    </CardTitle>
-                    <CardDescription className="line-clamp-2 text-xs">
-                      {dessert.ingredients.join(" + ")}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardFooter className="mt-auto">
-                    <CustomisationDialog dessert={dessert} />
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ))}
+        {productCategory?.map(
+          (category) =>
+            category.desserts.length > 0 && (
+              <div key={category.id}>
+                <h2 className="pb-4 pt-10 text-3xl font-bold text-primary underline">
+                  {language === "en" ? category.name : category.chineseName}
+                </h2>
+                <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4">
+                  {category.desserts.map((dessert) => (
+                    <Card key={dessert.id} className="flex flex-col">
+                      <div className="relative aspect-square w-full">
+                        <Image
+                          src={dessert.imagePath}
+                          alt={
+                            language === "en"
+                              ? dessert.name
+                              : dessert.chineseName
+                          }
+                          fill
+                          className="rounded-t-xl object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
+                      </div>
+                      <CardHeader className="flex-grow">
+                        <CardTitle>
+                          {language === "en"
+                            ? dessert.name
+                            : dessert.chineseName}
+                        </CardTitle>
+                        <CardDescription className="line-clamp-2 text-xs">
+                          {dessert.ingredients.join(" + ")}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardFooter className="mt-auto">
+                        <CustomisationDialog dessert={dessert} />
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ),
+        )}
       </div>
     </>
   );
