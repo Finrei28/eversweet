@@ -48,12 +48,19 @@ export default function CustomisationDialog({
     api.productCustomisation.availableDessertCustomisations.useSuspenseQuery();
   const { language } = useLanguage();
   const [totalQuantity, setTotalQuantity] = useState(
-    customisations.map((customisation) => ({
-      id: customisation.id,
-      name: customisation.name,
-      chineseName: customisation.chineseName,
-      quantity: dessert.ingredients.includes(customisation.name) ? 1 : 0,
-    })),
+    customisations.map((customisation) => {
+      const previousQuantity = cartItem?.customisations.find(
+        (c) => c.id === customisation.id,
+      )?.quantity;
+      return {
+        id: customisation.id,
+        name: customisation.name,
+        chineseName: customisation.chineseName,
+        quantity:
+          previousQuantity ??
+          (dessert.ingredients.includes(customisation.name) ? 1 : 0),
+      };
+    }),
   );
 
   const [modifications, setModifications] = useState<typeof totalQuantity>(
@@ -206,14 +213,7 @@ export default function CustomisationDialog({
           id: customisation.id,
           name: customisation.name,
           chineseName: customisation.chineseName,
-          quantity:
-            previousQuantity && !customisationIncluded
-              ? previousQuantity
-              : previousQuantity && customisationIncluded
-                ? previousQuantity + 1
-                : dessert.ingredients.includes(customisation.name)
-                  ? 1
-                  : 0,
+          quantity: previousQuantity ?? (customisationIncluded ? 1 : 0),
         };
       }),
     );
@@ -270,9 +270,10 @@ export default function CustomisationDialog({
           <Button
             variant={`${pathName === "/checkout" ? "ghost" : "default"}`}
             className={`${pathName === "/checkout" ? "" : "w-full"}`}
+            size="icon"
           >
             {pathName === "/checkout" ? (
-              <SquarePen className="mt-1 h-5 w-5 hover:cursor-pointer" />
+              <SquarePen className="h-5 w-5 hover:cursor-pointer" />
             ) : (
               `${language === "en" ? "Add " : "添加 "} ${formatCurrency(dessert.priceInCents / 100)}`
             )}

@@ -23,7 +23,7 @@ export type CartContextType = {
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string) => void;
   addExtraToCart: (id: string) => void;
-  removeAllItemFromCart: (id: string) => void;
+  removeAllSameItemFromCart: (id: string) => void;
   clearCart: () => void;
   totalPrice: number;
   updateItemFromCart: (id: string, item: CartItem) => void;
@@ -112,7 +112,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
-  const removeAllItemFromCart = (id: string) => {
+  const removeAllSameItemFromCart = (id: string) => {
     setCart((prev) => prev.filter((item) => item.id != id));
   };
 
@@ -157,7 +157,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         addToCart,
         removeFromCart,
         addExtraToCart,
-        removeAllItemFromCart,
+        removeAllSameItemFromCart,
         clearCart,
         totalPrice,
         updateItemFromCart,

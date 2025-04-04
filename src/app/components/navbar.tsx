@@ -270,7 +270,9 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                           variant="ghost"
                           size="icon"
                           className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                          onClick={() => cart.removeAllItemFromCart(item.id)}
+                          onClick={() =>
+                            cart.removeAllSameItemFromCart(item.id)
+                          }
                         >
                           <Trash2 className="h-5 w-5" />
                         </Button>
