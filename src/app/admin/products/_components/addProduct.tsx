@@ -97,7 +97,6 @@ export function AddProduct({
 
   // Handle submit for add form
   const handleAddSubmit = async (data: z.infer<typeof addSchema>) => {
-    console.log(data);
     setAddLoading(true);
     setError(null);
     const formData = new FormData();
@@ -318,11 +317,7 @@ function SubmitButton({
   addLoading: boolean;
 }) {
   return (
-    <Button
-      disabled={addLoading}
-      className="mt-5 w-10/12 rounded-xl"
-      // onClick={() => console.log("clicked")}
-    >
+    <Button disabled={addLoading} className="mt-5 w-10/12 rounded-xl">
       {addLoading ? "Submitting..." : submitText}
     </Button>
   );

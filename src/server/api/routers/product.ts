@@ -185,9 +185,6 @@ export const productRouter = createTRPCRouter({
         ? data.ingredients.split(",").map((i) => i.trim())
         : [];
 
-      console.log(data.categoryId);
-      console.log(exists.categoryId);
-
       // Save to database
       await ctx.db.dessert.update({
         where: { id: data.id },

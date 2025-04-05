@@ -132,8 +132,7 @@ export function EditProduct({
         setError(result.error);
       }
     }
-    console.log(formDefaultValues.category.id);
-    console.log(data.categoryId);
+
     editProduct.mutate({
       productToUpdate: {
         ...data,
@@ -147,7 +146,6 @@ export function EditProduct({
   const prevDialogOpen = useRef(dialogOpen);
 
   useEffect(() => {
-    console.log(editForm.getValues().categoryId);
     if (prevDialogOpen.current && !dialogOpen) {
       // ✅ Runs only when closing the dialog
       editForm.clearErrors();
@@ -158,7 +156,6 @@ export function EditProduct({
     }
     prevDialogOpen.current = dialogOpen; // Update previous value
   }, [dialogOpen, editForm, formDefaultValues]);
-
   return (
     <>
       {" "}
@@ -176,7 +173,7 @@ export function EditProduct({
           <Form {...editForm}>
             <form
               onSubmit={editForm.handleSubmit(handleEditSubmit)} // Fix the submit handler to use handleAddSubmit for adding
-              className={`${error && "h-[80vh] overflow-y-auto"} flex flex-col gap-4 pb-2 pr-1`}
+              className={`${!error && !(Object.keys(editForm.formState.errors).length > 0) ? "lg:h-auto lg:overflow-y-hidden" : ""} flex h-[80vh] flex-col gap-4 overflow-y-auto pb-2 pr-1`}
             >
               {fields.map(({ id, label, type = "text", value }) => (
                 <div key={id} className="grid grid-cols-4 items-center">

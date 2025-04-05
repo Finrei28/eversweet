@@ -36,7 +36,7 @@ export const productCustomisationRouter = createTRPCRouter({
           message: "At least one category is required | 至少需要一个类别",
         });
       }
-      console.log(input.categories);
+
       return await ctx.db.dessertCustomisation.create({
         data: {
           name: input.name,

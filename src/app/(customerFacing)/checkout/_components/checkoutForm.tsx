@@ -147,7 +147,7 @@ export default function CheckoutForm({
           priceInCents: item.priceInCents,
           customisations: item.customisations, // Default to empty array if undefined
         })) ?? [];
-      console.log(mappedDesserts);
+
       createOrder.mutate({
         dessert: mappedDesserts,
         customerFirstName: customerInfo.customerFirstName,

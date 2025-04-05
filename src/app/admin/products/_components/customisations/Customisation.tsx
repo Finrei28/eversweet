@@ -138,8 +138,6 @@ export function EditCustomisation() {
     prevDialogOpen.current = dialogOpen; // Update previous value
   }, [dialogOpen, dessertCustomisations]);
 
-  console.log(editManyCustomisations);
-
   return (
     <Dialog
       open={dialogOpen}
@@ -167,7 +165,6 @@ export function EditCustomisation() {
         >
           <div className="space-y-2 p-2">
             {editManyCustomisations.map((customisation) => {
-              console.log(customisation);
               return (
                 <div
                   className="grid grid-cols-[auto_1fr_auto] items-center gap-4 py-1"
