@@ -67,7 +67,7 @@ export default function FeedbackPage() {
 
   const utils = api.useUtils();
   const createFeedback = api.feedback.create.useMutation({
-    onSuccess: async (data) => {
+    onSuccess: async () => {
       await utils.feedback.invalidate();
       setLoading(false);
       toast({
@@ -75,7 +75,7 @@ export default function FeedbackPage() {
         description:
           language === "en" ? "Thanks for your feedback." : "感谢您的反馈。",
       });
-      console.log(data);
+
       form.reset();
     },
     onError: () => {

@@ -18,14 +18,16 @@ import { useLanguage } from "~/app/components/language";
 import { Sparkles } from "lucide-react";
 
 export default function MenuCards() {
-  const { data: productCategory, isLoading } =
+  const { data: productCategory, isLoading: isProductLoading } =
     api.dessert.getProductsForMenuByCategory.useQuery();
-  const [customisations] =
-    api.productCustomisation.availableDessertCustomisations.useSuspenseQuery();
+
+  const { data: customisations, isLoading: isCustomisationLoading } =
+    api.productCustomisation.availableDessertCustomisations.useQuery();
+
   const { language } = useLanguage();
   // const [filter, setFilter] = useState("All");  add filter if required by owner
 
-  if (isLoading) {
+  if (isProductLoading || isCustomisationLoading) {
     return (
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -111,7 +113,7 @@ export default function MenuCards() {
                             ? dessert.ingredients.join(" + ")
                             : dessert.ingredients
                                 .map((ingredient) => {
-                                  const match = customisations.find(
+                                  const match = customisations?.find(
                                     (c) => c.name === ingredient,
                                   );
                                   return match?.chineseName || ingredient;
