@@ -12,6 +12,7 @@ import Image from "next/image";
 import { Switch } from "~/components/ui/switch";
 import { useLanguage } from "./language";
 import { Label } from "~/components/ui/label";
+import { Globe } from "lucide-react";
 
 export function Navbar({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,6 +24,9 @@ export function Navbar({ children }: { children: React.ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const pathName = usePathname();
   const { language, toggleLanguage } = useLanguage();
+  const [globeOpen, setGlobeOpen] = useState(false);
+  const globeRef = useRef<HTMLDivElement>(null);
+  const globeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
@@ -45,10 +49,20 @@ export function Navbar({ children }: { children: React.ReactNode }) {
       ) {
         setIsCartOpen(false);
       }
+
+      if (
+        globeOpen &&
+        globeRef.current &&
+        !globeRef.current.contains(event.target as Node) &&
+        globeButtonRef.current &&
+        !globeButtonRef.current.contains(event.target as Node)
+      ) {
+        setGlobeOpen(false);
+      }
     };
 
     // Add event listener when menu or cart is open
-    if (isOpen || isCartOpen) {
+    if (isOpen || isCartOpen || globeOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("touchstart", handleClickOutside);
     }
@@ -57,7 +71,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
     };
-  }, [isOpen, isCartOpen]);
+  }, [isOpen, isCartOpen, globeOpen]);
 
   useEffect(() => {
     setIsOpen(false);
@@ -111,16 +125,47 @@ export function Navbar({ children }: { children: React.ReactNode }) {
               </div>
             )}
         </div>
-        {!pathName.startsWith("/admin") && (
-          <div className="absolute right-10 flex items-center gap-1">
-            <Label>EN</Label>
-            <Switch
-              onCheckedChange={toggleLanguage}
-              checked={language === "en" ? false : true}
-            />
-            <Label>ZH</Label>
+
+        {/* Language switcher */}
+        <div className="absolute right-20 flex items-center gap-1">
+          <Button
+            variant={"ghost"}
+            onClick={() => setGlobeOpen(!globeOpen)}
+            ref={globeButtonRef}
+          >
+            <Globe className="hover:cursor-pointer" />
+          </Button>
+          <div
+            ref={globeRef}
+            className={cn(
+              "absolute right-20 z-50 mt-40 hidden rounded-xl bg-white text-lg font-bold text-primary shadow-lg lg:block",
+              "fixed flex transform flex-col items-center transition-all duration-500 ease-in-out first:pt-0 last:pb-0",
+              globeOpen
+                ? "translate-y-0 opacity-100"
+                : "pointer-events-none -translate-y-4 opacity-0",
+            )}
+          >
+            <div className="flex flex-col items-center gap-2 p-4">
+              <Button
+                onClick={toggleLanguage}
+                disabled={language === "en"}
+                variant={"ghost"}
+                className={`${language === "en" && "bg-primary text-white"} w-full`}
+              >
+                <span>English</span>
+              </Button>
+
+              <Button
+                onClick={toggleLanguage}
+                disabled={language === "zh"}
+                variant={"ghost"}
+                className={`${language === "zh" && "bg-primary text-white"} w-full`}
+              >
+                <span>中文</span>
+              </Button>
+            </div>
           </div>
-        )}
+        </div>
       </nav>
 
       {/* Mobile navbar */}
@@ -141,7 +186,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         <Button
           ref={buttonRef}
           onClick={() => setIsOpen(!isOpen)}
-          className="fixed right-8 top-8 z-10 p-2 md:p-4"
+          className={`${pathName.startsWith("/admin") ? "mr-4 mt-14" : "fixed"} right-8 top-8 z-10 p-2 md:p-4`}
           aria-label={isOpen ? "Close menu" : "Open menu"}
         >
           {isOpen ? <X size={30} /> : <Menu size={30} />}
@@ -169,18 +214,19 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         ref={menuRef}
         className={cn(
           "absolute right-5 top-20 z-50 rounded-xl bg-white p-6 py-3 text-lg font-bold text-primary shadow-lg lg:hidden",
-          "fixed flex transform flex-col items-center divide-y divide-secondary transition-all duration-500 ease-in-out first:pt-0 last:pb-0",
+          "fixed flex transform flex-col items-center transition-all duration-500 ease-in-out",
           isOpen
             ? "translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-4 opacity-0",
         )}
       >
-        {children}
-        {!pathName.startsWith("/admin") && (
-          <span onClick={toggleLanguage} className="py-2">
+        <div className="flex flex-col items-center divide-y divide-secondary">
+          {children}
+
+          <span onClick={toggleLanguage} className="w-full py-2 text-center">
             {language === "en" ? "中文" : "English"}
           </span>
-        )}
+        </div>
       </div>
 
       {/* Cart Modal */}
@@ -232,10 +278,10 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                                 key={customisation.id}
                               >
                                 {customisation.quantity > 1
-                                  ? `+${customisation.quantity} ${customisationName}`
+                                  ? `+ ${customisation.quantity} ${customisationName}`
                                   : customisation.quantity === 1
-                                    ? `+${customisationName}`
-                                    : `-${customisationName}`}
+                                    ? `+ ${customisationName}`
+                                    : `- ${customisationName}`}
                               </p>
                             );
                           })}

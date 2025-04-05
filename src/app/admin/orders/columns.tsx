@@ -16,6 +16,7 @@ import {
 import { api } from "~/trpc/react";
 import { useCallback } from "react";
 import { OrderType } from "~/app/components/types";
+import { useLanguage } from "~/app/components/language";
 
 type ColumnProps = {
   setCustomerDetailsOpen: React.Dispatch<
@@ -36,6 +37,7 @@ export function GetOrderColumns({
   setCustomerDetailsOpen,
   setOrderDetailsOpen,
 }: ColumnProps): ColumnDef<OrderType>[] {
+  const { language } = useLanguage();
   const utils = api.useUtils();
   const changeStatus = api.order.changeStatus.useMutation({
     onSuccess: async () => {
@@ -53,7 +55,7 @@ export function GetOrderColumns({
   return [
     {
       accessorKey: "orderNumber",
-      header: "Order Number",
+      header: language === "en" ? "Order Number" : "订单号",
       cell: ({ row }) => {
         const orderNumber = row.original.tempOrderId;
         return <div className="font-medium">{orderNumber}</div>;
@@ -65,7 +67,7 @@ export function GetOrderColumns({
     },
     {
       accessorKey: "customer",
-      header: "Customer Name",
+      header: language === "en" ? "Customer" : "顾客",
       cell: ({ row }) => {
         const firstName = row.original.customerFirstName;
         const lastName = row.original.customerLastName;
@@ -84,17 +86,20 @@ export function GetOrderColumns({
     },
     {
       accessorKey: "desserts",
-      header: "Desserts",
+      header: language === "en" ? "Desserts" : "甜点",
       cell: ({ row }) => {
         const desserts = row.original.desserts
-          .map((dessert) => `${dessert.dessert.name}(${dessert.quantity})`)
+          .map(
+            (dessert) =>
+              `${language === "en" ? dessert.dessert.name : dessert.dessert.chineseName}(${dessert.quantity})`,
+          )
           .join(", ");
         return <div className="font-medium">{desserts}</div>;
       },
     },
     {
       accessorKey: "priceInCents",
-      header: "Amount",
+      header: language === "en" ? "Amount" : "价格",
       cell: ({ row }) => {
         const amount = Number.parseFloat(row.getValue("priceInCents")) / 100;
         const formatted = formatCurrency(amount);
@@ -103,7 +108,7 @@ export function GetOrderColumns({
     },
     {
       accessorKey: "createdAt",
-      header: "Created",
+      header: language === "en" ? "Created" : "创建时间",
       cell: ({ row }) => {
         const createdAt = row.original.createdAt;
         const formatted = new Intl.DateTimeFormat("en-NZ").format(createdAt);
@@ -112,10 +117,20 @@ export function GetOrderColumns({
     },
     {
       accessorKey: "completed",
-      header: "Status",
+      header: language === "en" ? "Status" : "状态",
       cell: ({ row }) => {
         const status = row.original.status;
-        return <div className="font-medium">{status}</div>;
+        const chineseStatus =
+          status === "PENDING"
+            ? "待处理"
+            : status === "COMPLETED"
+              ? "已完成"
+              : "已取货";
+        return (
+          <div className="font-medium">
+            {language === "en" ? status : chineseStatus}
+          </div>
+        );
       },
     },
     {
@@ -140,24 +155,28 @@ export function GetOrderColumns({
                 }
                 onClick={() => handleOrderStatusChange(id, statusToChange)}
               >
-                {statusToChange}
+                {language === "zh" && statusToChange === "PENDING"
+                  ? "待处理"
+                  : language === "zh"
+                    ? "已完成"
+                    : statusToChange}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="mt-2 bg-red-500"
                 onClick={() => handleOrderStatusChange(id, "PICKED_UP")}
               >
-                PICKED UP
+                {language === "en" ? "Picked Up" : "已取货"}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => setCustomerDetailsOpen({ id, open: true })}
               >
-                View customer details
+                {language === "en" ? "View customer details" : "查看顾客详情"}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setOrderDetailsOpen({ id, open: true })}
               >
-                View order details
+                {language === "en" ? "View order details" : "查看订单详情"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

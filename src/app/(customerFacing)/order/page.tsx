@@ -281,10 +281,10 @@ function OrderDetails() {
                             key={customisation.id}
                           >
                             {customisation.quantity > 1
-                              ? `+${customisation.quantity} ${customisationName}`
+                              ? `+ ${customisation.quantity} ${customisationName}`
                               : customisation.quantity === 1
-                                ? `+${customisationName}`
-                                : `-${customisationName}`}
+                                ? `+ ${customisationName}`
+                                : `- ${customisationName}`}
                           </p>
                         );
                       })}

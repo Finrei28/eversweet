@@ -47,7 +47,7 @@ export const customisationSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
   chineseName: z.string(),
-  quantity: z.number().int().positive(),
+  quantity: z.number().int(),
 });
 
 export const orderSchema = z.object({

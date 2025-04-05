@@ -16,6 +16,7 @@ import {
 import { api } from "~/trpc/react";
 import { useCallback } from "react";
 import { OrderType } from "~/app/components/types";
+import { useLanguage } from "~/app/components/language";
 
 type ColumnProps = {
   setCustomerDetailsOpen: React.Dispatch<
@@ -36,6 +37,7 @@ export function GetPastOrderColumns({
   setCustomerDetailsOpen,
   setOrderDetailsOpen,
 }: ColumnProps): ColumnDef<OrderType>[] {
+  const { language } = useLanguage();
   const utils = api.useUtils();
   const changeStatus = api.order.changeStatus.useMutation({
     onSuccess: async () => {
@@ -52,7 +54,7 @@ export function GetPastOrderColumns({
   return [
     {
       accessorKey: "orderNumber",
-      header: "Order Number",
+      header: language === "en" ? "Order Number" : "订单号",
       cell: ({ row }) => {
         const orderNumber = row.original.tempOrderId;
         return <div className="font-medium">{orderNumber}</div>;
@@ -64,7 +66,7 @@ export function GetPastOrderColumns({
     },
     {
       accessorKey: "customer",
-      header: "Customer Name",
+      header: language === "en" ? "Customer" : "顾客",
       cell: ({ row }) => {
         const firstName = row.original.customerFirstName;
         const lastName = row.original.customerLastName;
@@ -85,10 +87,13 @@ export function GetPastOrderColumns({
 
     {
       accessorKey: "desserts",
-      header: "Desserts",
+      header: language === "en" ? "Desserts" : "甜点",
       cell: ({ row }) => {
         const desserts = row.original.desserts
-          .map((dessert) => dessert.dessert.name)
+          .map(
+            (dessert) =>
+              `${language === "en" ? dessert.dessert.name : dessert.dessert.chineseName}(${dessert.quantity})`,
+          )
           .join(", ");
         return <div className="font-medium">{desserts}</div>;
       },
@@ -101,7 +106,7 @@ export function GetPastOrderColumns({
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Amount
+            {language === "en" ? "Amount" : "价格"}
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         );
@@ -120,7 +125,7 @@ export function GetPastOrderColumns({
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Created
+            {language === "en" ? "Created" : "创建时间"}
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         );
@@ -139,7 +144,7 @@ export function GetPastOrderColumns({
             variant="ghost"
             onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           >
-            Completed
+            {language === "en" ? "Completed" : "完成时间"}
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         );
@@ -154,10 +159,20 @@ export function GetPastOrderColumns({
     },
     {
       accessorKey: "completed",
-      header: "Status",
+      header: language === "en" ? "Status" : "状态",
       cell: ({ row }) => {
         const status = row.original.status;
-        return <div className="font-medium">{status}</div>;
+        const chineseStatus =
+          status === "PENDING"
+            ? "待处理"
+            : status === "COMPLETED"
+              ? "已完成"
+              : "已取货";
+        return (
+          <div className="font-medium">
+            {language === "en" ? status : chineseStatus}
+          </div>
+        );
       },
     },
     {
@@ -173,24 +188,26 @@ export function GetPastOrderColumns({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                {language === "en" ? "Action" : "行动"}
+              </DropdownMenuLabel>
               <DropdownMenuItem
                 className="bg-orange-500"
                 onClick={() => handlePastOrderStatusChange(id, "PENDING")}
               >
-                Change to PENDING
+                {language === "en" ? "Change to PENDING" : "更改为待处理"}
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => setCustomerDetailsOpen({ id, open: true })}
               >
-                View customer details
+                {language === "en" ? "View customer details" : "查看顾客详情"}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setOrderDetailsOpen({ id, open: true })}
               >
-                View order details
+                {language === "en" ? "View order details" : "查看订单详情"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
