@@ -173,7 +173,9 @@ export function TopDesserts() {
                             {language === "en"
                               ? dessert.name
                               : dessert.chineseName}{" "}
-                            {formatCurrency(dessert.priceInCents / 100)}
+                            <span className="block sm:inline">
+                              {formatCurrency(dessert.priceInCents / 100)}
+                            </span>
                           </h3>
                         </div>
                       </CardContent>
