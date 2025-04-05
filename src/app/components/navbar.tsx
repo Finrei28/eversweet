@@ -99,6 +99,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                 width={150}
                 height={150}
                 className="h-full w-full rounded-full"
+                priority
               />
             </Link>
           </div>
@@ -180,6 +181,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
             width={150}
             height={150}
             className="h-full w-full rounded-full"
+            priority
           />
         </Link>
 
