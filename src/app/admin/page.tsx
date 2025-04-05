@@ -22,7 +22,9 @@ async function getCurrentOrders() {
 async function getCompletedOrders() {
   const CompletedOrders = await db.order.count({
     where: {
-      status: "COMPLETED",
+      completedAt: {
+        not: null,
+      },
     },
   });
   return CompletedOrders;
