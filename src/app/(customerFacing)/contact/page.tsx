@@ -17,7 +17,9 @@ export default function ContactPage() {
             {language === "en" ? "Our phone number" : "我们的电话号码"}
           </h2>
           <p className="rounded-xl bg-secondary p-4">
-            Phone number not set up yet...
+            {language === "en"
+              ? "You can contact us through our phone number: "
+              : "您可以通过我们的电话号码与我们联系: "}
           </p>
         </section>
         <section className="mt-10">
@@ -25,7 +27,9 @@ export default function ContactPage() {
             {language === "en" ? "Our email" : "我们的电子邮件"}
           </h2>
           <p className="rounded-xl bg-secondary p-4">
-            You can contact us through our email: eversweet@eversweet.co.nz
+            {language === "en"
+              ? "You can contact us through our email: eversweet@eversweet.co.nz"
+              : "您可以通过我们的电子邮件联系我们: eversweet@eversweet.co.nz"}
           </p>
         </section>
         <section className="mt-10">
@@ -34,12 +38,14 @@ export default function ContactPage() {
           </h2>
           <div className="rounded-xl bg-secondary p-4">
             <p>
-              You can come visit us at our shop and our friendly staff will be
-              able to help you there.
+              {language === "en"
+                ? "You can come visit us at our shop and our friendly staff will be able to help you there."
+                : "您可以来我们的商店参观，我们友好的员工将能够帮助您。"}
             </p>
             <p>
-              We are located at 5D/119 Meadowland Drive, Somerville, Auckland
-              2014.
+              {language === "en"
+                ? " We are located at 5D/119 Meadowland Drive, Somerville, Auckland 2014."
+                : "我们位于奥克兰2014年Somerville的5D/119 Meadowland Drive。"}
             </p>
           </div>
         </section>

@@ -138,8 +138,8 @@ export function Navbar({ children }: { children: React.ReactNode }) {
           <div
             ref={globeRef}
             className={cn(
-              "absolute right-20 z-50 mt-40 hidden rounded-xl bg-white text-lg font-bold text-primary shadow-lg lg:block",
-              "fixed flex transform flex-col items-center transition-all duration-500 ease-in-out first:pt-0 last:pb-0",
+              "absolute right-5 z-50 mt-40 hidden rounded-xl bg-white text-lg font-bold text-primary shadow-lg lg:block",
+              "transform flex-col items-center transition-all duration-500 ease-in-out first:pt-0 last:pb-0",
               globeOpen
                 ? "translate-y-0 opacity-100"
                 : "pointer-events-none -translate-y-4 opacity-0",

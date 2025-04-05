@@ -19,13 +19,21 @@ import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { Checkbox } from "~/components/ui/checkbox";
 import { useLanguage } from "~/app/components/language";
+import { useState } from "react";
+import { useToast } from "~/hooks/use-toast";
+import { Star } from "lucide-react";
+import { api } from "~/trpc/react";
 
 const formSchema = z
   .object({
     name: z.string().optional(),
     email: z.string().email(),
     anonymous: z.boolean(),
-    message: z
+    rating: z
+      .number()
+      .min(1, { message: "Please give us a star rating" })
+      .max(5),
+    feedbackMessage: z
       .string()
       .min(2, { message: "Please give us a proper feedback..." }),
   })
@@ -44,25 +52,51 @@ const formSchema = z
 
 export default function FeedbackPage() {
   const { language } = useLanguage();
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       anonymous: false,
       email: "",
-      message: "",
+      rating: 0,
+      feedbackMessage: "",
+    },
+  });
+
+  const utils = api.useUtils();
+  const createFeedback = api.feedback.create.useMutation({
+    onSuccess: async (data) => {
+      await utils.feedback.invalidate();
+      setLoading(false);
+      toast({
+        title: language === "en" ? "Feedback sent!" : "反馈已发送!",
+        description:
+          language === "en" ? "Thanks for your feedback." : "感谢您的反馈。",
+      });
+      console.log(data);
+      form.reset();
+    },
+    onError: () => {
+      setLoading(false);
+      toast({
+        variant: "destructive",
+        title: language === "en" ? "Something went wrong!" : "发生了一些错误!",
+        description:
+          language === "en" ? "Please try again later." : "请稍后再试。",
+      });
     },
   });
 
   // 2. Define a submit handler.
-  function onSubmit(data: z.infer<typeof formSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    // console.log(data);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setLoading(true);
+    await createFeedback.mutateAsync(values);
   }
 
   return (
-    <div>
+    <div className="min-h-screen">
       <div className="mx-auto flex h-24 flex-col items-center justify-center bg-secondary">
         <h1 className="text-4xl">{language === "en" ? "Feedback" : "反馈"}</h1>
       </div>
@@ -108,7 +142,7 @@ export default function FeedbackPage() {
                         <div className="flex items-center">
                           <FormControl>
                             <Checkbox
-                              defaultChecked={field.value}
+                              checked={field.value}
                               onCheckedChange={field.onChange}
                             />
                           </FormControl>
@@ -147,7 +181,45 @@ export default function FeedbackPage() {
                 />
                 <FormField
                   control={form.control}
-                  name="message"
+                  name="rating"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {language === "en" ? "Rating" : "评分"}
+                      </FormLabel>
+                      <FormControl>
+                        <div className="flex items-center space-x-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => field.onChange(star)}
+                              className="focus:outline-none"
+                              aria-label={`${star} stars`}
+                            >
+                              <Star
+                                className={`h-8 w-8 transition-all ${
+                                  field.value >= star
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "text-gray-300"
+                                }`}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        {language === "en"
+                          ? "Rate your experience from 1 to 5 stars."
+                          : "从1到5星评价您的体验。"}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="feedbackMessage"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
@@ -176,11 +248,14 @@ export default function FeedbackPage() {
                     </FormItem>
                   )}
                 />
-                <Button
-                  type="submit"
-                  className="mx-auto flex w-2/3 justify-center"
-                >
-                  {language === "en" ? "Submit" : "提交"}
+                <Button disabled={loading} type="submit">
+                  {loading
+                    ? language === "en"
+                      ? "Submitting..."
+                      : "提交中..."
+                    : language === "en"
+                      ? "Submit"
+                      : "提交"}
                 </Button>
               </form>
             </Form>

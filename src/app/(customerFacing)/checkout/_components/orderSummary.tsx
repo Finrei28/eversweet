@@ -1,6 +1,6 @@
 "use client";
 
-import { CartContext, CartContextType } from "~/app/components/cartContext";
+import { CartContextType } from "~/app/components/cartContext";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import Image from "next/image";
 import { ShoppingBag, Trash2 } from "lucide-react";
@@ -11,7 +11,6 @@ import CustomisationDialog from "../../menu/_components/customisation";
 
 import { DateTimePicker } from "./dateTimePicker";
 import { Button } from "~/components/ui/button";
-import { useContext } from "react";
 
 type orderSummaryProps = {
   cart: CartContextType;

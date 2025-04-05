@@ -208,8 +208,10 @@ model OrderDessert {
 //Feedback
 
 model Feedback {
-    id        String   @id @default(cuid())
-    rating     Int
-    comment    String
+    id                  String   @id @default(cuid())
+    name                String?
+    email               String
+    rating              Int
+    feedbackMessage     String
     createdAt  DateTime @default(now())
 }

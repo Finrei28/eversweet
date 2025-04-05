@@ -20,6 +20,8 @@ import { Sparkles } from "lucide-react";
 export default function MenuCards() {
   const { data: productCategory, isLoading } =
     api.dessert.getProductsForMenuByCategory.useQuery();
+  const [customisations] =
+    api.productCustomisation.availableDessertCustomisations.useSuspenseQuery();
   const { language } = useLanguage();
   // const [filter, setFilter] = useState("All");  add filter if required by owner
 
@@ -105,7 +107,16 @@ export default function MenuCards() {
                             : dessert.chineseName}
                         </CardTitle>
                         <CardDescription className="line-clamp-2 text-xs">
-                          {dessert.ingredients.join(" + ")}
+                          {language === "en"
+                            ? dessert.ingredients.join(" + ")
+                            : dessert.ingredients
+                                .map((ingredient) => {
+                                  const match = customisations.find(
+                                    (c) => c.name === ingredient,
+                                  );
+                                  return match?.chineseName || ingredient;
+                                })
+                                .join(" + ")}
                         </CardDescription>
                       </CardHeader>
                       <CardFooter className="mt-auto">

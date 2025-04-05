@@ -13,9 +13,9 @@ export default function CustomerFacingLayout({
         <NavbarLink href={"/menu"}>
           {language === "en" ? "Menu" : "菜单"}
         </NavbarLink>
-        <NavbarLink href={"/about-us"}>
+        {/* <NavbarLink href={"/about-us"}>
           {language === "en" ? "About us" : "关于我们"}
-        </NavbarLink>
+        </NavbarLink> */}
         <NavbarLink href={"/contact"}>
           {language === "en" ? "Contact" : "联系方法"}
         </NavbarLink>
