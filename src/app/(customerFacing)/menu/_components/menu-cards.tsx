@@ -69,7 +69,7 @@ export default function MenuCards() {
       </div> */}
       <div className="flex items-center justify-center gap-1 pb-5 text-primary">
         <Sparkles />
-        <h1 className="text-5xl font-bold">
+        <h1 className="pt-5 text-5xl font-bold lg:pt-0">
           {language === "en" ? "Menu" : "菜单"}
         </h1>
         <Sparkles />
@@ -79,10 +79,10 @@ export default function MenuCards() {
           (category) =>
             category.desserts.length > 0 && (
               <div key={category.id}>
-                <h2 className="pb-4 pt-10 text-3xl font-bold text-primary underline">
+                <h2 className="pb-4 pt-10 text-3xl font-semibold text-primary underline lg:text-4xl">
                   {language === "en" ? category.name : category.chineseName}
                 </h2>
-                <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-8">
                   {category.desserts.map((dessert) => (
                     <Card key={dessert.id} className="flex flex-col">
                       <div className="relative aspect-square w-full">

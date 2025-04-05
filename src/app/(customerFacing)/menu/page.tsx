@@ -5,15 +5,11 @@ import ServerComponent from "./_components/serverComponent";
 
 export default function MenuPage() {
   return (
-    <>
-      <HydrateClient>
-        <ServerComponent />
-        <MaxWidthWapper>
-          <div className="py-10">
-            <MenuCards />
-          </div>
-        </MaxWidthWapper>
-      </HydrateClient>
-    </>
+    <HydrateClient>
+      <ServerComponent />
+      <MaxWidthWapper>
+        <MenuCards />
+      </MaxWidthWapper>
+    </HydrateClient>
   );
 }
