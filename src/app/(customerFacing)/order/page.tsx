@@ -312,6 +312,9 @@ function OrderDetails() {
             <div className="mt-4 space-y-2">
               <div className="flex justify-between">
                 <span>{language === "en" ? "GST included" : "包含消费税"}</span>
+                <span>
+                  {formatCurrency((order.priceInCents * 0.15) / 100 || 0)}
+                </span>
               </div>
               <div className="flex justify-between font-bold">
                 <span>{language === "en" ? "Total" : "总计"}</span>

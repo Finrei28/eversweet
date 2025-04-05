@@ -48,7 +48,7 @@ yarn-error.log*
 
 sampleData.ts
 /public/products
-createAdmin.tsx
+/SqlQueries
 
 /src/app/admin/products/api/addProduct
 /src/app/admin/products/api/editProduct

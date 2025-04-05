@@ -171,7 +171,7 @@ model Order {
     pickedUpAt          DateTime?
     status              Status
     pickUpTime          DateTime  @default(now())
-
+    GST                 Int
     @@index([status])
 }
 

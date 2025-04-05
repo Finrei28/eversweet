@@ -49,16 +49,14 @@ export default function CustomisationDialog({
   const { language } = useLanguage();
   const [totalQuantity, setTotalQuantity] = useState(
     customisations.map((customisation) => {
-      const previousQuantity = cartItem?.customisations.find(
-        (c) => c.id === customisation.id,
-      )?.quantity;
+      const customisationIncluded = dessert.ingredients.includes(
+        customisation.name,
+      );
       return {
         id: customisation.id,
         name: customisation.name,
         chineseName: customisation.chineseName,
-        quantity:
-          previousQuantity ??
-          (dessert.ingredients.includes(customisation.name) ? 1 : 0),
+        quantity: customisationIncluded ? 1 : 0,
       };
     }),
   );
@@ -191,7 +189,7 @@ export default function CustomisationDialog({
     );
   };
 
-  const handleClose = () => {
+  const handleOpenClose = () => {
     if (setHomePageOpen) {
       setHomePageOpen(false);
     } else if (!dialogOpen) {
@@ -213,7 +211,10 @@ export default function CustomisationDialog({
           id: customisation.id,
           name: customisation.name,
           chineseName: customisation.chineseName,
-          quantity: previousQuantity ?? (customisationIncluded ? 1 : 0),
+          quantity:
+            previousQuantity && previousQuantity > 0 && customisationIncluded
+              ? previousQuantity + 1
+              : (previousQuantity ?? (customisationIncluded ? 1 : 0)), //check if customisation have a previous quantity in cart and is included in dessert, if so add 1 to the previous quantity else if previous quantity set customisation quantity to previous quantity else 1 or 0 if customisation is included in dessert or not.
         };
       }),
     );
@@ -232,7 +233,7 @@ export default function CustomisationDialog({
 
     if (!cart) return null;
     cart.addToCart(item);
-    handleClose();
+    handleOpenClose();
     return;
   };
 
@@ -247,7 +248,7 @@ export default function CustomisationDialog({
     };
 
     cart.updateItemFromCart(cartItem.id, item);
-    handleClose();
+    handleOpenClose();
     return;
   };
 
@@ -263,7 +264,7 @@ export default function CustomisationDialog({
   return (
     <Dialog
       open={homePageOpen ? homePageOpen : dialogOpen}
-      onOpenChange={handleClose}
+      onOpenChange={handleOpenClose}
     >
       {!homePageOpen && (
         <DialogTrigger asChild>

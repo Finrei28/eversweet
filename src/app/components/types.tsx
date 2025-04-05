@@ -87,6 +87,7 @@ export type FullOrderType = {
   id: string;
   tempOrderId: string;
   priceInCents: number;
+  GST: number;
   createdAt: Date;
   updatedAt: Date;
   customerFirstName: string;
