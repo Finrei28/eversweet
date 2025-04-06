@@ -2,8 +2,27 @@
 
 import { NextResponse } from "next/server";
 import cloudinary from "~/lib/cloudinary";
+import crypto from "crypto";
 
-// Handle POST request for uploading an image
+// Generate SHA1 hash of image buffer
+function generateHash(buffer: ArrayBuffer) {
+  return crypto.createHash("sha1").update(Buffer.from(buffer)).digest("hex");
+}
+
+// Check if an image with a given public_id exists in Cloudinary
+async function imageExists(publicId: string): Promise<boolean> {
+  try {
+    await cloudinary.api.resource(publicId);
+    return true;
+  } catch (err: any) {
+    if (err.error.http_code === 404) {
+      return false;
+    }
+
+    throw err;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -11,19 +30,42 @@ export async function POST(req: Request) {
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
+
     const arrayBuffer = await file.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
     const dataUri = `data:${file.type};base64,${base64Image}`;
 
-    const uploadedResponse = await cloudinary.uploader.upload(dataUri, {
-      use_filename: true,
-      folder: "products",
-    });
-    const imagePath = uploadedResponse.secure_url;
-    const publicId = uploadedResponse.public_id;
+    // Generate content-based hash for deduplication
+    const hash = generateHash(arrayBuffer);
+    const publicId = `products/${hash}`;
 
-    return NextResponse.json({ imagePath, publicId }, { status: 200 });
+    // Check if this image already exists
+    const exists = await imageExists(publicId);
+
+    if (exists) {
+      const existing = await cloudinary.api.resource(publicId);
+      return NextResponse.json({
+        imagePath: existing.secure_url,
+        publicId: existing.public_id,
+        fromCache: true,
+      });
+    }
+
+    // Upload new image
+    const uploadedResponse = await cloudinary.uploader.upload(dataUri, {
+      public_id: publicId,
+      use_filename: false,
+      folder: "products",
+      overwrite: false,
+    });
+
+    return NextResponse.json({
+      imagePath: uploadedResponse.secure_url,
+      publicId: uploadedResponse.public_id,
+      fromCache: false,
+    });
   } catch (error) {
+    console.error(error);
     return NextResponse.json(
       { error: "Failed to upload Image" },
       { status: 500 },

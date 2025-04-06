@@ -6,7 +6,7 @@ export type DessertOnForm = {
   chineseName: string;
   priceInCents: number;
   description: string;
-  ingredients: string;
+  ingredients?: string;
   imagePath: string;
   isAvailableForPurchase: boolean;
   category: {

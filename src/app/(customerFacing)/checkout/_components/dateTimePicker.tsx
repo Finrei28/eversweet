@@ -38,8 +38,8 @@ export function DateTimePicker({
   const [currentTime, setCurrentTime] = React.useState<Date>(new Date());
   const [pickUpTimeChanged, setPickUpTimeChanged] = React.useState(false);
 
-  // Allowed hours (10 AM - 6 PM)
-  const hours = [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  // Allowed hours (12 AM - 9 PM)
+  const hours = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
   useEffect(() => {
     const interval = setInterval(() => {

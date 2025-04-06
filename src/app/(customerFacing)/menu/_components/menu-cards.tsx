@@ -78,7 +78,7 @@ export default function MenuCards() {
         </h1>
         <Sparkles />
       </div>
-      <div>
+      <div className="mb-20">
         {productCategory?.map(
           (category) =>
             category.desserts.length > 0 && (

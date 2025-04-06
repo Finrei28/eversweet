@@ -10,7 +10,7 @@ export const addSchema = z.object({
   chineseName: z.string().min(1),
   priceInCents: z.coerce.number().int().min(1),
   description: z.string().optional(),
-  ingredients: z.string().min(1),
+  ingredients: z.string().optional(),
   image: imageSchema.refine((file) => file.size > 0, "Image is Required"),
   categoryId: z.string().min(1),
 });
@@ -20,7 +20,7 @@ export const createProductSchema = z.object({
   chineseName: z.string().min(1),
   priceInCents: z.coerce.number().int().min(1),
   description: z.string().optional(),
-  ingredients: z.string().min(1),
+  ingredients: z.string().optional(),
   imagePath: z.string().min(1),
   imagePublicId: z.string().min(1),
   categoryId: z.string().min(1),

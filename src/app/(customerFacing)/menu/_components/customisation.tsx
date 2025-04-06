@@ -301,6 +301,7 @@ export default function CustomisationDialog({
                   alt={language === "en" ? dessert.name : dessert.chineseName}
                   fill
                   className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
               </div>
             )}

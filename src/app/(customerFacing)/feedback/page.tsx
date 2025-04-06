@@ -23,6 +23,8 @@ import { useState } from "react";
 import { useToast } from "~/hooks/use-toast";
 import { Star } from "lucide-react";
 import { api } from "~/trpc/react";
+import { motion } from "framer-motion";
+import Image from "next/image";
 
 const formSchema = z
   .object({
@@ -96,12 +98,34 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto flex h-24 flex-col items-center justify-center bg-secondary">
-        <h1 className="text-4xl">{language === "en" ? "Feedback" : "反馈"}</h1>
+    <div className="min-h-screen bg-gradient-to-b from-background to-white">
+      {/* Hero section with background image */}
+      <div className="relative h-64 w-full overflow-hidden bg-background sm:h-80">
+        <div className="absolute inset-0 bg-gradient-to-r from-secondary to-primary" />
+
+        <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
+          <motion.h1
+            className="font-serif text-4xl font-bold text-black sm:text-5xl md:text-6xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {language === "en" ? "Feedback" : "反馈"}
+          </motion.h1>
+          <motion.p
+            className="mt-4 max-w-md text-lg text-gray-700"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            {language === "en"
+              ? "We would love to hear your feedback!"
+              : "我们很乐意听到您的反馈！"}
+          </motion.p>
+        </div>
       </div>
       <MaxWidthWapper>
-        <section className="mx-auto mt-10 max-w-xl">
+        <section className="mx-auto max-w-xl py-20">
           <h2 className="text-xl font-semibold">
             {language === "en"
               ? "We would love to hear your feedback!"

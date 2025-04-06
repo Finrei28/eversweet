@@ -14,7 +14,14 @@ import {
 export const productRouter = createTRPCRouter({
   //getMostPopularProducts
   getMostPopularProducts: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db.dessert.findMany();
+    return await ctx.db.dessert.findMany({
+      where: {
+        isAvailableForPurchase: true,
+        imagePublicId: {
+          not: "products/products/c639c3892b6fe366cbff9ddb29b7b65d8e551086",
+        },
+      },
+    });
 
     // const popularDesserts = await ctx.db.orderDessert.groupBy({
     //   by: ["dessertId"],
