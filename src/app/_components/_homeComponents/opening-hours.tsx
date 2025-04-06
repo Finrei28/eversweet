@@ -21,31 +21,31 @@ export default function OpeningHours() {
             {[
               {
                 day: `${language === "en" ? "Monday" : "星期一"}`,
-                hours: "10:00 AM - 6:00 PM",
+                hours: "10:00 AM - 10:00 PM",
               },
               {
                 day: `${language === "en" ? "Tuesday" : "星期二"}`,
-                hours: "10:00 AM - 6:00 PM",
+                hours: "10:00 AM - 10:00 PM",
               },
               {
                 day: `${language === "en" ? "Wednesday" : "星期三"}`,
-                hours: "10:00 AM - 6:00 PM",
+                hours: "10:00 AM - 10:00 PM",
               },
               {
                 day: `${language === "en" ? "Thursday" : "星期四"}`,
-                hours: "10:00 AM - 6:00 PM",
+                hours: "10:00 AM - 10:00 PM",
               },
               {
                 day: `${language === "en" ? "Friday" : "星期五"}`,
-                hours: "10:00 AM - 6:00 PM",
+                hours: "10:00 AM - 10:00 PM",
               },
               {
                 day: `${language === "en" ? "Saturday" : "星期六"}`,
-                hours: "10:00 AM - 6:00 PM",
+                hours: "10:00 AM - 10:00 PM",
               },
               {
                 day: `${language === "en" ? "Sunday" : "星期日"}`,
-                hours: `${language === "en" ? "Closed" : "关闭"}`,
+                hours: "10:00 AM - 10:00 PM",
               },
             ].map(({ day, hours }, index) => (
               <tr key={index} className="border-b border-gray-300">

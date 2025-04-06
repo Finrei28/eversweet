@@ -395,7 +395,7 @@ export function NavbarLink(
     <Link
       {...props}
       className={cn(
-        "p-3 text-base md:p-4 md:text-lg md:hover:text-secondary lg:text-xl",
+        "p-3 text-base hover:text-secondary md:p-4 md:text-lg lg:text-xl",
         pathName === props.href &&
           "rounded-full bg-secondary md:hover:text-primary",
       )}

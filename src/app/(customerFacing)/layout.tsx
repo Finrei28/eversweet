@@ -24,7 +24,7 @@ export default function CustomerFacingLayout({
         </NavbarLink>
       </Navbar>
 
-      <div className="my-6">{children}</div>
+      <div>{children}</div>
     </>
   );
 }
