@@ -58,7 +58,9 @@ export default function CheckoutForm({
       const orderId = data.id;
       setOrderId(orderId);
       await utils.order.invalidate();
-      router.push(`/order?orderId=${orderId}`);
+      setTimeout(() => {
+        router.push(`/order?orderId=${orderId}`);
+      }, 3000);
     },
   });
 
@@ -171,7 +173,7 @@ export default function CheckoutForm({
         </h3>
         <p className="mb-6 text-gray-500">
           {language === "en"
-            ? "Thank you for your order. You will be redirected to the confirmation page."
+            ? "Thank you for your order. You will be redirected to the confirmation page shortly."
             : "感谢您的订购。您将被重定向至确认页面"}
         </p>
         <p className="mb-4 text-gray-500">
