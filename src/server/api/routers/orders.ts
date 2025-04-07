@@ -241,7 +241,6 @@ export const orderRouter = createTRPCRouter({
     }),
 
   getCurrentOrders: protectedProcedure.query(async ({ ctx }) => {
-    console.log("here");
     const Currentorders = await ctx.db.order.count({
       where: {
         status: "PENDING",
