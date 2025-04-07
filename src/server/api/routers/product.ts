@@ -107,7 +107,7 @@ export const productRouter = createTRPCRouter({
         : [];
 
       // Save to database
-      await ctx.db.dessert.create({
+      const product = await ctx.db.dessert.create({
         data: {
           name: data.name,
           chineseName: data.chineseName,
@@ -124,7 +124,7 @@ export const productRouter = createTRPCRouter({
         },
       });
 
-      return { message: "Product created successfully" };
+      return { name: product.name, chineseName: product.chineseName };
     }),
 
   getProducts: protectedProcedure.query(async ({ ctx }) => {
@@ -193,7 +193,7 @@ export const productRouter = createTRPCRouter({
         : [];
 
       // Save to database
-      await ctx.db.dessert.update({
+      const product = await ctx.db.dessert.update({
         where: { id: data.id },
         data: {
           name: data.name,
@@ -210,7 +210,7 @@ export const productRouter = createTRPCRouter({
         },
       });
 
-      return { message: "Product updated successfully" };
+      return { name: product.name, chineseName: product.chineseName };
     }),
 
   scanCart: publicProcedure

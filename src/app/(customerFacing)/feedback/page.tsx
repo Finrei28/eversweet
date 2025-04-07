@@ -24,7 +24,6 @@ import { useToast } from "~/hooks/use-toast";
 import { Star } from "lucide-react";
 import { api } from "~/trpc/react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 
 const formSchema = z
   .object({

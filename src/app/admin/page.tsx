@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-
 import { auth } from "~/server/auth";
-import { db } from "~/server/db";
 import { api, HydrateClient } from "~/trpc/server";
 import DashBoardCards from "./_components/dashboardCard";
+import { Suspense } from "react";
+import Loader from "../components/customLoading";
 
 export default async function AdminDashboard() {
   const session = await auth();
@@ -18,7 +18,9 @@ export default async function AdminDashboard() {
 
   return (
     <HydrateClient>
-      <DashBoardCards />
+      <Suspense fallback={<Loader />}>
+        <DashBoardCards />
+      </Suspense>
     </HydrateClient>
   );
 }

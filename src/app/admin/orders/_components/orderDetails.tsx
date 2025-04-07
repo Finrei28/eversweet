@@ -9,7 +9,7 @@ import {
 } from "~/components/ui/dialog";
 import { api } from "~/trpc/react";
 import Image from "next/image";
-import { Loader2 } from "lucide-react";
+import Loader from "~/app/components/customLoading";
 
 type CustomerDetailsProps = {
   orderDetailsOpen: { id: string; open: boolean };
@@ -47,9 +47,7 @@ export default function CustomerDetails({
           </DialogTitle>
           <DialogDescription />
         </DialogHeader>
-        <div className="flex h-16 w-full items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <Loader />
       </DialogContent>
     </Dialog>
   ) : (

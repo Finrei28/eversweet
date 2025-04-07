@@ -2,6 +2,8 @@ import { DataTable } from "./data-table";
 import { auth } from "~/server/auth";
 import { notFound } from "next/navigation";
 import { api, HydrateClient } from "~/trpc/server";
+import { Suspense } from "react";
+import Loader from "~/app/components/customLoading";
 
 export default async function PastOrdersPage() {
   const session = await auth();
@@ -14,7 +16,9 @@ export default async function PastOrdersPage() {
   return (
     <HydrateClient>
       <div className="container mx-auto py-10">
-        <DataTable />
+        <Suspense fallback={<Loader />}>
+          <DataTable />
+        </Suspense>
       </div>
     </HydrateClient>
   );

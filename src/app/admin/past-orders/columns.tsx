@@ -17,6 +17,7 @@ import { api } from "~/trpc/react";
 import { useCallback } from "react";
 import { OrderType } from "~/app/components/types";
 import { useLanguage } from "~/app/components/language";
+import { toast } from "~/hooks/use-toast";
 
 type ColumnProps = {
   setCustomerDetailsOpen: React.Dispatch<
@@ -40,8 +41,16 @@ export function GetPastOrderColumns({
   const { language } = useLanguage();
   const utils = api.useUtils();
   const changeStatus = api.order.changeStatus.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       await utils.order.getAllPastOrders.invalidate();
+      toast({
+        variant: `${data.status === "COMPLETED" ? "picked_up" : data.status === "PENDING" ? "pending" : "default"}`,
+        title: language === "en" ? `Status Changed` : "状态已更改",
+        description:
+          language === "en"
+            ? `Order ${data.orderId} status has been changed to ${data.status}`
+            : `单号 ${data.orderId} 状态已更改${data.status === "COMPLETED" ? "已完成" : data.status === "PENDING" ? "待处理" : "已取货"}`,
+      });
     },
   });
 

@@ -39,6 +39,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { toast } from "~/hooks/use-toast";
+import { useLanguage } from "~/app/components/language";
 
 interface Field {
   id: string;
@@ -66,6 +68,7 @@ export function EditProduct({
   formDefaultValues,
   categories,
 }: EditProductProps) {
+  const { language } = useLanguage();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [priceInCents, setPriceInCents] = useState<number | null>(null);
   const [imagePreview, setImagePreview] = useState<string>(
@@ -75,10 +78,18 @@ export function EditProduct({
   const [editLoading, setEditLoading] = useState(false);
   const utils = api.useUtils();
   const editProduct = api.dessert.editProduct.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       await utils.dessert.invalidate();
       setEditLoading(false);
       setDialogOpen(false);
+      toast({
+        title:
+          language === "en" ? "Product edited successfully" : "甜品编辑成功",
+        description:
+          language === "en"
+            ? `${data.name} has been edited successfully...`
+            : `${data.chineseName}已成功编辑...`,
+      });
     },
     onError: (error) => {
       if (!error.data?.zodError) {

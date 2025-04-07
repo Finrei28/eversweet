@@ -9,9 +9,7 @@ import { Button } from "~/components/ui/button";
 import { CartContext } from "./cartContext";
 import { formatCurrency } from "~/lib/formatters";
 import Image from "next/image";
-import { Switch } from "~/components/ui/switch";
 import { useLanguage } from "./language";
-import { Label } from "~/components/ui/label";
 import { Globe } from "lucide-react";
 
 export function Navbar({ children }: { children: React.ReactNode }) {

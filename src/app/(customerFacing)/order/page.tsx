@@ -29,9 +29,9 @@ import {
   Printer,
   ArrowLeft,
   CheckCircle,
-  Loader2,
 } from "lucide-react";
 import { useLanguage } from "~/app/components/language";
+import Loader from "~/app/components/customLoading";
 
 function OrderDetails() {
   const { language } = useLanguage();
@@ -55,24 +55,16 @@ function OrderDetails() {
     if (!orderId) {
       router.push("/");
     }
-  }, []);
+  }, [orderId, router]);
 
   // Handle printing the receipt
 
   if (!isClient) {
-    return (
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <Loader />;
   }
 
   if (isLoading) {
-    return (
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <Loader />;
   }
 
   const handlePrint = () => {
@@ -361,13 +353,7 @@ function OrderDetails() {
 
 export default function OrderPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      }
-    >
+    <Suspense fallback={<Loader />}>
       <OrderDetails />
     </Suspense>
   );

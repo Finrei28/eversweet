@@ -37,6 +37,8 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Category } from "~/app/components/types";
+import { toast } from "~/hooks/use-toast";
+import { useLanguage } from "~/app/components/language";
 
 // Validation schemas
 
@@ -64,6 +66,7 @@ export function AddProduct({
   submitText,
   categories,
 }: AddProductProps) {
+  const { language } = useLanguage();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [priceInCents, setPriceInCents] = useState<number | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -71,10 +74,18 @@ export function AddProduct({
   const [addLoading, setAddLoading] = useState(false);
   const utils = api.useUtils();
   const addProduct = api.dessert.createProduct.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       await utils.dessert.invalidate();
       setAddLoading(false);
       setDialogOpen(false);
+      toast({
+        title:
+          language === "en" ? "Product added successfully" : "甜品添加成功",
+        description:
+          language === "en"
+            ? `${data.name} has been added successfully... Edit and set product to available to show on menu`
+            : `${data.chineseName}已成功添加，编辑并将产品设置为可在菜单上显示`,
+      });
     },
     onError: (error) => {
       setError(JSON.parse(error.message)[0].message ?? error.message);

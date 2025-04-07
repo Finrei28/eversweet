@@ -174,7 +174,7 @@ export const orderRouter = createTRPCRouter({
   changeStatus: protectedProcedure
     .input(z.object({ id: z.string(), status: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return await ctx.db.order.update({
+      const order = await ctx.db.order.update({
         where: { id: input.id },
         data: {
           status: input.status as Status,
@@ -187,6 +187,7 @@ export const orderRouter = createTRPCRouter({
                 : undefined,
         },
       });
+      return { orderId: order.tempOrderId, status: order.status };
     }),
 
   getCustomerDetails: protectedProcedure

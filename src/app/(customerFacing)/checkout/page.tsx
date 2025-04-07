@@ -4,13 +4,14 @@ import type React from "react";
 import { useContext, useEffect, useState } from "react";
 import { CartContext } from "~/app/components/cartContext";
 import { Button } from "~/components/ui/button";
-import { Loader2, ShoppingBag } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import PaymentSection from "./_components/paymentSection";
 import CustomerInformation from "./_components/customerInformation";
 import OrderSummary from "./_components/orderSummary";
 import { useLanguage } from "~/app/components/language";
 import { addMinutes, setSeconds } from "date-fns";
+import Loader from "~/app/components/customLoading";
 
 export default function CheckoutPage() {
   const cart = useContext(CartContext);
@@ -91,11 +92,7 @@ export default function CheckoutPage() {
 
   // Show loading state during server rendering and initial client render
   if (!isClient) {
-    return (
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <Loader />;
   }
 
   if (!cart?.cart || cart.cart.length === 0) {

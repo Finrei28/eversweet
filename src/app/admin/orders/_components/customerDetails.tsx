@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import Loader from "~/app/components/customLoading";
 import {
   Dialog,
   DialogContent,
@@ -38,9 +38,7 @@ export default function CustomerDetails({
               </DialogTitle>
               <DialogDescription />
             </DialogHeader>
-            <div className="flex h-16 w-full items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <Loader />
           </DialogContent>
         </Dialog>
       ) : (
