@@ -10,12 +10,12 @@ import {
 } from "~/components/ui/card";
 import Image from "next/image";
 import { Button } from "~/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, Soup } from "lucide-react";
-import { Snowflake } from "lucide-react";
 import CustomisationDialog from "./customisation";
 import { useLanguage } from "~/app/components/language";
 import { Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function MenuCards() {
   const { data: productCategory, isLoading: isProductLoading } =
@@ -25,92 +25,183 @@ export default function MenuCards() {
     api.productCustomisation.availableDessertCustomisations.useQuery();
 
   const { language } = useLanguage();
-  // const [filter, setFilter] = useState("All");  add filter if required by owner
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  // Set the first category as active when data loads
+  useEffect(() => {
+    if (productCategory && productCategory.length > 0) {
+      setActiveCategory(productCategory[0]?.id ?? null);
+    }
+  }, [productCategory]);
+
+  // Scroll to category section when clicking on category nav
+  const scrollToCategory = (categoryId: string) => {
+    setActiveCategory(categoryId);
+    const element = document.getElementById(`category-${categoryId}`);
+    if (element) {
+      const yOffset = -100; // Adjust this value for proper scroll position
+      const y =
+        element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    }
+  };
 
   if (isProductLoading || isCustomisationLoading) {
     return (
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-lg font-medium text-primary">
+            {language === "en"
+              ? "Loading our delicious menu..."
+              : "正在加载我们美味的菜单..."}
+          </p>
+        </div>
       </div>
     );
   }
 
   if (!productCategory || productCategory.length === 0) {
     return (
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
-        <p className="text-lg">
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-4 rounded-lg bg-muted/30 p-8 text-center">
+        <Soup className="h-16 w-16 text-muted" />
+        <p className="text-xl font-medium">
           {language === "en"
-            ? "Sorry, we currently have no desserts for sale"
+            ? "Sorry, we currently have no desserts available"
             : "抱歉，我们目前没有甜点出售"}
+        </p>
+        <p className="text-muted-foreground">
+          {language === "en"
+            ? "Please check back soon for our delicious offerings"
+            : "请稍后再来查看我们美味的产品"}
         </p>
       </div>
     );
   }
 
+  // Filter out categories with no desserts
+  const categoriesWithDesserts = productCategory.filter(
+    (category) => category.desserts.length > 0,
+  );
+
   return (
-    <>
-      {/* <div className="flex gap-5 pb-5">
-        <Button
-          className={`${filter === "All" && "bg-secondary"}`}
-          onClick={() => setFilter("All")}
+    <div className="relative">
+      {/* Hero section */}
+      <div className="relative mb-12 overflow-hidden rounded-xl bg-gradient-to-r from-primary/10 to-secondary/20 py-12 text-center">
+        {/* <div className="absolute inset-0 z-0 opacity-10">
+          <div className="absolute inset-0 bg-[url('/pattern-bg.png')] bg-repeat opacity-20"></div>
+        </div> */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative z-10"
         >
-          {language === "en" ? "ALL" : "全部"}
-        </Button>
-        <Button
-          className={`${filter === "Cold" && "bg-secondary"}`}
-          onClick={() => setFilter("Cold")}
-        >
-          {language === "en" ? "COLD" : "冷"}
-          <Snowflake />
-        </Button>
-        <Button
-          className={`${filter === "Warm" && "bg-secondary"}`}
-          onClick={() => setFilter("Warm")}
-        >
-          {language === "en" ? "WARM" : "温"}
-          <Soup />
-        </Button>
-      </div> */}
-      <div className="flex items-center justify-center gap-1 pb-5 text-primary">
-        <Sparkles />
-        <h1 className="pt-5 text-5xl font-bold lg:pt-0">
-          {language === "en" ? "Menu" : "菜单"}
-        </h1>
-        <Sparkles />
+          <div className="flex items-center justify-center gap-3">
+            <Sparkles className="h-6 w-6 text-primary md:h-8 md:w-8" />
+            <h1 className="font-serif text-4xl font-bold text-primary md:text-5xl lg:text-6xl">
+              {language === "en" ? "Our Menu" : "我们的菜单"}
+            </h1>
+            <Sparkles className="h-6 w-6 text-primary md:h-8 md:w-8" />
+          </div>
+          <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+            {language === "en"
+              ? "Discover our selection of authentic Chinese desserts, freshly made with traditional ingredients"
+              : "探索我们精选的正宗中式甜点，使用传统食材新鲜制作"}
+          </p>
+        </motion.div>
       </div>
-      <div className="mb-20">
-        {productCategory?.map(
-          (category) =>
-            category.desserts.length > 0 && (
-              <div key={category.id}>
-                <h2 className="pb-4 pt-10 text-3xl font-semibold text-primary underline lg:text-4xl">
-                  {language === "en" ? category.name : category.chineseName}
-                </h2>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-8">
-                  {category.desserts.map((dessert) => (
-                    <Card key={dessert.id} className="flex flex-col">
-                      <div className="relative aspect-square w-full">
-                        <Image
-                          src={dessert.imagePath}
-                          alt={
-                            language === "en"
-                              ? dessert.name
-                              : dessert.chineseName
-                          }
-                          fill
-                          className="rounded-t-xl object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
+
+      {/* Category navigation */}
+      {categoriesWithDesserts.length > 1 && (
+        <div className="mb-8 overflow-x-auto">
+          <div className="flex gap-2 pb-2">
+            {categoriesWithDesserts.map((category) => (
+              <Button
+                key={category.id}
+                variant={activeCategory === category.id ? "default" : "outline"}
+                className="whitespace-nowrap transition-all"
+                onClick={() => scrollToCategory(category.id)}
+              >
+                {language === "en" ? category.name : category.chineseName}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Menu categories and items */}
+      <div className="mb-20 space-y-16">
+        {categoriesWithDesserts.map((category) => (
+          <motion.div
+            key={category.id}
+            id={`category-${category.id}`}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="mb-6 flex items-center">
+              <div className="h-px flex-grow bg-primary/20"></div>
+              <h2 className="mx-4 text-2xl font-bold text-primary underline md:text-3xl">
+                {language === "en" ? category.name : category.chineseName}
+              </h2>
+              <div className="h-px flex-grow bg-primary/20"></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 px-2 md:grid-cols-3 lg:grid-cols-4">
+              {category.desserts.map((dessert) => (
+                <motion.div
+                  key={dessert.id}
+                  whileHover={{ y: -5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <Card className="group flex h-full flex-col overflow-hidden border-2 border-transparent transition-all hover:border-primary/20 hover:shadow-lg">
+                    <div className="relative aspect-square w-full overflow-hidden">
+                      <Image
+                        src={dessert.imagePath || "/placeholder.svg"}
+                        alt={
+                          language === "en" ? dessert.name : dessert.chineseName
+                        }
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-110"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        <p className="text-sm font-medium">
+                          {language === "en" ? "Customize" : "定制"}
+                        </p>
                       </div>
-                      <CardHeader className="flex-grow">
-                        <CardTitle>
-                          {language === "en"
-                            ? dessert.name
-                            : dessert.chineseName}
-                        </CardTitle>
+                    </div>
+                    <div className="flex flex-1 flex-col">
+                      <CardHeader className="space-y-2 pb-2">
+                        <div className="flex items-start justify-between">
+                          <CardTitle className="text-lg md:text-xl">
+                            {language === "en"
+                              ? dessert.name
+                              : dessert.chineseName}
+                          </CardTitle>
+                          {/* {dessert.isHot && (
+                            <Badge
+                              variant="outline"
+                              className="bg-red-100 text-red-600"
+                            >
+                              {language === "en" ? "Hot" : "热"}
+                            </Badge>
+                          )}
+                          {dessert.isCold && (
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-100 text-blue-600"
+                            >
+                              {language === "en" ? "Cold" : "冷"}
+                            </Badge>
+                          )} */}
+                        </div>
                         <CardDescription className="line-clamp-2 text-xs">
                           {language === "en"
-                            ? dessert.ingredients.join(" + ")
+                            ? dessert.ingredients.join(" • ")
                             : dessert.ingredients
                                 .map((ingredient) => {
                                   const match = customisations?.find(
@@ -118,19 +209,20 @@ export default function MenuCards() {
                                   );
                                   return match?.chineseName || ingredient;
                                 })
-                                .join(" + ")}
+                                .join(" • ")}
                         </CardDescription>
                       </CardHeader>
-                      <CardFooter className="mt-auto">
+                      <CardFooter className="mt-auto pt-4">
                         <CustomisationDialog dessert={dessert} />
                       </CardFooter>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ),
-        )}
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        ))}
       </div>
-    </>
+    </div>
   );
 }
