@@ -36,9 +36,9 @@ export default function HomePageContent() {
             © {new Date().getFullYear()} Eversweet. All rights reserved.
           </p>
           <nav className="flex flex-col gap-5 lg:flex-row lg:gap-10">
-            <Link href="/about-us" className="hover:underline">
+            {/* <Link href="/about-us" className="hover:underline">
               {language === "en" ? "About Us" : "关于我们"}
-            </Link>
+            </Link> */}
             <Link href="/contact" className="hover:underline">
               {language === "en" ? "Contact" : "联系方法"}
             </Link>
