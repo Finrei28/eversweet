@@ -7,14 +7,14 @@ import { notFound } from "next/navigation";
 import { api, HydrateClient } from "~/trpc/server";
 
 export default async function ProductsPage() {
-  void api.dessert.getProducts.prefetch();
-  void api.dessert.getCategories.prefetch();
-  void api.productCustomisation.dessertCustomisations.prefetch();
   const session = await auth();
-
   if (!session?.user) {
     return notFound();
   }
+
+  void api.dessert.getProducts.prefetch();
+  void api.dessert.getCategories.prefetch();
+  void api.productCustomisation.dessertCustomisations.prefetch();
   return (
     <HydrateClient>
       <MaxWidthWapper>

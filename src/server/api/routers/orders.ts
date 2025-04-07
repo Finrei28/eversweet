@@ -239,28 +239,60 @@ export const orderRouter = createTRPCRouter({
       });
     }),
 
-  // getFirstOrder: publicProcedure.query(async ({ ctx }) => {
-  //   const order = await ctx.db.order.findFirst({
-  //     include: {
-  //       desserts: {
-  //         include: {
-  //           dessert: true,
-  //           customisations: {
-  //             include: { customisation: true },
-  //           },
-  //         },
-  //       },
-  //     },
-  //   });
-  //   if (!order) {
-  //     return;
-  //   }
-  //   resend.emails.send({
-  //     from: "eversweet@eversweet.co.nz",
-  //     to: order.customerEmail,
-  //     subject: "Order Confirmation",
-  //     react: EmailOrderConfirmation({ order }),
-  //   });
-  //   return order;
-  // }),
+  getCurrentOrders: protectedProcedure.query(async ({ ctx }) => {
+    console.log("here");
+    const Currentorders = await ctx.db.order.count({
+      where: {
+        status: "PENDING",
+      },
+    });
+    return Currentorders;
+  }),
+
+  getCompletedOrders: protectedProcedure.query(async ({ ctx }) => {
+    const CompletedOrders = await ctx.db.order.count({
+      where: {
+        completedAt: {
+          not: null,
+        },
+      },
+    });
+    return CompletedOrders;
+  }),
+
+  getSalesToday: protectedProcedure.query(async ({ ctx }) => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0); // Set to 00:00:00 of today
+
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999); // Set to 23:59:59 of today
+
+    const salesToday = await ctx.db.order.aggregate({
+      _sum: { priceInCents: true },
+      _count: true,
+      where: {
+        createdAt: {
+          gte: startOfToday, // Orders from today 00:00:00 onwards
+          lt: endOfToday, // Orders before tomorrow 00:00:00
+        },
+      },
+    });
+
+    return {
+      amount: (salesToday._sum.priceInCents || 0) / 100,
+      numberOfSales: salesToday._count,
+    };
+  }),
+
+  getTotalSales: protectedProcedure.query(async ({ ctx }) => {
+    const totalSales = await ctx.db.order.aggregate({
+      _sum: { priceInCents: true },
+      _count: true,
+    });
+
+    return {
+      totalAmount: (totalSales._sum.priceInCents || 0) / 100,
+      totalNumberOfSales: totalSales._count,
+    };
+  }),
 });
