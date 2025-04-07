@@ -351,8 +351,8 @@ function OrderDetails() {
         </p>
         <p className="mt-1">
           {language === "en"
-            ? "For any questions, please contact us at eversweet@eversweet.com"
-            : "如有任何疑问，请联系我们: eversweet@eversweet.com"}
+            ? "For any questions, please contact us at eversweet@eversweet.co.nz"
+            : "如有任何疑问，请联系我们: eversweet@eversweet.co.nz"}
         </p>
       </div>
     </div>
