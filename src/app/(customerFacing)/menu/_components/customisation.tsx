@@ -31,16 +31,16 @@ import { dessertOnClient } from "~/app/components/types";
 
 type CustomisationDialogProps = {
   dessert: dessertOnClient;
-  homePageOpen?: boolean;
-  setHomePageOpen?: (open: boolean) => void;
+  customOpen?: boolean;
+  setCustomOpen?: (open: boolean) => void;
   onClose?: () => void;
   cartItem?: CartItem;
 };
 
 export default function CustomisationDialog({
   dessert,
-  homePageOpen,
-  setHomePageOpen,
+  customOpen,
+  setCustomOpen,
   onClose,
   cartItem,
 }: CustomisationDialogProps) {
@@ -190,8 +190,8 @@ export default function CustomisationDialog({
   };
 
   const handleOpenClose = () => {
-    if (setHomePageOpen) {
-      setHomePageOpen(false);
+    if (setCustomOpen) {
+      setCustomOpen(false);
     } else if (!dialogOpen) {
       setDialogOpen(true);
     } else {
@@ -263,20 +263,18 @@ export default function CustomisationDialog({
 
   return (
     <Dialog
-      open={homePageOpen ? homePageOpen : dialogOpen}
+      open={customOpen ? customOpen : dialogOpen}
       onOpenChange={handleOpenClose}
     >
-      {!homePageOpen && (
+      {!customOpen && (
         <DialogTrigger asChild>
           <Button
             variant={`${pathName === "/checkout" ? "ghost" : "default"}`}
             className={`${pathName === "/checkout" ? "" : "w-full"}`}
             size="icon"
           >
-            {pathName === "/checkout" ? (
+            {pathName === "/checkout" && (
               <SquarePen className="h-5 w-5 hover:cursor-pointer" />
-            ) : (
-              `${language === "en" ? "Add " : "添加 "} ${formatCurrency(dessert.priceInCents / 100)}`
             )}
           </Button>
         </DialogTrigger>

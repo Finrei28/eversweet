@@ -58,7 +58,7 @@ export function DateTimePicker({
     pickUpTime.getHours() - 1 === currentTime.getHours();
 
   const withinBusinessHours =
-    currentTime.getHours() < 20 && currentTime.getHours() >= 9;
+    currentTime.getHours() < 21 && currentTime.getHours() >= 12;
 
   const sameMonthDay =
     pickUpTime.getMonth() === currentTime.getMonth() &&
@@ -90,17 +90,16 @@ export function DateTimePicker({
         selectedDate.getDate() === currentTime.getDate();
       setPickUpTimeChanged(true);
       setASAP(false);
-      setPickUpTime((prev) => {
-        return prev.getHours() < availableDates.getHours() &&
-          isSelectedSameMonthDay
+      setPickUpTime(() =>
+        isSelectedSameMonthDay
           ? new Date(
               selectedDate.setHours(
                 availableDates.getHours(),
                 availableDates.getMinutes(),
               ),
             )
-          : new Date(selectedDate.setHours(10, 0));
-      });
+          : new Date(selectedDate.setHours(12, 0)),
+      );
     }
   };
 
@@ -112,7 +111,7 @@ export function DateTimePicker({
 
       if (type === "hour") {
         const hour = parseInt(value);
-        newDate.setHours(hour < 10 ? hour + 12 : hour); // Adjust PM values
+        newDate.setHours(hour < 10 ? hour + 12 : hour); // Adjust PM hours to 24 hour values
       } else if (type === "minute") {
         newDate.setMinutes(parseInt(value));
       }
@@ -173,7 +172,7 @@ export function DateTimePicker({
                       className={`aspect-square shrink-0 sm:w-full ${(hour < 10 ? availableDates.getHours() > hour + 12 : availableDates.getHours() > hour) && sameMonthDay && "hidden"}`}
                       onClick={() => handleTimeChange("hour", hour.toString())}
                       disabled={
-                        hour < 10
+                        hour < 12
                           ? hour + 12 < currentTime.getHours() && sameMonthDay
                           : hour < currentTime.getHours() && sameMonthDay
                       }

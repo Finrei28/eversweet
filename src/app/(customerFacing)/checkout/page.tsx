@@ -29,10 +29,10 @@ export default function CheckoutPage() {
     const now = new Date();
     let nextTime = addMinutes(now, 15 - (now.getMinutes() % 5));
     nextTime = setSeconds(nextTime, 0);
-    if (nextTime.getHours() < 10) {
-      nextTime.setHours(10, 0);
-    } else if (nextTime.getHours() >= 20) {
-      nextTime.setHours(10, 0);
+    if (nextTime.getHours() < 12) {
+      nextTime.setHours(12, 0);
+    } else if (nextTime.getHours() >= 21) {
+      nextTime.setHours(12, 0);
       nextTime.setDate(nextTime.getDate() + 1);
     }
 

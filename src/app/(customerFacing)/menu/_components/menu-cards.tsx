@@ -16,6 +16,8 @@ import CustomisationDialog from "./customisation";
 import { useLanguage } from "~/app/components/language";
 import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { formatCurrency } from "~/lib/formatters";
+import { dessertOnClient } from "~/app/components/types";
 
 export default function MenuCards() {
   const { data: productCategory, isLoading: isProductLoading } =
@@ -26,6 +28,9 @@ export default function MenuCards() {
 
   const { language } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedDessert, setSelectedDessert] =
+    useState<dessertOnClient | null>(null);
 
   // Set the first category as active when data loads
   useEffect(() => {
@@ -44,6 +49,11 @@ export default function MenuCards() {
         element.getBoundingClientRect().top + window.pageYOffset + yOffset;
       window.scrollTo({ top: y, behavior: "smooth" });
     }
+  };
+
+  const handleOpenDialog = (dessert: dessertOnClient) => {
+    setIsDialogOpen(true);
+    setSelectedDessert(dessert);
   };
 
   if (isProductLoading || isCustomisationLoading) {
@@ -169,7 +179,10 @@ export default function MenuCards() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
                       <div className="absolute bottom-0 left-0 right-0 p-3 text-white opacity-0 transition-opacity group-hover:opacity-100">
-                        <p className="text-sm font-medium">
+                        <p
+                          className="text-sm font-medium hover:cursor-pointer"
+                          onClick={() => handleOpenDialog(dessert)}
+                        >
                           {language === "en" ? "Customize" : "定制"}
                         </p>
                       </div>
@@ -213,7 +226,10 @@ export default function MenuCards() {
                         </CardDescription>
                       </CardHeader>
                       <CardFooter className="mt-auto pt-4">
-                        <CustomisationDialog dessert={dessert} />
+                        <Button
+                          className="w-full"
+                          onClick={() => handleOpenDialog(dessert)}
+                        >{`${language === "en" ? "Add " : "添加 "} ${formatCurrency(dessert.priceInCents / 100)}`}</Button>
                       </CardFooter>
                     </div>
                   </Card>
@@ -223,6 +239,14 @@ export default function MenuCards() {
           </motion.div>
         ))}
       </div>
+      {isDialogOpen && selectedDessert && (
+        <CustomisationDialog
+          customOpen={isDialogOpen}
+          setCustomOpen={setIsDialogOpen}
+          dessert={selectedDessert}
+          onClose={() => setSelectedDessert(null)}
+        />
+      )}
     </div>
   );
 }

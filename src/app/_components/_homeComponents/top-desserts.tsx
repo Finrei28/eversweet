@@ -200,8 +200,8 @@ export function TopDesserts() {
         </div>
         {isDialogOpen && selectedDessert && (
           <CustomisationDialog
-            homePageOpen={isDialogOpen}
-            setHomePageOpen={setIsDialogOpen}
+            customOpen={isDialogOpen}
+            setCustomOpen={setIsDialogOpen}
             dessert={selectedDessert}
             onClose={() => setIsPaused(false)}
           />
