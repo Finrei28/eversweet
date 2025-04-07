@@ -1,8 +1,10 @@
 import MaxWidthWapper from "~/app/components/maxWidthWrapper";
-import { HydrateClient } from "~/trpc/server";
+import { api, HydrateClient } from "~/trpc/server";
 import MenuCards from "./_components/menu-cards";
 import ServerComponent from "./_components/serverComponent";
 import { Metadata } from "next";
+import { Suspense } from "react";
+import Loader from "~/app/components/customLoading";
 
 export const metadata: Metadata = {
   title: "Eversweet - Menu",
@@ -14,7 +16,9 @@ export default function MenuPage() {
     <HydrateClient>
       <ServerComponent />
       <MaxWidthWapper>
-        <MenuCards />
+        <Suspense fallback={<Loader />}>
+          <MenuCards />
+        </Suspense>
       </MaxWidthWapper>
     </HydrateClient>
   );

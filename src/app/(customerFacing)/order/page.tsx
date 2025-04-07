@@ -59,11 +59,7 @@ function OrderDetails() {
 
   // Handle printing the receipt
 
-  if (!isClient) {
-    return <Loader />;
-  }
-
-  if (isLoading) {
+  if (!isClient || isLoading) {
     return <Loader />;
   }
 
