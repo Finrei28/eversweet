@@ -18,7 +18,7 @@ export default async function AdminDashboard() {
 
   return (
     <HydrateClient>
-      <Suspense fallback={<Loader />}>
+      <Suspense fallback={<Loader text="Loading Dashboard" />}>
         <DashBoardCards />
       </Suspense>
     </HydrateClient>

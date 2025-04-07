@@ -15,7 +15,7 @@ export default async function PastOrdersPage() {
   return (
     <HydrateClient>
       <div className="container mx-auto py-10">
-        <Suspense fallback={<Loader />}>
+        <Suspense fallback={<Loader text="Loading past orders..." />}>
           <DataTable />
         </Suspense>
       </div>

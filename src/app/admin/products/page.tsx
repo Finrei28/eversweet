@@ -18,7 +18,7 @@ export default async function ProductsPage() {
   return (
     <HydrateClient>
       <MaxWidthWapper>
-        <Suspense fallback={<Loader />}>
+        <Suspense fallback={<Loader text="Loading products..." />}>
           <ProductCards />
         </Suspense>
       </MaxWidthWapper>
