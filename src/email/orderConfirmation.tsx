@@ -440,7 +440,7 @@ export default function EmailOrderConfirmation({
                 </Heading>
 
                 <Text className="lg:text-base">
-                  Your order will be ready for collection at{" "}
+                  Pick up time at{" "}
                   <strong>{getCollectionTime(order.pickUpTime)}</strong>
                 </Text>
 

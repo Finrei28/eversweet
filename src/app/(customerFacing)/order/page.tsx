@@ -186,9 +186,7 @@ function OrderDetails() {
               {language === "en" ? "Collection Information" : "取时间"}
             </h3>
             <p className="mt-2 text-amber-700">
-              {language === "en"
-                ? "Your order will be ready for collection at "
-                : "您的订单将在以下时间准备好 "}
+              {language === "en" ? "Pick up time at " : "取餐时间为 "}
               <span className="font-bold">
                 {getCollectionTime(order.pickUpTime)}
               </span>
