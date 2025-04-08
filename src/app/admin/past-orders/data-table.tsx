@@ -61,6 +61,8 @@ export function DataTable() {
     },
   });
 
+  const [searchValue, setSearchValue] = useState("");
+
   const handleChangeOpen = () => {
     setCustomerDetailsOpen({ id: "", open: false });
     setOrderDetailsOpen({ id: "", open: false });
@@ -70,13 +72,26 @@ export function DataTable() {
     <div>
       <div className="flex items-center py-4">
         <Input
-          placeholder="Search customer"
-          value={
-            (table.getColumn("customer")?.getFilterValue() as string) ?? ""
-          }
-          onChange={(event) =>
-            table.getColumn("customer")?.setFilterValue(event.target.value)
-          }
+          placeholder="Search by customer or Order number"
+          value={searchValue}
+          onChange={(event) => {
+            const value = event.target.value;
+            setSearchValue(value); // Update local state
+
+            if (isNaN(Number(value))) {
+              // If it's a name (non-numeric)
+              table.getColumn("customer")?.setFilterValue(value);
+              table.getColumn("orderNumber")?.setFilterValue(""); // Clear orderNumber filter
+            } else if (!value) {
+              // if no value
+              table.getColumn("orderNumber")?.setFilterValue("");
+              table.getColumn("customer")?.setFilterValue(""); // Clear customer filter
+            } else {
+              // If it's an order number (numeric)
+              table.getColumn("orderNumber")?.setFilterValue(Number(value));
+              table.getColumn("customer")?.setFilterValue(""); // Clear customer filter
+            }
+          }}
           className="max-w-sm border-black"
         />
       </div>

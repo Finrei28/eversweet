@@ -18,11 +18,12 @@ type DashboardCardProps = {
 };
 
 export default function DashBoardCards() {
-  const { language } = useLanguage();
   const [Currentorders] = api.order.getCurrentOrders.useSuspenseQuery();
   const [CompletedOrders] = api.order.getCompletedOrders.useSuspenseQuery();
   const [sales] = api.order.getSalesToday.useSuspenseQuery();
   const [totlaSales] = api.order.getTotalSales.useSuspenseQuery();
+  const { language } = useLanguage();
+
   return (
     <div className="flex flex-col items-center justify-center">
       <div className="grid w-full grid-cols-1 gap-6 lg:w-3/12">

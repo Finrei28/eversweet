@@ -1,6 +1,7 @@
 "use client";
 
-import Loader from "~/app/components/customLoading";
+import { Loader2 } from "lucide-react";
+import { useLanguage } from "~/app/components/language";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ export default function CustomerDetails({
   customerDetailsOpen,
   handleChangeOpen,
 }: CustomerDetailsProps) {
+  const { language } = useLanguage();
   const { data: customer, isLoading } = api.order.getCustomerDetails.useQuery({
     id: customerDetailsOpen.id,
   });
@@ -33,12 +35,17 @@ export default function CustomerDetails({
         <Dialog open={customerDetailsOpen.open} onOpenChange={handleChangeOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle className="flex justify-center text-xl">
-                Order #{customerDetailsOpen.id}
-              </DialogTitle>
+              <DialogTitle className="flex justify-center text-xl"></DialogTitle>
               <DialogDescription />
             </DialogHeader>
-            <Loader />
+            <div className="flex h-16 w-full flex-col items-center justify-center">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <span>
+                {language === "en"
+                  ? "Loading customer details..."
+                  : "正在加载客户详细信息..."}
+              </span>
+            </div>
           </DialogContent>
         </Dialog>
       ) : (

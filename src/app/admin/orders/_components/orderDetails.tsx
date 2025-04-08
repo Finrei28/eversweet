@@ -9,7 +9,8 @@ import {
 } from "~/components/ui/dialog";
 import { api } from "~/trpc/react";
 import Image from "next/image";
-import Loader from "~/app/components/customLoading";
+import { Loader2 } from "lucide-react";
+import { useLanguage } from "~/app/components/language";
 
 type CustomerDetailsProps = {
   orderDetailsOpen: { id: string; open: boolean };
@@ -20,6 +21,7 @@ export default function CustomerDetails({
   orderDetailsOpen,
   handleChangeOpen,
 }: CustomerDetailsProps) {
+  const { language } = useLanguage();
   const { data: order, isLoading } = api.order.getOrderDetails.useQuery({
     id: orderDetailsOpen.id,
   });
@@ -42,12 +44,17 @@ export default function CustomerDetails({
     <Dialog open={orderDetailsOpen.open} onOpenChange={handleChangeOpen}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex justify-center text-xl">
-            Order #{orderDetailsOpen.id}
-          </DialogTitle>
+          <DialogTitle className="flex justify-center text-xl"></DialogTitle>
           <DialogDescription />
         </DialogHeader>
-        <Loader />
+        <div className="flex h-16 w-full flex-col items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <span>
+            {language === "en"
+              ? "Loading order details..."
+              : "正在加载订单详细信息..."}
+          </span>
+        </div>
       </DialogContent>
     </Dialog>
   ) : (
