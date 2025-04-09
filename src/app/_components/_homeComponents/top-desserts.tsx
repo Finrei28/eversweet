@@ -108,11 +108,12 @@ export function TopDesserts() {
                     className="basis-1/2 pl-4 md:basis-1/4 lg:basis-1/4"
                     key={index}
                   >
-                    <Card className="aspect-square min-h-[230px] w-full select-none overflow-hidden border-2 border-secondary lg:min-h-[350px]">
+                    <Card className="min-h-[270px] w-full select-none overflow-hidden border-2 border-secondary lg:min-h-[350px]">
                       <CardContent className="p-0">
-                        <Skeleton className="min-h-[170px] w-full bg-secondary lg:min-h-[290px]" />
-                        <div className="mt-4 flex justify-center lg:mt-3">
+                        <Skeleton className="min-h-[200px] w-full bg-secondary lg:min-h-[290px]" />
+                        <div className="mt-2 flex flex-col items-center justify-center gap-2 lg:mt-3">
                           <Skeleton className="h-4 w-10/12 rounded-xl bg-secondary lg:h-6" />
+                          <Skeleton className="h-4 w-4/12 rounded-xl bg-secondary lg:hidden lg:h-6" />
                         </div>
                       </CardContent>
                     </Card>
@@ -179,7 +180,11 @@ export function TopDesserts() {
                       <CardContent className="p-0">
                         <div className="relative aspect-square w-full">
                           <Image
-                            src={dessert.imagePath || "/placeholder.svg"}
+                            src={
+                              dessert.imagePath ||
+                              (process.env
+                                .NEXT_PUBLIC_FILLER_IMAGE_URL as string)
+                            }
                             alt={
                               language === "en"
                                 ? dessert.name

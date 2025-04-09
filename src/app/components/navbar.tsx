@@ -36,6 +36,8 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         buttonRef.current &&
         !buttonRef.current.contains(event.target as Node)
       ) {
+        event.stopPropagation();
+        event.preventDefault();
         setIsOpen(false);
       }
 
@@ -61,15 +63,30 @@ export function Navbar({ children }: { children: React.ReactNode }) {
 
     // Add event listener when menu or cart is open
     if (isOpen || isCartOpen || globeOpen) {
+      document.addEventListener("click", handleClickOutside, true);
       document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("touchstart", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside, {
+        passive: false,
+      });
     }
     // Cleanup function
     return () => {
+      document.removeEventListener("click", handleClickOutside, true);
       document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside, {
+        passive: false,
+      } as any);
     };
   }, [isOpen, isCartOpen, globeOpen]);
+
+  useEffect(() => {
+    if (isCartOpen) {
+      document.body.classList.add("overflow-hidden");
+    } else {
+      document.body.classList.remove("overflow-hidden");
+    }
+    return () => document.body.classList.remove("overflow-hidden");
+  }, [isCartOpen]);
 
   useEffect(() => {
     setIsOpen(false);
