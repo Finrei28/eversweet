@@ -25,13 +25,14 @@ import { zhCN, enNZ } from "date-fns/locale";
 
 // Define business hours for each day of the week
 // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-type BusinessHoursType = {
-  [key: number]: {
-    open: number | null; // null means closed
+type BusinessHoursType = Record<
+  number,
+  {
+    open: number | null;
     close: number | null;
     displayName: string;
-  };
-};
+  }
+>;
 
 interface PickupTimeProps {
   onChange: (date: Date | null) => void;
@@ -184,7 +185,13 @@ export function PickupTimePicker({
     }, 10000); // check every 10 seconds
 
     return () => clearInterval(interval);
-  }, [value]);
+  }, [
+    value,
+    onChange,
+    getNextValidTime,
+    pickUpNextOpening,
+    setPickUpNextOpening,
+  ]);
 
   // Generate time slots for the selected date
   const generateTimeSlots = (selectedDate: Date) => {
@@ -285,8 +292,8 @@ export function PickupTimePicker({
       if (
         dayHours?.open !== null &&
         dayHours?.close !== null &&
-        newDate.getHours() >= (dayHours?.open as number) &&
-        newDate.getHours() < (dayHours?.close as number) &&
+        newDate.getHours() >= dayHours?.open &&
+        newDate.getHours() < dayHours?.close &&
         newDate.getMinutes() >= startDateTime.getMinutes() &&
         newDate.getMinutes() < endDateTime.getMinutes()
       ) {

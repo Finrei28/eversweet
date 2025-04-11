@@ -27,7 +27,7 @@ export function DessertAnimation({
 }: DessertAnimationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // If type is random, select a random dessert type on component mount
-  const [dessertType, setDessertType] = useState<DessertType>(() => {
+  const [dessertType] = useState<DessertType>(() => {
     if (type !== "random") return type;
 
     const types: DessertType[] = [

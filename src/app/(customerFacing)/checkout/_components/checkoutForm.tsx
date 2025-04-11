@@ -7,7 +7,7 @@ import {
 } from "@stripe/react-stripe-js";
 import { CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CartContextType } from "~/app/components/cartContext";
 import { useLanguage } from "~/app/components/language";
 import { CustomerInfo } from "~/app/components/types";
@@ -183,8 +183,6 @@ export default function CheckoutForm({
       setWarned(true);
     }
 
-    console.log(newPickUpTime);
-
     if (submitError) {
       setPaymentError(
         submitError.message || "Payment failed. Please try again.",
@@ -208,7 +206,7 @@ export default function CheckoutForm({
         customerEmail: customerInfo.customerEmail,
         customerPhoneNumber: customerInfo.phone,
         totalPriceInCents: totalPriceInCents,
-        pickUpTime: newPickUpTime ? newPickUpTime : (pickUpTime as Date),
+        pickUpTime: newPickUpTime ? newPickUpTime : pickUpTime,
       });
     } else {
       setPaymentLoading(false);
