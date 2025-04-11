@@ -22,8 +22,9 @@ type paymentSectionProps = {
   customerInfo: CustomerInfo;
   isLoading: boolean;
   error: string;
-  pickUpTime: Date;
-  ASAP: boolean;
+  pickUpTime: Date | null;
+  setPickUpTime: (time: Date) => void;
+  pickUpNextOpening: boolean;
 };
 
 const stripePromise = loadStripe(
@@ -37,7 +38,8 @@ export default function PaymentSection({
   isLoading,
   error,
   pickUpTime,
-  ASAP,
+  setPickUpTime,
+  pickUpNextOpening,
 }: paymentSectionProps) {
   const { language } = useLanguage();
   const router = useRouter();
@@ -61,7 +63,8 @@ export default function PaymentSection({
               totalPriceInCents={cart.totalPrice || 0}
               customerInfo={customerInfo}
               pickUpTime={pickUpTime}
-              ASAP={ASAP}
+              setPickUpTime={setPickUpTime}
+              pickUpNextOpening={pickUpNextOpening}
               router={router}
             />
           </Elements>

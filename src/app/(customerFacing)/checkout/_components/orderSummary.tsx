@@ -8,28 +8,29 @@ import { formatCurrency } from "~/lib/formatters";
 import { Separator } from "~/components/ui/separator";
 import { useLanguage } from "~/app/components/language";
 import CustomisationDialog from "../../menu/_components/customisation";
-
-import { DateTimePicker } from "./dateTimePicker";
 import { Button } from "~/components/ui/button";
+import { PickupTimePicker } from "./pick-up-time";
+import { format } from "date-fns";
 
 type orderSummaryProps = {
   cart: CartContextType;
-  pickUpTime: Date;
-  setPickUpTime: React.Dispatch<React.SetStateAction<Date>>;
-  getNextValidTime: () => Date;
-  setASAP: React.Dispatch<React.SetStateAction<boolean>>;
-  ASAP: boolean;
+  pickUpTime: Date | null;
+  setPickUpTime: React.Dispatch<React.SetStateAction<Date | null>>;
+  setPickUpNextOpening: (boolean: boolean) => void;
+  pickUpNextOpening: boolean;
 };
 
 export default function OrderSummary({
   cart,
   pickUpTime,
   setPickUpTime,
-  getNextValidTime,
-  setASAP,
-  ASAP,
+  setPickUpNextOpening,
+  pickUpNextOpening,
 }: orderSummaryProps) {
   const { language } = useLanguage();
+
+  // Custom business hours example
+
   return (
     <>
       <Card>
@@ -39,13 +40,28 @@ export default function OrderSummary({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <DateTimePicker
+          <PickupTimePicker
+            value={pickUpTime}
+            onChange={setPickUpTime}
+            setPickUpNextOpening={setPickUpNextOpening}
+            pickUpNextOpening={pickUpNextOpening}
+          />
+
+          {pickUpTime && (
+            <div className="rounded-md bg-muted p-3">
+              <p className="font-medium">
+                {language === "en" ? "Selected Pickup Time:" : "选定取货时间:"}
+              </p>
+              <p>{format(pickUpTime, "dd/MM/yyyy h:mm a")}</p>
+            </div>
+          )}
+          {/* <DateTimePicker
             pickUpTime={pickUpTime}
             setPickUpTime={setPickUpTime}
             getNextValidTime={getNextValidTime}
             setASAP={setASAP}
             ASAP={ASAP}
-          />
+          /> */}
           {cart.cart.map((item) => {
             const editButton = (
               <CustomisationDialog dessert={item.dessert} cartItem={item} />

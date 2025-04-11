@@ -21,19 +21,19 @@ export default function OpeningHours() {
             {[
               {
                 day: `${language === "en" ? "Monday" : "星期一"}`,
-                hours: "12:00 PM - 10:00 PM",
+                hours: "12:30 PM - 9:30 PM",
               },
               {
                 day: `${language === "en" ? "Tuesday" : "星期二"}`,
-                hours: "12:00 PM - 10:00 PM",
+                hours: "12:30 PM - 9:30 PM",
               },
               {
                 day: `${language === "en" ? "Wednesday" : "星期三"}`,
-                hours: "12:00 PM - 10:00 PM",
+                hours: "12:30 PM - 9:30 PM",
               },
               {
                 day: `${language === "en" ? "Thursday" : "星期四"}`,
-                hours: "12:00 PM - 10:00 PM",
+                hours: "12:30 PM - 9:30 PM",
               },
               {
                 day: `${language === "en" ? "Friday" : "星期五"}`,

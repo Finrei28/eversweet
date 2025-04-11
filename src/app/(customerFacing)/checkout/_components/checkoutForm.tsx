@@ -7,21 +7,25 @@ import {
 } from "@stripe/react-stripe-js";
 import { CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CartContextType } from "~/app/components/cartContext";
 import { useLanguage } from "~/app/components/language";
 import { CustomerInfo } from "~/app/components/types";
 import { Button } from "~/components/ui/button";
 import { formatCurrency } from "~/lib/formatters";
 import { api } from "~/trpc/react";
+import { getNextValidTime } from "./pick-up-time";
+import { toast } from "~/hooks/use-toast";
+import { format } from "date-fns";
 
 type checkoutFormProps = {
   totalPriceInCents: number;
   customerInfo: CustomerInfo;
   router: any;
   cart: CartContextType;
-  pickUpTime: Date;
-  ASAP: boolean;
+  pickUpTime: Date | null;
+  setPickUpTime: (time: Date) => void;
+  pickUpNextOpening: boolean;
 };
 
 export default function CheckoutForm({
@@ -30,7 +34,8 @@ export default function CheckoutForm({
   router,
   cart,
   pickUpTime,
-  ASAP,
+  setPickUpTime,
+  pickUpNextOpening,
 }: checkoutFormProps) {
   const { language } = useLanguage();
   const stripe = useStripe();
@@ -39,6 +44,7 @@ export default function CheckoutForm({
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [warned, setWarned] = useState(false);
 
   let dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
 
@@ -72,6 +78,7 @@ export default function CheckoutForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPaymentError("");
+
     dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
 
     customisationIds = [
@@ -128,11 +135,55 @@ export default function CheckoutForm({
       redirect: "if_required",
     });
 
-    const tenMinutesLater = new Date(Date.now() + 10 * 60 * 1000);
-
-    if (pickUpTime.getTime() < tenMinutesLater.getTime() || ASAP) {
-      pickUpTime = tenMinutesLater;
+    if (!pickUpTime) {
+      setPaymentError("Please select a pick up time.");
+      return;
     }
+    const now = new Date();
+    const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
+    let newPickUpTime = null;
+    if (pickUpTime.getTime() < tenMinutesLater.getTime()) {
+      setPickUpTime(getNextValidTime());
+      newPickUpTime = getNextValidTime();
+      const isToday =
+        newPickUpTime?.getDate() === now.getDate() &&
+        newPickUpTime?.getMonth() === now.getMonth() &&
+        newPickUpTime?.getFullYear() === now.getFullYear();
+
+      if (!isToday && newPickUpTime && !warned) {
+        toast({
+          title:
+            language === "en"
+              ? "Your pick up time has changed!"
+              : "您的取货时间已更改！",
+          description: `${
+            language === "en" ? "Your pick up time is" : "您的取货时间是"
+          } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
+          variant: "destructive",
+        });
+        setWarned(true);
+        return;
+      }
+    }
+
+    if (pickUpNextOpening && !warned) {
+      toast({
+        title:
+          language === "en"
+            ? "your pick up time is on another day!"
+            : "看来您的取货时间是在其他天！",
+        description: `${
+          language === "en"
+            ? "Please check your intended pick up date is at"
+            : "请确认您预计的取货日期是"
+        } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
+        variant: "destructive",
+        duration: Infinity,
+      });
+      setWarned(true);
+    }
+
+    console.log(newPickUpTime);
 
     if (submitError) {
       setPaymentError(
@@ -157,7 +208,7 @@ export default function CheckoutForm({
         customerEmail: customerInfo.customerEmail,
         customerPhoneNumber: customerInfo.phone,
         totalPriceInCents: totalPriceInCents,
-        pickUpTime: pickUpTime,
+        pickUpTime: newPickUpTime ? newPickUpTime : (pickUpTime as Date),
       });
     } else {
       setPaymentLoading(false);

@@ -10,7 +10,6 @@ import PaymentSection from "./_components/paymentSection";
 import CustomerInformation from "./_components/customerInformation";
 import OrderSummary from "./_components/orderSummary";
 import { useLanguage } from "~/app/components/language";
-import { addMinutes, setSeconds } from "date-fns";
 import Loader from "~/app/components/customLoading";
 
 export default function CheckoutPage() {
@@ -26,22 +25,9 @@ export default function CheckoutPage() {
     customerEmail: "",
     phone: "",
   });
-  const getNextValidTime = () => {
-    const now = new Date();
-    let nextTime = addMinutes(now, 15 - (now.getMinutes() % 5));
-    nextTime = setSeconds(nextTime, 0);
-    if (nextTime.getHours() < 12) {
-      nextTime.setHours(12, 0);
-    } else if (nextTime.getHours() >= 21) {
-      nextTime.setHours(12, 0);
-      nextTime.setDate(nextTime.getDate() + 1);
-    }
 
-    return nextTime;
-  };
-
-  const [pickUpTime, setPickUpTime] = useState<Date>(getNextValidTime());
-  const [ASAP, setASAP] = useState(true); // Check if customer wants ASAP pick up time?
+  const [pickUpTime, setPickUpTime] = useState<Date | null>(null);
+  const [pickUpNextOpening, setPickUpNextOpening] = useState(false);
 
   //Check if admin wants ASAP pick up time?
 
@@ -113,7 +99,6 @@ export default function CheckoutPage() {
       </div>
     );
   }
-
   return (
     <div className="mx-auto max-w-7xl px-4 py-10">
       <h1 className="mb-8 text-center text-3xl font-bold">
@@ -127,9 +112,8 @@ export default function CheckoutPage() {
             cart={cart}
             pickUpTime={pickUpTime}
             setPickUpTime={setPickUpTime}
-            setASAP={setASAP}
-            ASAP={ASAP}
-            getNextValidTime={getNextValidTime}
+            setPickUpNextOpening={setPickUpNextOpening}
+            pickUpNextOpening={pickUpNextOpening}
           />
 
           {/* Customer Information */}
@@ -146,7 +130,8 @@ export default function CheckoutPage() {
             cart={cart}
             customerInfo={customerInfo}
             pickUpTime={pickUpTime}
-            ASAP={ASAP}
+            pickUpNextOpening={pickUpNextOpening}
+            setPickUpTime={setPickUpTime}
             isLoading={isLoading}
             error={error}
           />
