@@ -13,24 +13,33 @@ export default function HomePageContent() {
   const { language } = useLanguage();
   return (
     <div className="flex min-h-screen flex-col lg:mt-0">
-      <main className="flex flex-grow flex-col items-center justify-center py-5 text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 py-16 text-center">
-          <TopDesserts />
-        </div>
-        <Link href={"/menu"}>
-          <Button className="p-7 text-2xl lg:p-8 lg:text-3xl">
-            {language === "en" ? "ORDER ONLINE" : "线上点菜"}
-          </Button>
-        </Link>
-      </main>
-      <Separator className="my-10 bg-secondary" />
-      <MenuPhotos />
-      <Separator className="my-10 bg-secondary" />
-      <UberEats />
-      <Separator className="my-10 bg-secondary" />
-      <OpeningHours />
-      <Separator className="my-10 bg-secondary" />
-      <footer className="mt-auto w-full bg-primary py-6 text-white">
+      <div className="bg-gradient-to-b from-background to-primary">
+        <main className="flex flex-grow flex-col items-center justify-center pb-10 pt-5 text-white">
+          <div className="container flex flex-col items-center justify-center gap-12 py-16 text-center">
+            <TopDesserts />
+          </div>
+          <Link href={"/menu"}>
+            <Button className="p-7 text-2xl shadow-lg lg:p-8 lg:text-3xl">
+              {language === "en" ? "ORDER ONLINE" : "线上点菜"}
+            </Button>
+          </Link>
+        </main>
+        <Separator className="my-10 bg-primary" />
+        <section>
+          <MenuPhotos />
+        </section>
+
+        <Separator className="my-10 bg-primary" />
+        <section className="mb-10">
+          <UberEats />
+        </section>
+      </div>
+
+      <section className="my-10">
+        <OpeningHours />
+      </section>
+
+      <footer className="mt-auto w-full bg-primary py-10 text-white">
         <div className="container mx-auto flex flex-col items-center gap-4 text-center">
           <p className="text-sm">
             © {new Date().getFullYear()} Eversweet. All rights reserved.

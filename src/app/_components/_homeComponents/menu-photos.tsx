@@ -45,7 +45,7 @@ export default function Menu() {
       </div>
 
       <Link href={"/menu"} className="mt-2">
-        <Button className="p-7 text-2xl lg:p-8 lg:text-3xl">
+        <Button className="p-7 text-2xl shadow-lg lg:p-8 lg:text-3xl">
           {language === "en" ? "ORDER NOW" : "立即点菜"}
         </Button>
       </Link>
