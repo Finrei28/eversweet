@@ -159,17 +159,20 @@ export default function MenuCards() {
               <div className="h-px flex-grow bg-primary/20"></div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 px-2 md:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 md:px-2 lg:grid-cols-4">
               {category.desserts.map((dessert) => (
                 <motion.div
                   key={dessert.id}
                   whileHover={{ y: -5 }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >
-                  <Card className="group flex h-full flex-col overflow-hidden border-2 border-transparent transition-all hover:border-primary/20 hover:shadow-lg">
+                  <Card className="group flex h-full flex-col overflow-hidden border-2 border-transparent transition-all hover:border-secondary hover:shadow-lg">
                     <div className="relative aspect-square w-full overflow-hidden">
                       <Image
-                        src={dessert.imagePath || "/placeholder.svg"}
+                        src={
+                          dessert.imagePath ??
+                          (process.env.NEXT_PUBLIC_FILLER_IMAGE_URL as string)
+                        }
                         alt={
                           language === "en" ? dessert.name : dessert.chineseName
                         }
@@ -183,14 +186,14 @@ export default function MenuCards() {
                           className="text-sm font-medium hover:cursor-pointer"
                           onClick={() => handleOpenDialog(dessert)}
                         >
-                          {language === "en" ? "Customize" : "定制"}
+                          {language === "en" ? "Customise" : "定制"}
                         </p>
                       </div>
                     </div>
                     <div className="flex flex-1 flex-col">
                       <CardHeader className="space-y-2 pb-2">
                         <div className="flex items-start justify-between">
-                          <CardTitle className="text-lg md:text-xl">
+                          <CardTitle className="text-base md:text-xl">
                             {language === "en"
                               ? dessert.name
                               : dessert.chineseName}
@@ -212,7 +215,7 @@ export default function MenuCards() {
                             </Badge>
                           )} */}
                         </div>
-                        <CardDescription className="line-clamp-2 text-xs">
+                        <CardDescription className="line-clamp-2 text-[0.70rem] md:text-xs">
                           {language === "en"
                             ? dessert.ingredients.join(" • ")
                             : dessert.ingredients
