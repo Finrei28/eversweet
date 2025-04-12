@@ -166,7 +166,7 @@ export default function MenuCards() {
                   whileHover={{ y: -5 }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >
-                  <Card className="flex h-full flex-col overflow-hidden border-2 border-transparent transition-all hover:border-secondary hover:shadow-lg">
+                  <Card className="group flex h-full flex-col overflow-hidden border-2 border-transparent transition-all hover:border-secondary hover:shadow-lg">
                     <div className="relative aspect-square w-full overflow-hidden">
                       <Image
                         src={
@@ -230,7 +230,7 @@ export default function MenuCards() {
                       </CardHeader>
                       <CardFooter className="mt-auto pt-4">
                         <Button
-                          className="w-full"
+                          className="w-full group-hover:translate-y-0 group-hover:opacity-100"
                           onClick={() => handleOpenDialog(dessert)}
                         >{`${language === "en" ? "Add " : "添加 "} ${formatCurrency(dessert.priceInCents / 100)}`}</Button>
                       </CardFooter>
