@@ -180,7 +180,7 @@ export default function MenuCards() {
                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100"></div>
                       <div className="pointer-events-none absolute bottom-0 left-0 right-0 p-3 text-white opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
                         <p
                           className="text-sm font-medium hover:cursor-pointer"
