@@ -166,7 +166,7 @@ export default function MenuCards() {
                   whileHover={{ y: -5 }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >
-                  <Card className="group flex h-full flex-col overflow-hidden border-2 border-transparent transition-all hover:border-secondary hover:shadow-lg">
+                  <Card className="flex h-full flex-col overflow-hidden border-2 border-transparent transition-all hover:border-secondary hover:shadow-lg">
                     <div className="relative aspect-square w-full overflow-hidden">
                       <Image
                         src={
