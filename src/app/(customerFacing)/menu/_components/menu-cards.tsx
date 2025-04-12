@@ -166,8 +166,8 @@ export default function MenuCards() {
                   whileHover={{ y: -5 }}
                   transition={{ type: "spring", stiffness: 300 }}
                 >
-                  <Card className="group flex h-full flex-col overflow-hidden border-2 border-transparent transition-all hover:border-secondary hover:shadow-lg">
-                    <div className="relative aspect-square w-full overflow-hidden">
+                  <Card className="flex h-full flex-col overflow-hidden border-2 border-transparent transition-all hover:border-secondary hover:shadow-lg">
+                    <div className="group relative aspect-square w-full overflow-hidden">
                       <Image
                         src={
                           dessert.imagePath ??
@@ -180,8 +180,8 @@ export default function MenuCards() {
                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                       />
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100"></div>
-                      <div className="pointer-events-none absolute bottom-0 left-0 right-0 p-3 text-white opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white opacity-0 transition-opacity group-hover:opacity-100">
                         <p
                           className="text-sm font-medium hover:cursor-pointer"
                           onClick={() => handleOpenDialog(dessert)}
@@ -230,7 +230,7 @@ export default function MenuCards() {
                       </CardHeader>
                       <CardFooter className="mt-auto pt-4">
                         <Button
-                          className="w-full group-hover:translate-y-0 group-hover:opacity-100"
+                          className="w-full"
                           onClick={() => handleOpenDialog(dessert)}
                         >{`${language === "en" ? "Add " : "添加 "} ${formatCurrency(dessert.priceInCents / 100)}`}</Button>
                       </CardFooter>
