@@ -116,8 +116,8 @@ export default function MenuCards() {
           </div>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
             {language === "en"
-              ? "Discover our selection of authentic Chinese desserts, freshly made with traditional ingredients"
-              : "探索我们精选的正宗中式甜点，使用传统食材新鲜制作"}
+              ? "Discover our selection of authentic Chinese desserts, handmade with traditional ingredients"
+              : "探索我们精选的正宗中式甜点，使用传统食材手工制作"}
           </p>
         </motion.div>
       </div>

@@ -185,13 +185,7 @@ export function PickupTimePicker({
     }, 10000); // check every 10 seconds
 
     return () => clearInterval(interval);
-  }, [
-    value,
-    onChange,
-    getNextValidTime,
-    pickUpNextOpening,
-    setPickUpNextOpening,
-  ]);
+  }, [value, onChange, pickUpNextOpening, setPickUpNextOpening]);
 
   // Generate time slots for the selected date
   const generateTimeSlots = (selectedDate: Date) => {

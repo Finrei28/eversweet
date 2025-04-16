@@ -8,6 +8,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { Toaster } from "~/components/ui/toaster";
 import StructuredData from "./_components/structured-data";
+import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
   title: "Eversweet",
@@ -54,6 +55,7 @@ export default function RootLayout({
       <body className={cn("overflow-x-hidden bg-background font-mono")}>
         <TRPCReactProvider>
           <main>{children}</main>
+          <Analytics />
           <StructuredData />
           <Toaster />
         </TRPCReactProvider>

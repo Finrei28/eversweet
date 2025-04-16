@@ -135,7 +135,7 @@ export default function ContactPage() {
                 </h2>
                 <p className="mb-4 text-gray-600">
                   {language === "en"
-                    ? "Come by our shop and enjoy our freshly made desserts."
+                    ? "Come by our shop and enjoy our handmade desserts."
                     : "来我们的商店，享受我们新鲜制作的甜点。"}
                 </p>
                 <p className="mb-3 font-medium text-gray-700">
@@ -215,7 +215,7 @@ export default function ContactPage() {
                 />
               </div>
               <p className="mt-2 text-sm font-medium text-gray-600">
-                Grass Jelly
+                Grass Jelly Bowl
               </p>
             </div>
             <div className="flex flex-col items-center">
@@ -228,7 +228,9 @@ export default function ContactPage() {
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
               </div>
-              <p className="mt-2 text-sm font-medium text-gray-600">Mochi</p>
+              <p className="mt-2 text-sm font-medium text-gray-600">
+                Mochi Bowl
+              </p>
             </div>
             <div className="flex flex-col items-center">
               <div className="relative h-28 w-28 rounded-full bg-purple-100 p-4">
@@ -240,7 +242,9 @@ export default function ContactPage() {
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
               </div>
-              <p className="mt-2 text-sm font-medium text-gray-600">Sago</p>
+              <p className="mt-2 text-sm font-medium text-gray-600">
+                Sago Bowl
+              </p>
             </div>
             {/* <div className="flex flex-col items-center">
               <div className="h-20 w-20 rounded-full bg-pink-100 p-4">
