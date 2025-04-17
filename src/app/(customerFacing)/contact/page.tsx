@@ -135,8 +135,8 @@ export default function ContactPage() {
                 </h2>
                 <p className="mb-4 text-gray-600">
                   {language === "en"
-                    ? "Come by our shop and enjoy our handmade desserts."
-                    : "来我们的商店，享受我们新鲜制作的甜点。"}
+                    ? "Come by our shop and enjoy our handmade desserts. "
+                    : "来我们的商店，享受我们手工制作的甜点。"}
                 </p>
                 <p className="mb-3 font-medium text-gray-700">
                   5D/119 Meadowland Drive, Somerville, Auckland 2014
