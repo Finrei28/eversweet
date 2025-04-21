@@ -8,10 +8,11 @@ import { Separator } from "~/components/ui/separator";
 import UberEats from "./_homeComponents/uber-eats";
 import OpeningHours from "./_homeComponents/opening-hours";
 import MenuPhotos from "./_homeComponents/menu-photos";
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import Loader from "../components/customLoading";
 
-export default function HomePageContent() {
+function HomePageContent() {
   const { language } = useLanguage();
   const searchParams = useSearchParams();
   const openingHoursRef = useRef<HTMLDivElement>(null);
@@ -74,5 +75,13 @@ export default function HomePageContent() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<Loader />}>
+      <HomePageContent />
+    </Suspense>
   );
 }

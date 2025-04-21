@@ -1,7 +1,7 @@
 import { HydrateClient } from "~/trpc/server";
-import HomePageContent from "../_components/homePageContent";
 
 import { Metadata } from "next";
+import HomePage from "../_components/homePageContent";
 
 export const metadata: Metadata = {
   title: "Eversweet - Home",
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <HydrateClient>
-      <HomePageContent />
+      <HomePage />
     </HydrateClient>
   );
 }
