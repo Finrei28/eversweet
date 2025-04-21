@@ -8,9 +8,22 @@ import { Separator } from "~/components/ui/separator";
 import UberEats from "./_homeComponents/uber-eats";
 import OpeningHours from "./_homeComponents/opening-hours";
 import MenuPhotos from "./_homeComponents/menu-photos";
+import { useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function HomePageContent() {
   const { language } = useLanguage();
+  const searchParams = useSearchParams();
+  const openingHoursRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (searchParams.get("scrollTo") === "opening-hours") {
+      setTimeout(() => {
+        openingHoursRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 300); // slight delay to ensure DOM is ready
+    }
+  }, [searchParams]);
+
   return (
     <div className="flex min-h-screen flex-col lg:mt-0">
       <div className="bg-gradient-to-b from-background to-primary">
@@ -35,7 +48,7 @@ export default function HomePageContent() {
         </section>
       </div>
 
-      <section className="my-10">
+      <section ref={openingHoursRef} id="opening-hours" className="my-10">
         <OpeningHours />
       </section>
 

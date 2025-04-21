@@ -54,6 +54,19 @@ export default function ContactPage() {
               ? "We'd love to hear from you! Reach out for orders or inquiries"
               : "我们很乐意听取您的意见！联系我们进行订购、咨询或只是打个招呼。"}
           </motion.p>
+          <Link
+            href={"/?scrollTo=opening-hours"}
+            className="text-blue-500 underline hover:text-gray-700"
+          >
+            <motion.p
+              className="mt-4 max-w-md text-xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              {language === "en" ? "Business Hours" : "营业时间"}
+            </motion.p>
+          </Link>
         </div>
       </div>
 
