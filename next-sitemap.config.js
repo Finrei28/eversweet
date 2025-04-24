@@ -1,5 +1,5 @@
 // next-sitemap.config.js
-module.exports = {
+export default {
   siteUrl: "https://www.eversweet.co.nz",
   generateRobotsTxt: true,
 };

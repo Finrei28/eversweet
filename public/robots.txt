@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://www.eversweet.co.nz
+
+# Sitemaps
+Sitemap: https://www.eversweet.co.nz/sitemap.xml
