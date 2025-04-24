@@ -19,7 +19,8 @@
     "preview": "next build && next start",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "email": "cp .env ./node_modules/react-email && email dev --dir src/email --port 3001"
+    "email": "cp .env ./node_modules/react-email && email dev --dir src/email --port 3001",
+    "postbuild": "next-sitemap"
   },
   "dependencies": {
     "@auth/core": "^0.38.0",
