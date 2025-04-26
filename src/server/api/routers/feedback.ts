@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
 
 export const feedbackRouter = createTRPCRouter({
   create: publicProcedure
@@ -22,4 +22,12 @@ export const feedbackRouter = createTRPCRouter({
       });
       return feedback;
     }),
+
+  getFeedbacks: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.db.feedback.findMany({
+      orderBy: {
+        rating: "asc",
+      }
+    })
+  })
 });

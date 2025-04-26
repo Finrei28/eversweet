@@ -102,7 +102,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
   return (
     <>
       {/* Desktop Navbar */}
-      <nav className="hidden items-center justify-center py-10 text-primary lg:flex">
+      <nav className="hidden items-center justify-center py-10 text-primary xl:flex">
         <div className="relative mx-auto flex w-full max-w-7xl items-center px-4">
           {/* Logo */}
 
@@ -154,7 +154,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
           <div
             ref={globeRef}
             className={cn(
-              "absolute right-5 z-50 mt-40 hidden rounded-xl bg-white text-lg font-bold text-primary shadow-lg lg:block",
+              "absolute right-5 z-50 mt-40 hidden rounded-xl bg-white text-lg font-bold text-primary shadow-lg xl:block",
               "transform flex-col items-center transition-all duration-500 ease-in-out first:pt-0 last:pb-0",
               globeOpen
                 ? "translate-y-0 opacity-100"
@@ -185,7 +185,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Mobile navbar */}
-      <div className="flex w-full justify-between px-4 text-primary lg:hidden">
+      <div className="flex w-full justify-between px-4 text-primary xl:hidden">
         <Link
           href={pathName.startsWith("/admin") ? `${pathName}` : "/"}
           className="pt-4"
@@ -230,7 +230,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
       <div
         ref={menuRef}
         className={cn(
-          "absolute right-5 top-20 z-50 rounded-xl bg-white p-6 py-3 text-lg font-bold text-primary shadow-lg lg:hidden",
+          "absolute right-5 top-20 z-50 rounded-xl bg-white p-6 py-3 text-lg font-bold text-primary shadow-lg xl:hidden",
           "fixed flex transform flex-col items-center transition-all duration-500 ease-in-out",
           isOpen
             ? "translate-y-0 opacity-100"
