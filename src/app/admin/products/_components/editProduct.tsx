@@ -169,7 +169,6 @@ export function EditProduct({
   }, [dialogOpen, editForm, formDefaultValues]);
   return (
     <>
-      {" "}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild>
           <Button className="rounded-xl">{triggerText}</Button>
@@ -184,7 +183,7 @@ export function EditProduct({
           <Form {...editForm}>
             <form
               onSubmit={editForm.handleSubmit(handleEditSubmit)} // Fix the submit handler to use handleAddSubmit for adding
-              className={`${!error && !(Object.keys(editForm.formState.errors).length > 0) ? "lg:h-auto lg:overflow-y-hidden" : ""} flex h-[80vh] flex-col gap-4 overflow-y-auto pb-2 pr-1`}
+              className={`${!error && !(Object.keys(editForm.formState.errors).length > 0) ? "lg:h-auto" : ""} flex h-[80vh] flex-col gap-4 overflow-y-auto pb-2`}
             >
               {fields.map(({ id, label, type = "text", value }) => (
                 <div key={id} className="grid grid-cols-4 items-center">
@@ -207,7 +206,7 @@ export function EditProduct({
                         }
                         render={({ field }) => (
                           <>
-                            <FormLabel htmlFor={id} className="text-right">
+                            <FormLabel htmlFor={id} className="">
                               {label}
                             </FormLabel>
                             <div className="col-span-3 ml-2">
@@ -218,6 +217,7 @@ export function EditProduct({
                                       id={id}
                                       name={id}
                                       defaultChecked={value === "true"}
+                                      className="flex items-center"
                                       onCheckedChange={field.onChange.bind(
                                         field,
                                       )}
@@ -362,6 +362,7 @@ export function EditProduct({
                   <SubmitButton
                     submitText={submitText}
                     editLoading={editLoading}
+                    language={language}
                   />
                 </div>
               </DialogFooter>
@@ -376,9 +377,11 @@ export function EditProduct({
 function SubmitButton({
   submitText,
   editLoading,
+  language,
 }: {
   submitText: string;
   editLoading: boolean;
+  language: string;
 }) {
   return (
     <Button
@@ -386,7 +389,11 @@ function SubmitButton({
       disabled={editLoading}
       className="mt-5 w-10/12 rounded-xl"
     >
-      {editLoading ? "Saving..." : submitText}
+      {editLoading
+        ? language === "en"
+          ? "Saving..."
+          : "正在保存..."
+        : submitText}
     </Button>
   );
 }

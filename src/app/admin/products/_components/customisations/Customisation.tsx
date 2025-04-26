@@ -22,8 +22,10 @@ import { Category } from "~/app/components/types";
 
 import EditCustomisationDialog from "./editCustomisationDialog";
 import CustomisationForm from "./customisationForm";
+import { useLanguage } from "~/app/components/language";
 
 export function EditCustomisation() {
+  const { language } = useLanguage();
   const [dessertCustomisations] =
     api.productCustomisation.dessertCustomisations.useSuspenseQuery();
   const [categories] = api.dessert.getCategories.useSuspenseQuery();
@@ -150,14 +152,17 @@ export function EditCustomisation() {
       }}
     >
       <DialogTrigger asChild>
-        <Button>Edit customisation</Button>
+        <Button>{language === "en" ? "Edit customisation" : "该定制"}</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[95vh] sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Customisation</DialogTitle>
+          <DialogTitle>
+            {language === "en" ? "Edit customisation" : "该定制"}
+          </DialogTitle>
           <DialogDescription>
-            Make changes to the customisations and hit "save" to save the
-            changes.
+            {language === "en"
+              ? "Make changes to the customisations and hit 'save' to save thechanges."
+              : "进行更改以自定义产品并单击“保存”以保存更改"}
           </DialogDescription>
         </DialogHeader>
         <div
@@ -254,10 +259,16 @@ export function EditCustomisation() {
             />
           )}
         </div>
-        <DialogFooter className="pt-8">
+        <DialogFooter className="">
           {!addNewCustomisation && (
             <Button type="submit" onClick={handleUpdateMany} disabled={saving}>
-              {saving ? "Saving..." : "Save changes"}
+              {saving
+                ? language === "en"
+                  ? "Saving..."
+                  : "正在更改"
+                : language === "en"
+                  ? "Save changes"
+                  : "保存更改"}
             </Button>
           )}
         </DialogFooter>

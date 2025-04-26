@@ -6,9 +6,13 @@ import { formatCurrency } from "~/lib/formatters";
 import Image from "next/image";
 import { api } from "~/trpc/react";
 import { EditCustomisation } from "./customisations/Customisation";
+import { useLanguage } from "~/app/components/language";
 
 export function ProductCards() {
+  const { language } = useLanguage();
   const [products] = api.dessert.getProducts.useSuspenseQuery();
+  const [customisations] =
+    api.productCustomisation.dessertCustomisations.useSuspenseQuery();
   return (
     <>
       {/* Edit and add buttons */}
@@ -39,7 +43,7 @@ export function ProductCards() {
               </div>
               <div className="flex flex-1 flex-col p-6">
                 <h2 className="mb-4 line-clamp-2 text-center text-lg font-bold text-gray-700 md:text-2xl">
-                  {dessert.name} ({dessert.chineseName})
+                  {language === "en" ? dessert.name : dessert.chineseName}
                 </h2>
                 <div className="mt-2 flex flex-col space-y-2 text-sm md:text-base">
                   <p>
@@ -47,7 +51,9 @@ export function ProductCards() {
                   </p>
                   {dessert.description && (
                     <div>
-                      <p className="font-medium">Description:</p>
+                      <p className="font-medium">
+                        {language === "en" ? "Description:" : "描述:"}
+                      </p>
                       <p className="line-clamp-2 text-gray-400">
                         {dessert.description}
                       </p>
@@ -55,20 +61,31 @@ export function ProductCards() {
                   )}
 
                   <div>
-                    <p className="font-medium">Ingredients:</p>
+                    <p className="font-medium">
+                      {language === "en" ? "Ingredients:" : "原料:"}
+                    </p>
                     <p className="line-clamp-2 text-gray-400">
-                      {dessert.ingredients.join(", ")}
+                      {language === "en"
+                        ? dessert.ingredients.join(" • ")
+                        : dessert.ingredients
+                            .map((ingredient) => {
+                              const match = customisations?.find(
+                                (c) => c.name === ingredient,
+                              );
+                              return match?.chineseName || ingredient;
+                            })
+                            .join(" • ")}
                     </p>
                   </div>
                   {dessert.isAvailableForPurchase ? (
                     <div className="mt-1 flex items-center gap-2 text-green-500">
                       <CheckCircle2 />
-                      <span>Available</span>
+                      <span>{language === "en" ? "Available" : "有"}</span>
                     </div>
                   ) : (
                     <div className="mt-1 flex items-center gap-2 text-red-500">
                       <XCircle />
-                      <span>Unavailable</span>
+                      <span>{language === "en" ? "Unavailable" : "卖完"}</span>
                     </div>
                   )}
                 </div>

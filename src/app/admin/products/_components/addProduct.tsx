@@ -150,7 +150,7 @@ export function AddProduct({
       <DialogTrigger asChild>
         <Button>{triggerText}</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="h-[95vh] sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -160,7 +160,7 @@ export function AddProduct({
         <Form {...addForm}>
           <form
             onSubmit={addForm.handleSubmit(handleAddSubmit)} // Fix the submit handler to use handleAddSubmit for adding
-            className="grid gap-4"
+            className={`${!error && !(Object.keys(addForm.formState.errors).length > 0) ? "lg:h-auto" : ""} flex h-[80vh] flex-col gap-4 overflow-y-auto pb-2 pt-2`}
           >
             {fields.map(({ id, label, type = "text", value }) => (
               <div key={id} className="grid grid-cols-4 items-center">
@@ -179,10 +179,10 @@ export function AddProduct({
                     }
                     render={({ field }) => (
                       <>
-                        <FormLabel htmlFor={id} className="text-right">
+                        <FormLabel htmlFor={id} className="">
                           {label}
                         </FormLabel>
-                        <div className="col-span-3 ml-2 w-full">
+                        <div className="col-span-3 ml-2">
                           <div className="relative">
                             <FormControl>
                               {typeof field.value === "object" ? (
@@ -310,7 +310,11 @@ export function AddProduct({
             )}
             <DialogFooter>
               <div className="flex w-full flex-col items-center justify-center">
-                <SubmitButton submitText={submitText} addLoading={addLoading} />
+                <SubmitButton
+                  submitText={submitText}
+                  addLoading={addLoading}
+                  language={language}
+                />
               </div>
             </DialogFooter>
           </form>
@@ -323,13 +327,19 @@ export function AddProduct({
 function SubmitButton({
   submitText,
   addLoading,
+  language,
 }: {
   submitText: string;
   addLoading: boolean;
+  language: string;
 }) {
   return (
     <Button disabled={addLoading} className="mt-5 w-10/12 rounded-xl">
-      {addLoading ? "Submitting..." : submitText}
+      {addLoading
+        ? language === "en"
+          ? "Submitting..."
+          : "正在提交..."
+        : submitText}
     </Button>
   );
 }
