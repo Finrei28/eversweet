@@ -150,7 +150,7 @@ export function AddProduct({
       <DialogTrigger asChild>
         <Button>{triggerText}</Button>
       </DialogTrigger>
-      <DialogContent className="h-[95vh] sm:max-w-[425px]">
+      <DialogContent className="h-[90vh] sm:max-w-[425px] lg:h-[95vh]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -160,7 +160,7 @@ export function AddProduct({
         <Form {...addForm}>
           <form
             onSubmit={addForm.handleSubmit(handleAddSubmit)} // Fix the submit handler to use handleAddSubmit for adding
-            className={`${!error && !(Object.keys(addForm.formState.errors).length > 0) ? "lg:h-auto" : ""} flex h-[80vh] flex-col gap-4 overflow-y-auto pb-2 pt-2`}
+            className={`${!error && !(Object.keys(addForm.formState.errors).length > 0) ? "lg:h-auto" : ""} flex h-[70vh] flex-col gap-4 overflow-y-auto pb-2 pt-2`}
           >
             {fields.map(({ id, label, type = "text", value }) => (
               <div key={id} className="grid grid-cols-4 items-center">

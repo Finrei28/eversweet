@@ -173,7 +173,7 @@ export function EditProduct({
         <DialogTrigger asChild>
           <Button className="rounded-xl">{triggerText}</Button>
         </DialogTrigger>
-        <DialogContent className="h-[95vh] sm:max-w-[425px]">
+        <DialogContent className="h-[90vh] sm:max-w-[425px] lg:h-[95vh]">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>
@@ -183,7 +183,7 @@ export function EditProduct({
           <Form {...editForm}>
             <form
               onSubmit={editForm.handleSubmit(handleEditSubmit)} // Fix the submit handler to use handleAddSubmit for adding
-              className={`${!error && !(Object.keys(editForm.formState.errors).length > 0) ? "lg:h-auto" : ""} flex h-[80vh] flex-col gap-4 overflow-y-auto pb-2`}
+              className={`${!error && !(Object.keys(editForm.formState.errors).length > 0) ? "lg:h-auto" : ""} flex h-[75vh] flex-col gap-4 overflow-y-auto pb-2`}
             >
               {fields.map(({ id, label, type = "text", value }) => (
                 <div key={id} className="grid grid-cols-4 items-center">
