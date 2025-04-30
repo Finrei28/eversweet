@@ -39,7 +39,8 @@ export const authConfig = {
         if (
           user &&
           user.password &&
-          bcrypt.compareSync(credentials.password, user.password)
+          bcrypt.compareSync(credentials.password, user.password) &&
+          user.role === "ADMIN"
         ) {
           return {
             ...user,
@@ -48,7 +49,7 @@ export const authConfig = {
               : null,
           };
         }
-        // Return null if user data could not be retrieved
+        // Return null if user data could not be retrieved or user is not admin
         return null;
       },
     }),
