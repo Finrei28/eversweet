@@ -43,7 +43,8 @@ model Session {
 
 model User {
     id                      String    @id @default(cuid())
-    name                    String?
+    firstName               String?
+    lastName                String?
     username                String?    @unique
     password                String
     email                   String   @unique
@@ -56,6 +57,7 @@ model User {
     otp                     String? // One time password
     otpExpiresAt            DateTime? // One time password expiration date
     Authenticator           Authenticator[]
+    appOrders               Order[] @relation("UserOrders")
 }
 
 model Authenticator {
@@ -155,12 +157,20 @@ model Order {
     customerLastName    String
     customerEmail       String
     customerPhoneNumber String?
+    appUserId           String?
+    appUser             User?     @relation("UserOrders", fields: [appUserId], references: [id], onDelete: SetNull)
     completedAt         DateTime?
     pickedUpAt          DateTime?
     status              Status
     pickUpTime          DateTime  @default(now())
     GST                 Int
+    source              OrderSource @default(WEBSITE)
     @@index([status])
+}
+
+enum OrderSource {
+  WEBSITE
+  APP
 }
 
 enum Status {
