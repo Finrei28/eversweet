@@ -83,6 +83,7 @@ model Dessert {
   chineseName            String
   description            String?
   priceInCents           Int
+  priceInLoyaltyPoints   Int                             @default(500)
   imagePath              String
   imagePublicId          String
   ingredients            String[]
