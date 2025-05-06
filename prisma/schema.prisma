@@ -194,7 +194,7 @@ model Feedback {
 }
 
 model Loyalty {
-  id     String @id
+  id     String @id @default(cuid())
   points Int
   userId String @unique
   User   User   @relation(fields: [userId], references: [id])
