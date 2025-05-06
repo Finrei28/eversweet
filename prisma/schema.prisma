@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,22 +8,21 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Necessary for Next auth
 model Account {
   id                       String  @id @default(cuid())
   userId                   String
   type                     String
   provider                 String
   providerAccountId        String
-  refresh_token            String? // @db.Text
-  access_token             String? // @db.Text
+  refresh_token            String?
+  access_token             String?
   expires_at               Int?
   token_type               String?
   scope                    String?
-  id_token                 String? // @db.Text
+  id_token                 String?
   session_state            String?
-  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   refresh_token_expires_in Int?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -41,22 +37,22 @@ model Session {
 
 model User {
   id                   String          @id @default(cuid())
-  firstName            String?
-  lastName             String?
   username             String?         @unique
   password             String
   email                String          @unique
   emailVerified        DateTime?
   image                String?
-  accounts             Account[]
-  sessions             Session[]
   role                 Role
   requires2FAExpiresAt DateTime?
-  otp                  String? // One time password
-  otpExpiresAt         DateTime? // One time password expiration date
+  otp                  String?
+  otpExpiresAt         DateTime?
+  firstName            String?
+  lastName             String?
+  accounts             Account[]
   Authenticator        Authenticator[]
+  Loyalty              Loyalty?
   appOrders            Order[]         @relation("UserOrders")
-  loyalty              Loyalty?
+  sessions             Session[]
 }
 
 model Authenticator {
@@ -68,15 +64,9 @@ model Authenticator {
   credentialDeviceType String
   credentialBackedUp   Boolean
   transports           String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, credentialID])
-}
-
-enum Role {
-  ADMIN
-  USER
 }
 
 model VerificationToken {
@@ -99,29 +89,29 @@ model Dessert {
   isAvailableForPurchase Boolean                         @default(false)
   createdAt              DateTime                        @default(now())
   updatedAt              DateTime                        @updatedAt
-  orders                 OrderDessert[]
-  customisations         DessertCustomisationOnDessert[]
   categoryId             String
   category               Category                        @relation(fields: [categoryId], references: [id])
+  customisations         DessertCustomisationOnDessert[]
+  orders                 OrderDessert[]
 }
 
 model Category {
   id             String                  @id @default(cuid())
-  name           String // Category name (e.g., "Sago Series")
+  name           String
   chineseName    String
-  desserts       Dessert[]
   customisations CategoryCustomisation[]
+  desserts       Dessert[]
 }
 
 model DessertCustomisation {
   id                     String                          @id @default(cuid())
-  name                   String // Customisation name (e.g., "Extra Chocolate")
+  name                   String
   chineseName            String
-  priceInCents           Int // Additional price for this customisation
+  priceInCents           Int
   isAvailableForPurchase Boolean                         @default(false)
+  categories             CategoryCustomisation[]
   desserts               DessertCustomisationOnDessert[]
   orderCustomisations    OrderDessertCustomisation[]
-  categories             CategoryCustomisation[]
 }
 
 model CategoryCustomisation {
@@ -137,16 +127,22 @@ model CategoryCustomisation {
 model DessertCustomisationOnDessert {
   dessertId       String
   customisationId String
-  dessert         Dessert              @relation(fields: [dessertId], references: [id], onDelete: Cascade)
   customisation   DessertCustomisation @relation(fields: [customisationId], references: [id], onDelete: Cascade)
+  dessert         Dessert              @relation(fields: [dessertId], references: [id], onDelete: Cascade)
 
-  @@id([dessertId, customisationId]) // Composite primary key
+  @@id([dessertId, customisationId])
 }
+
+model TempOrderCounter {
+  id      Int      @id @default(1000)
+  date    DateTime @unique
+  counter Int
+}
+
 
 model Order {
   id                  String         @id @default(cuid())
   tempOrderId         String
-  desserts            OrderDessert[]
   priceInCents        Int
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
@@ -154,16 +150,59 @@ model Order {
   customerLastName    String
   customerEmail       String
   customerPhoneNumber String?
-  appUserId           String?
-  appUser             User?          @relation("UserOrders", fields: [appUserId], references: [id], onDelete: SetNull)
   completedAt         DateTime?
   pickedUpAt          DateTime?
   status              Status
   pickUpTime          DateTime       @default(now())
   GST                 Int
+  appUserId           String?
   source              OrderSource    @default(WEBSITE)
+  appUser             User?          @relation("UserOrders", fields: [appUserId], references: [id])
+  desserts            OrderDessert[]
 
   @@index([status])
+}
+
+model OrderDessertCustomisation {
+  id              String               @id @default(cuid())
+  orderDessertId  String
+  customisationId String
+  quantity        Int                  @default(1)
+  customisation   DessertCustomisation @relation(fields: [customisationId], references: [id], onDelete: Cascade)
+  orderDessert    OrderDessert         @relation(fields: [orderDessertId], references: [id], onDelete: Cascade)
+}
+
+model OrderDessert {
+  id             String                      @id @default(cuid())
+  orderId        String
+  dessertId      String
+  quantity       Int
+  dessert        Dessert                     @relation(fields: [dessertId], references: [id])
+  order          Order                       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customisations OrderDessertCustomisation[]
+
+  @@unique([orderId, dessertId, id])
+}
+
+model Feedback {
+  id              String   @id @default(cuid())
+  rating          Int
+  createdAt       DateTime @default(now())
+  feedbackMessage String
+  name            String?
+  email           String
+}
+
+model Loyalty {
+  id     String @id
+  points Int
+  userId String @unique
+  User   User   @relation(fields: [userId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  USER
 }
 
 enum OrderSource {
@@ -175,46 +214,4 @@ enum Status {
   PENDING
   COMPLETED
   PICKED_UP
-}
-
-model OrderDessertCustomisation {
-  id              String               @id @default(cuid())
-  orderDessertId  String
-  orderDessert    OrderDessert         @relation(fields: [orderDessertId], references: [id], onDelete: Cascade)
-  customisation   DessertCustomisation @relation(fields: [customisationId], references: [id], onDelete: Cascade)
-  customisationId String
-  quantity        Int                  @default(1)
-}
-
-// Dessert-Order Many-Many relationship
-model OrderDessert {
-  id        String @id @default(cuid())
-  orderId   String
-  dessertId String
-  quantity  Int // To track the quantity of each dessert in an order
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  dessert Dessert @relation(fields: [dessertId], references: [id], onDelete: Restrict)
-
-  customisations OrderDessertCustomisation[] // To track each customisation for a dessert for an order.
-
-  @@unique([orderId, dessertId, id]) // Composite primary key
-}
-
-//Feedback
-
-model Feedback {
-  id              String   @id @default(cuid())
-  name            String?
-  email           String
-  rating          Int
-  feedbackMessage String
-  createdAt       DateTime @default(now())
-}
-
-model Loyalty {
-  id     String @id @default(cuid())
-  points Int
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
 }

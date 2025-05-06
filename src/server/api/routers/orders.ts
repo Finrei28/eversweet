@@ -27,9 +27,29 @@ export const orderRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Normalize to midnight
+
+      let counter = await ctx.db.tempOrderCounter.findUnique({
+        where: { date: today },
+      });
+
+      if (!counter) {
+        counter = await ctx.db.tempOrderCounter.create({
+          data: {
+            date: today,
+            counter: 1000,
+          },
+        });
+      } else {
+        counter = await ctx.db.tempOrderCounter.update({
+          where: { date: today },
+          data: { counter: counter.counter + 1 },
+        });
+      }
       const order = await ctx.db.order.create({
         data: {
-          tempOrderId: String(Math.floor(Math.random() * 100000)),
+          tempOrderId: String(counter.counter),
           customerFirstName: input.customerFirstName,
           customerLastName: input.customerLastName,
           customerEmail: input.customerEmail,
