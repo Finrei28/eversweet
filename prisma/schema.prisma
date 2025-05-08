@@ -48,6 +48,7 @@ model User {
   otpExpiresAt         DateTime?
   firstName            String?
   lastName             String?
+  phone                String?
   accounts             Account[]
   Authenticator        Authenticator[]
   Loyalty              Loyalty?
