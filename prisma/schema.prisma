@@ -49,6 +49,7 @@ model User {
   firstName            String?
   lastName             String?
   phone                String?
+  stripeCustomerId     String?
   accounts             Account[]
   Authenticator        Authenticator[]
   Loyalty              Loyalty?
