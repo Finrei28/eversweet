@@ -162,7 +162,8 @@ model Order {
   source              OrderSource    @default(WEBSITE)
   appUser             User?          @relation("UserOrders", fields: [appUserId], references: [id])
   desserts            OrderDessert[]
-
+  paymentIntentId     String?
+  paymentMethodId     String?
   @@index([status])
 }
 
