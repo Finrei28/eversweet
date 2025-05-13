@@ -50,6 +50,7 @@ model User {
   lastName             String?
   phone                String?
   stripeCustomerId     String?
+  pushToken            String?
   accounts             Account[]
   Authenticator        Authenticator[]
   Loyalty              Loyalty?
