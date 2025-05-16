@@ -56,6 +56,7 @@ model User {
   Loyalty              Loyalty?
   appOrders            Order[]         @relation("UserOrders")
   sessions             Session[]
+  cart                 CartItem[]
 }
 
 model Authenticator {
@@ -86,7 +87,6 @@ model Dessert {
   chineseName            String
   description            String?
   priceInCents           Int
-  priceInLoyaltyPoints   Int                             @default(500)
   imagePath              String
   imagePublicId          String
   ingredients            String[]
@@ -94,6 +94,7 @@ model Dessert {
   createdAt              DateTime                        @default(now())
   updatedAt              DateTime                        @updatedAt
   categoryId             String
+  priceInLoyaltyPoints   Int                             @default(500)
   category               Category                        @relation(fields: [categoryId], references: [id])
   customisations         DessertCustomisationOnDessert[]
   orders                 OrderDessert[]
@@ -143,7 +144,6 @@ model TempOrderCounter {
   counter Int
 }
 
-
 model Order {
   id                  String         @id @default(cuid())
   tempOrderId         String
@@ -161,10 +161,11 @@ model Order {
   GST                 Int
   appUserId           String?
   source              OrderSource    @default(WEBSITE)
-  appUser             User?          @relation("UserOrders", fields: [appUserId], references: [id])
-  desserts            OrderDessert[]
   paymentIntentId     String?
   paymentMethodId     String?
+  appUser             User?          @relation("UserOrders", fields: [appUserId], references: [id])
+  desserts            OrderDessert[]
+
   @@index([status])
 }
 
@@ -221,4 +222,38 @@ enum Status {
   MAKING
   READY
   PICKED_UP
+}
+
+
+model CartItem {
+  id                String          @id @default(uuid())
+  user              User            @relation(fields: [userId], references: [id])
+  userId            String
+  dessert           DessertInCart         @relation(fields: [dessertId], references: [id])
+  dessertId         String
+  itemPriceInCents  Int
+  quantity          Int
+  loyaltyPointsUsed Int?
+  customisations    CustomisationInCart[]
+}
+
+model CustomisationInCart {
+  id            String   @id @default(uuid())
+  cartItem      CartItem @relation(fields: [cartItemId], references: [id])
+  cartItemId    String
+  chineseName   String
+  name          String
+  quantity      Int
+}
+
+model DessertInCart {
+  id                  String   @id @default(uuid())
+  name                String
+  chineseName         String
+  description         String?
+  priceInCents        Int
+  priceInLoyaltyPoints Int
+  imagePath           String
+  ingredients         String[] // Stored as string[] (PostgreSQL/SQLite)
+  cartItems           CartItem[]
 }

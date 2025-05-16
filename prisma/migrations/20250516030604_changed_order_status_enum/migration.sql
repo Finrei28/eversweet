@@ -12,7 +12,7 @@ CREATE TYPE "Status" AS ENUM (
 
 -- Step 3: Update your column(s) to use the new enum
 -- Replace "orders" and "status" with your actual table and column names
-ALTER TABLE "orders"
+ALTER TABLE "Order"
 ALTER COLUMN "status" TYPE "Status"
 USING "status"::text::"Status";
 

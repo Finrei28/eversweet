@@ -144,7 +144,7 @@ export function DataTable() {
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className={`${status === "COMPLETED" ? "bg-green-500" : status === "PICKED_UP" ? "bg-red-500" : customisationsExist ? "bg-orange-200" : ""}`}
+                    className={`${status === "READY" ? "bg-green-500" : status === "PICKED_UP" ? "bg-red-500" : customisationsExist ? "bg-orange-200" : ""}`}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id} className="p-5">

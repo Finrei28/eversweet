@@ -122,7 +122,7 @@ export const orderRouter = createTRPCRouter({
   getAllCurrentOrders: protectedProcedure.query(async ({ ctx }) => {
     return await ctx.db.order.findMany({
       where: {
-        status: { in: ["PENDING", "COMPLETED"] },
+        status: { in: ["PENDING", "READY"] },
         pickUpTime: {
           lte: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
         },
@@ -200,7 +200,7 @@ export const orderRouter = createTRPCRouter({
           status: input.status as Status,
           pickedUpAt: input.status === "PICKED_UP" ? new Date() : null,
           completedAt:
-            input.status === "COMPLETED" || input.status === "PICKED_UP"
+            input.status === "READY" || input.status === "PICKED_UP"
               ? new Date()
               : input.status === "PENDING"
                 ? null

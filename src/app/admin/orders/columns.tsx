@@ -44,12 +44,12 @@ export function GetOrderColumns({
     onSuccess: async (data) => {
       await utils.order.getAllCurrentOrders.invalidate();
       toast({
-        variant: `${data.status === "COMPLETED" ? "picked_up" : data.status === "PENDING" ? "pending" : "default"}`,
+        variant: `${data.status === "READY" ? "picked_up" : data.status === "PENDING" ? "pending" : "default"}`,
         title: language === "en" ? `Status Changed` : "状态已更改",
         description:
           language === "en"
             ? `Order ${data.orderId} status has been changed to ${data.status}`
-            : `单号 ${data.orderId} 状态已更改${data.status === "COMPLETED" ? "已完成" : data.status === "PENDING" ? "待处理" : "已取货"}`,
+            : `单号 ${data.orderId} 状态已更改${data.status === "READY" ? "已完成" : data.status === "PENDING" ? "待处理" : "已取货"}`,
       });
     },
   });
@@ -132,7 +132,7 @@ export function GetOrderColumns({
         const chineseStatus =
           status === "PENDING"
             ? "待处理"
-            : status === "COMPLETED"
+            : status === "READY"
               ? "已完成"
               : "已取货";
         return (
@@ -146,7 +146,7 @@ export function GetOrderColumns({
       id: "actions",
       cell: ({ row }) => {
         const statusToChange =
-          row.original.status === "PENDING" ? "COMPLETED" : "PENDING";
+          row.original.status === "PENDING" ? "READY" : "PENDING";
         const id = row.original.id;
         return (
           <DropdownMenu>
