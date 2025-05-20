@@ -165,6 +165,7 @@ model Order {
   paymentMethodId     String?
   appUser             User?          @relation("UserOrders", fields: [appUserId], references: [id])
   desserts            OrderDessert[]
+  notified            Boolean        @default(false)
 
   @@index([status])
 }
