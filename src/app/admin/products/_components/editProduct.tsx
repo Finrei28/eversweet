@@ -161,6 +161,7 @@ export function EditProduct({
       // ✅ Runs only when closing the dialog
       editForm.clearErrors();
       editForm.reset();
+      setEditLoading(false);
       setImagePreview(formDefaultValues.imagePath);
       setPriceInCents(null);
       setError(null);

@@ -5,12 +5,11 @@ import cloudinary from "~/lib/cloudinary";
 import { db } from "~/server/db";
 
 // Handle POST request for uploading an image
-export async function POST(req: Request) {
+export async function PATCH(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("image") as File;
     const productId = formData.get("productId") as string;
-
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
