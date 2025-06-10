@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import cloudinary from "~/lib/cloudinary";
 import { db } from "~/server/db";
+import { generateHash, imageExists } from "../uploadImage/route";
 
 // Handle POST request for uploading an image
 export async function PATCH(req: Request) {
@@ -27,9 +28,27 @@ export async function PATCH(req: Request) {
 
     await cloudinary.uploader.destroy(product.imagePublicId);
 
+    // Generate content-based hash for deduplication
+    const hash = generateHash(arrayBuffer);
+    const publicId = `products/${hash}`;
+
+    // Check if this image already exists
+    const exists = await imageExists(publicId);
+
+    if (exists) {
+      const existing = await cloudinary.api.resource(publicId);
+      return NextResponse.json({
+        imagePath: existing.secure_url,
+        publicId: existing.public_id,
+        fromCache: true,
+      });
+    }
+
     const uploadedResponse = await cloudinary.uploader.upload(dataUri, {
-      use_filename: true,
+      public_id: publicId,
+      use_filename: false,
       folder: "products",
+      overwrite: false,
     });
     const imagePath = uploadedResponse.secure_url;
     const imagePublicId = uploadedResponse.public_id;

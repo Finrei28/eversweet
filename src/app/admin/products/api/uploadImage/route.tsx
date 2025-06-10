@@ -5,12 +5,12 @@ import cloudinary from "~/lib/cloudinary";
 import crypto from "crypto";
 
 // Generate SHA1 hash of image buffer
-function generateHash(buffer: ArrayBuffer) {
+export function generateHash(buffer: ArrayBuffer) {
   return crypto.createHash("sha1").update(Buffer.from(buffer)).digest("hex");
 }
 
 // Check if an image with a given public_id exists in Cloudinary
-async function imageExists(publicId: string): Promise<boolean> {
+export async function imageExists(publicId: string): Promise<boolean> {
   try {
     await cloudinary.api.resource(publicId);
     return true;

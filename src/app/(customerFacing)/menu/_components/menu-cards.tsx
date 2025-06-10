@@ -218,14 +218,20 @@ export default function MenuCards() {
                         <CardDescription className="line-clamp-2 text-[0.70rem] md:text-xs">
                           {language === "en"
                             ? dessert.ingredients.join(" • ")
-                            : dessert.ingredients
-                                .map((ingredient) => {
-                                  const match = customisations?.find(
-                                    (c) => c.name === ingredient,
-                                  );
-                                  return match?.chineseName || ingredient;
-                                })
-                                .join(" • ")}
+                            : (() => {
+                                const chineseNames = dessert.ingredients
+                                  .map((ingredient) => {
+                                    const match = customisations?.find(
+                                      (c) => c.name === ingredient,
+                                    );
+                                    return match?.chineseName;
+                                  })
+                                  .filter(Boolean); // remove undefined
+
+                                return chineseNames.length > 0
+                                  ? chineseNames.join(" • ")
+                                  : "";
+                              })()}
                         </CardDescription>
                       </CardHeader>
                       <CardFooter className="mt-auto pt-4">
