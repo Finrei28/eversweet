@@ -26,7 +26,14 @@ export async function PATCH(req: Request) {
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
     const dataUri = `data:${file.type};base64,${base64Image}`;
 
-    await cloudinary.uploader.destroy(product.imagePublicId);
+    const imageExistsInOtherProduct = await db.dessert.findFirst({
+      where: {
+        imagePublicId: product.imagePublicId,
+      },
+    });
+    if (!imageExistsInOtherProduct) {
+      await cloudinary.uploader.destroy(product.imagePublicId);
+    }
 
     // Generate content-based hash for deduplication
     const hash = generateHash(arrayBuffer);
@@ -37,6 +44,7 @@ export async function PATCH(req: Request) {
 
     if (exists) {
       const existing = await cloudinary.api.resource(publicId);
+
       return NextResponse.json({
         imagePath: existing.secure_url,
         publicId: existing.public_id,
