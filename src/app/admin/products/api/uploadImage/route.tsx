@@ -1,27 +1,10 @@
 // src/app/api/upload/route.ts
 
 import { NextResponse } from "next/server";
-import cloudinary from "~/lib/cloudinary";
+import cloudinary, { generateHash, imageExists } from "~/lib/cloudinary";
 import crypto from "crypto";
 
 // Generate SHA1 hash of image buffer
-export function generateHash(buffer: ArrayBuffer) {
-  return crypto.createHash("sha1").update(Buffer.from(buffer)).digest("hex");
-}
-
-// Check if an image with a given public_id exists in Cloudinary
-export async function imageExists(publicId: string): Promise<boolean> {
-  try {
-    await cloudinary.api.resource(publicId);
-    return true;
-  } catch (err: any) {
-    if (err.error.http_code === 404) {
-      return false;
-    }
-
-    throw err;
-  }
-}
 
 export async function POST(req: Request) {
   try {

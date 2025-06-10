@@ -1,9 +1,8 @@
 // src/app/api/upload/route.ts
 
 import { NextResponse } from "next/server";
-import cloudinary from "~/lib/cloudinary";
+import cloudinary, { generateHash, imageExists } from "~/lib/cloudinary";
 import { db } from "~/server/db";
-import { generateHash, imageExists } from "../uploadImage/route";
 
 // Handle POST request for uploading an image
 export async function PATCH(req: Request) {
