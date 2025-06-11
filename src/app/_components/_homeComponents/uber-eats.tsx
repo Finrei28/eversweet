@@ -1,6 +1,8 @@
 "use client";
 import Image from "next/image";
 import { useLanguage } from "../../components/language";
+import Link from "next/link";
+import { Button } from "~/components/ui/button";
 export default function UberEats() {
   const { language } = useLanguage();
   return (
@@ -14,8 +16,8 @@ export default function UberEats() {
       />
       <h2 className="mb-2 text-2xl font-bold text-gray-900">
         {language === "en"
-          ? "We will deliver with Uber Eats soon!"
-          : "我们很快将会通过 Uber Eats 提供配送服务！"}{" "}
+          ? "We deliver with Uber Eats!"
+          : "我们通过 Uber Eats 提供配送服务！"}{" "}
         {/* 我们使用Uber Eats送货! */}
       </h2>
 
@@ -24,8 +26,10 @@ export default function UberEats() {
           ? "Enjoy your favorite desserts and drinks delivered straight to your door."
           : "享受您最喜欢的甜点和饮料直接送到您家门口。"}
       </p>
-      {/* <Link
-        href={"https://www.ubereats.com"}
+      <Link
+        href={
+          "https://www.ubereats.com/nz/store/eversweet/cdSuxGsZSUSGotTxyjfrvQ?srsltid=AfmBOorEzbiEiYzBZc5uP31Zun7vFrenM-uG87mVrpyvIEMeTRDPFhWS"
+        }
         rel="noopener noreferrer"
         target="_blank"
       >
@@ -34,7 +38,7 @@ export default function UberEats() {
           <span className="text-black">Uber</span>{" "}
           <span className="text-green-500">Eats</span>
         </Button>
-      </Link> */}
+      </Link>
     </section>
   );
 }
