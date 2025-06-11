@@ -33,7 +33,7 @@ export default function UberEats() {
         rel="noopener noreferrer"
         target="_blank"
       >
-        <Button className="p-6 text-xl lg:p-7 lg:text-2xl">
+        <Button className="bg-secondary p-6 text-xl text-white shadow-lg hover:bg-secondary/80 lg:p-7 lg:text-2xl">
           {language === "en" ? "Order with" : "订购与"}{" "}
           <span className="text-black">Uber</span>{" "}
           <span className="text-green-500">Eats</span>
