@@ -14,45 +14,45 @@ import {
 export const productRouter = createTRPCRouter({
   //getMostPopularProducts
   getMostPopularProducts: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db.dessert.findMany({
-      where: {
-        isAvailableForPurchase: true,
-        imagePublicId: {
-          not: "products/products/c639c3892b6fe366cbff9ddb29b7b65d8e551086",
-        },
-      },
-    });
-
-    // const popularDesserts = await ctx.db.orderDessert.groupBy({
-    //   by: ["dessertId"],
-    //   _sum: {
-    //     quantity: true, // Sum up the quantity of each dessert
-    //   },
-    //   orderBy: {
-    //     _sum: {
-    //       quantity: "desc", // Order by the most ordered desserts
+    // return await ctx.db.dessert.findMany({
+    //   where: {
+    //     isAvailableForPurchase: true,
+    //     imagePublicId: {
+    //       not: "products/products/c639c3892b6fe366cbff9ddb29b7b65d8e551086",
     //     },
     //   },
-    //   take: 10, // Get the top 10
     // });
-    // console.log(popularDesserts);
-    // // Fetch the actual dessert details
-    // const desserts = await ctx.db.dessert.findMany({
-    //   where: {
-    //     id: { in: popularDesserts.map((d) => d.dessertId) }, // Get desserts with matching IDs
-    //   },
-    //   select: {
-    //     id: true,
-    //     name: true,
-    //     chineseName: true,
-    //     description: true,
-    //     priceInCents: true,
-    //     imagePath: true,
-    //     ingredients: true,
-    //     isAvailableForPurchase: true,
-    //   },
-    // });
-    // return desserts;
+
+    const popularDesserts = await ctx.db.orderDessert.groupBy({
+      by: ["dessertId"],
+      _sum: {
+        quantity: true, // Sum up the quantity of each dessert
+      },
+      orderBy: {
+        _sum: {
+          quantity: "desc", // Order by the most ordered desserts
+        },
+      },
+      take: 10, // Get the top 10
+    });
+    console.log(popularDesserts);
+    // Fetch the actual dessert details
+    const desserts = await ctx.db.dessert.findMany({
+      where: {
+        id: { in: popularDesserts.map((d) => d.dessertId) }, // Get desserts with matching IDs
+      },
+      select: {
+        id: true,
+        name: true,
+        chineseName: true,
+        description: true,
+        priceInCents: true,
+        imagePath: true,
+        ingredients: true,
+        isAvailableForPurchase: true,
+      },
+    });
+    return desserts;
   }),
 
   //get products for menu display
