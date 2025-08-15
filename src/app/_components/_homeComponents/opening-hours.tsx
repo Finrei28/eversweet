@@ -29,7 +29,7 @@ export default function OpeningHours() {
               },
               {
                 day: `${language === "en" ? "Wednesday" : "星期三"}`,
-                hours: "12:30 PM - 9:30 PM",
+                hours: `${language === "en" ? "Closed" : "休息日"}`,
               },
               {
                 day: `${language === "en" ? "Thursday" : "星期四"}`,

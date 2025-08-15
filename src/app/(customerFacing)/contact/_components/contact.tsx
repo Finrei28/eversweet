@@ -121,8 +121,8 @@ export default function ContactComponent() {
                 </h2>
                 <p className="mb-4 text-gray-600">
                   {language === "en"
-                    ? "Send us an email and we'll get back to you within 24 hours."
-                    : "给我们发送电子邮件，我们将在24小时内回复您。"}
+                    ? "Send us an email and we'll get back to you as soon as possible."
+                    : "给我们发送电子邮件，我们会尽快回复您。"}
                 </p>
                 <p className="font-mono text-lg font-semibold text-primary">
                   eversweet@eversweet.co.nz

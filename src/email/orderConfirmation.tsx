@@ -546,7 +546,7 @@ export default function EmailOrderConfirmation({
                     <Column className="h-20 w-20 py-4 align-top">
                       {item.dessert.imagePath ? (
                         <Img
-                          src={item.dessert.imagePath || "/placeholder.svg"}
+                          src={item.dessert.imagePath}
                           alt={item.dessert.name}
                           width={"100%"}
                           height={"100%"}

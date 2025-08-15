@@ -76,6 +76,7 @@ const findNextOpenDate = (startDate: Date): Date => {
   return date;
 };
 
+// Helper to convert 12.5 -> [12, 30]
 const convertFractionalHour = (hour: number): [number, number] => {
   const h = Math.floor(hour);
   const m = (hour - h) * 60;
@@ -239,8 +240,6 @@ export function PickupTimePicker({
     return slots;
   };
 
-  // Helper to convert 12.5 -> [12, 30]
-
   // Set initial value if not provided
   useEffect(() => {
     if (!value) {
@@ -278,23 +277,31 @@ export function PickupTimePicker({
     const { startDateTime, endDateTime } = getStartEndHours(dayHours, date);
 
     // Keep the same time if possible, otherwise set to opening time
-    if (value) {
-      const newDate = new Date(date);
-      newDate.setHours(value.getHours(), value.getMinutes());
 
-      // Validate the time is within business hours
-      if (
-        dayHours?.open !== null &&
-        dayHours?.close !== null &&
-        newDate.getHours() >= dayHours?.open &&
-        newDate.getHours() < dayHours?.close &&
-        newDate.getMinutes() >= startDateTime.getMinutes() &&
-        newDate.getMinutes() < endDateTime.getMinutes()
-      ) {
-        onChange(newDate);
-        return;
-      }
+    const newDate = new Date(date);
+
+    const firstTimeSlot =
+      generateTimeSlots(newDate)[0] ||
+      set(date, {
+        hours: startDateTime.getHours() || 12,
+        minutes: startDateTime.getMinutes(),
+      });
+
+    newDate.setHours(firstTimeSlot.getHours(), firstTimeSlot.getMinutes());
+    // console.log(newDate.getMinutes() < endDateTime.getMinutes());
+    // Validate the time is within business hours
+    if (
+      dayHours?.open !== null &&
+      dayHours?.close !== null &&
+      newDate.getHours() >= dayHours?.open &&
+      newDate.getHours() < dayHours?.close &&
+      newDate.getMinutes() >= startDateTime.getMinutes()
+    ) {
+      onChange(newDate);
+      return;
     }
+    // &&
+    //     newDate.getMinutes() < endDateTime.getMinutes()
 
     // Default to opening time
 
@@ -386,7 +393,12 @@ export function PickupTimePicker({
               <TabsTrigger value="asap" onClick={handleAsapSelect}>
                 {language === "en" ? "ASAP" : "尽快"}
               </TabsTrigger>
-              <TabsTrigger value="custom">
+              <TabsTrigger
+                value="custom"
+                onClick={() =>
+                  handleDateSelect(new Date(new Date().setHours(0, 0, 0, 0)))
+                }
+              >
                 {language === "en" ? "Pick up later" : "稍后取货"}
               </TabsTrigger>
             </TabsList>
@@ -472,20 +484,24 @@ export function PickupTimePicker({
                 <ScrollArea className="h-72">
                   <div className="grid grid-cols-2 gap-2 pr-3">
                     {value && isBusinessDay(value) ? (
-                      generateTimeSlots(value).map((time, i) => (
-                        <Button
-                          key={i}
-                          variant={
-                            value && time.getTime() === value.getTime()
-                              ? "default"
-                              : "outline"
-                          }
-                          size="sm"
-                          onClick={() => handleTimeSelect(time)}
-                        >
-                          {format(time, "h:mm a")}
-                        </Button>
-                      ))
+                      generateTimeSlots(value).map((time, i) => {
+                        console.log({ value: value });
+                        console.log({ time: time });
+                        return (
+                          <Button
+                            key={i}
+                            variant={
+                              value && time.getTime() === value.getTime()
+                                ? "default"
+                                : "outline"
+                            }
+                            size="sm"
+                            onClick={() => handleTimeSelect(time)}
+                          >
+                            {format(time, "h:mm a")}
+                          </Button>
+                        );
+                      })
                     ) : value ? (
                       <p className="col-span-2 py-4 text-center text-sm text-muted-foreground">
                         {language === "en"
