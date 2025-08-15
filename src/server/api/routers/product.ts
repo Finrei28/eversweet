@@ -50,6 +50,9 @@ export const productRouter = createTRPCRouter({
         imagePath: true,
         ingredients: true,
         isAvailableForPurchase: true,
+        imagePublicId: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
     return desserts;
