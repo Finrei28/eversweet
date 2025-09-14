@@ -15,6 +15,7 @@ export default async function ProductsPage() {
   void api.dessert.getProducts.prefetch();
   void api.dessert.getCategories.prefetch();
   void api.productCustomisation.dessertCustomisations.prefetch();
+  void api.dessert.getProductsForMenuByCategory.prefetch();
   return (
     <HydrateClient>
       <MaxWidthWapper>

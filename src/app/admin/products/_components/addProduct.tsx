@@ -140,6 +140,7 @@ export function AddProduct({
       addForm.reset();
       setImagePreview(null);
       setPriceInCents(null);
+      setAddLoading(false);
       setError(null);
     }
     prevDialogOpen.current = dialogOpen; // Update previous value

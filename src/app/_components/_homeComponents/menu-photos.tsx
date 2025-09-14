@@ -27,7 +27,7 @@ export default function Menu() {
       </h2>
 
       <div className="grid h-auto w-full grid-cols-1 gap-6 overflow-hidden rounded-lg py-5 xl:grid-cols-2">
-        {["/Eversweet main menu.jpg", "/Eversweet side menu.jpg"].map((src) => (
+        {["/Eversweet_new_menu1.jpg", "/Eversweet_new_menu2.jpg"].map((src) => (
           <div
             className="relative flex w-full items-center rounded-lg"
             key={src}

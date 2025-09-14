@@ -106,6 +106,7 @@ model Category {
   chineseName    String
   customisations CategoryCustomisation[]
   desserts       Dessert[]
+  sortOrder      Int?
 }
 
 model DessertCustomisation {

@@ -61,6 +61,7 @@ export const productRouter = createTRPCRouter({
   //get products for menu display
   getProductsForMenuByCategory: publicProcedure.query(async ({ ctx }) => {
     return await ctx.db.category.findMany({
+      orderBy: { sortOrder: "asc" },
       include: {
         desserts: {
           where: { isAvailableForPurchase: true },
@@ -73,6 +74,33 @@ export const productRouter = createTRPCRouter({
             imagePath: true,
             ingredients: true,
             description: true,
+          },
+        },
+      },
+    });
+  }),
+
+  getProductsForAdminByCategory: publicProcedure.query(async ({ ctx }) => {
+    return await ctx.db.category.findMany({
+      orderBy: { sortOrder: "asc" },
+      include: {
+        desserts: {
+          orderBy: { priceInCents: "asc" },
+          select: {
+            id: true,
+            name: true,
+            chineseName: true,
+            priceInCents: true,
+            imagePath: true,
+            ingredients: true,
+            description: true,
+            isAvailableForPurchase: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
       },
