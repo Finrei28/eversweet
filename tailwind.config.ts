@@ -1,5 +1,6 @@
 import { type Config } from "tailwindcss";
 import { fontFamily } from "tailwindcss/defaultTheme";
+import type { PluginAPI } from "tailwindcss/types/config";
 
 export default {
   darkMode: ["class"],
@@ -73,5 +74,18 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    function ({ addUtilities }: PluginAPI) {
+      addUtilities({
+        ".scrollbar-hide": {
+          "scrollbar-width": "none", // Firefox
+          "-ms-overflow-style": "none", // IE 10+
+        },
+        ".scrollbar-hide::-webkit-scrollbar": {
+          display: "none", // Safari + Chrome
+        },
+      });
+    },
+  ],
 } satisfies Config;

@@ -10,7 +10,7 @@ import {
 } from "~/components/ui/card";
 import Image from "next/image";
 import { Button } from "~/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, Soup } from "lucide-react";
 import CustomisationDialog from "./customisation";
 import { useLanguage } from "~/app/components/language";
@@ -33,6 +33,17 @@ export default function MenuCards() {
     useState<dessertOnClient | null>(null);
 
   // Set the first category as active when data loads
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [dragDistance, setDragDistance] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  const animationFrameRef = useRef<number>();
+  const lastScrollTimeRef = useRef<number>(0);
+
+  // Set the first category as active when data loads
   useEffect(() => {
     if (productCategory && productCategory.length > 0) {
       setActiveCategory(productCategory[0]?.id ?? null);
@@ -40,14 +51,186 @@ export default function MenuCards() {
   }, [productCategory]);
 
   // Scroll to category section when clicking on category nav
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const updateProgress = () => {
+      const now = Date.now();
+      if (now - lastScrollTimeRef.current < 8) return; // Limit to ~60fps
+
+      lastScrollTimeRef.current = now;
+      const scrollWidth = container.scrollWidth - container.clientWidth;
+      const progress =
+        scrollWidth > 0 ? (container.scrollLeft / scrollWidth) * 100 : 0;
+      setScrollProgress(progress);
+    };
+
+    const throttledUpdateProgress = () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      animationFrameRef.current = requestAnimationFrame(updateProgress);
+    };
+
+    const events = ["scroll", "touchmove", "touchend", "touchcancel", "wheel"];
+    events.forEach((event) => {
+      container.addEventListener(event, throttledUpdateProgress, {
+        passive: true,
+      });
+    });
+
+    let momentumTimer: NodeJS.Timeout;
+    const handleMomentumScroll = () => {
+      clearTimeout(momentumTimer);
+      momentumTimer = setTimeout(() => {
+        // Final progress update after momentum ends
+        throttledUpdateProgress();
+      }, 50);
+    };
+
+    container.addEventListener("scroll", handleMomentumScroll, {
+      passive: true,
+    });
+
+    updateProgress();
+
+    return () => {
+      events.forEach((event) => {
+        container.removeEventListener(event, throttledUpdateProgress);
+      });
+      container.removeEventListener("scroll", handleMomentumScroll);
+      clearTimeout(momentumTimer);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
+
   const scrollToCategory = (categoryId: string) => {
+    if (dragDistance > 10) {
+      return;
+    }
+
     setActiveCategory(categoryId);
     const element = document.getElementById(`category-${categoryId}`);
     if (element) {
-      const yOffset = -100; // Adjust this value for proper scroll position
+      const yOffset = -100;
       const y =
         element.getBoundingClientRect().top + window.pageYOffset + yOffset;
       window.scrollTo({ top: y, behavior: "smooth" });
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return;
+
+    setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
+    setScrollLeft(scrollContainerRef.current.scrollLeft);
+    setDragDistance(0);
+
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current || startX === 0) return;
+
+    e.preventDefault();
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    animationFrameRef.current = requestAnimationFrame(() => {
+      if (!scrollContainerRef.current) return;
+
+      const x = e.pageX - scrollContainerRef.current.offsetLeft;
+      const walk = (x - startX) * 2;
+      const distance = Math.abs(walk);
+
+      setDragDistance(distance);
+
+      if (distance > 5) {
+        setIsDragging(true);
+        const newScrollLeft = scrollLeft - walk;
+        scrollContainerRef.current.scrollLeft = newScrollLeft;
+
+        const scrollWidth =
+          scrollContainerRef.current.scrollWidth -
+          scrollContainerRef.current.clientWidth;
+        const progress =
+          scrollWidth > 0 ? (newScrollLeft / scrollWidth) * 100 : 0;
+        setScrollProgress(Math.max(0, Math.min(100, progress)));
+      }
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setStartX(0);
+    setTimeout(() => setDragDistance(0), 100);
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+    setStartX(0);
+    setTimeout(() => setDragDistance(0), 100);
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!scrollContainerRef.current) return;
+
+    setStartX(e.touches[0]!.pageX - scrollContainerRef.current.offsetLeft);
+    setScrollLeft(scrollContainerRef.current.scrollLeft);
+    setDragDistance(0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!scrollContainerRef.current || startX === 0) return;
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    animationFrameRef.current = requestAnimationFrame(() => {
+      if (!scrollContainerRef.current) return;
+
+      const x = e.touches[0]!.pageX - scrollContainerRef.current.offsetLeft;
+      const walk = (x - startX) * 2;
+      const distance = Math.abs(walk);
+
+      setDragDistance(distance);
+
+      if (distance > 5) {
+        setIsDragging(true);
+        const newScrollLeft = scrollLeft - walk;
+        scrollContainerRef.current.scrollLeft = newScrollLeft;
+
+        const scrollWidth =
+          scrollContainerRef.current.scrollWidth -
+          scrollContainerRef.current.clientWidth;
+        const progress =
+          scrollWidth > 0 ? (newScrollLeft / scrollWidth) * 100 : 0;
+        setScrollProgress(Math.max(0, Math.min(100, progress)));
+      }
+    });
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setStartX(0);
+    setTimeout(() => setDragDistance(0), 100);
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
     }
   };
 
@@ -123,19 +306,39 @@ export default function MenuCards() {
       </div>
 
       {/* Category navigation */}
+
       {categoriesWithDesserts.length > 1 && (
-        <div className="mb-8 overflow-x-auto">
-          <div className="flex gap-2 pb-2">
+        <div className="mb-8">
+          <div
+            ref={scrollContainerRef}
+            className={`md:scrollbar-hide flex select-none gap-2 overflow-x-auto pb-2 ${
+              isDragging ? "cursor-grabbing" : "cursor-grab"
+            }`}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             {categoriesWithDesserts.map((category) => (
               <Button
                 key={category.id}
                 variant={activeCategory === category.id ? "default" : "outline"}
                 className="whitespace-nowrap transition-all"
                 onClick={() => scrollToCategory(category.id)}
+                style={{ pointerEvents: isDragging ? "none" : "auto" }}
               >
                 {language === "en" ? category.name : category.chineseName}
               </Button>
             ))}
+          </div>
+          <div className="mb-2 hidden h-1 w-full overflow-hidden rounded-full bg-muted md:block">
+            <div
+              className="h-full bg-primary transition-all duration-200 ease-out"
+              style={{ width: `${scrollProgress}%` }}
+            />
           </div>
         </div>
       )}
@@ -180,10 +383,10 @@ export default function MenuCards() {
                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
-                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+                      <div className="absolute bottom-0 left-0 right-0 p-3 opacity-0 transition-opacity group-hover:opacity-100">
                         <p
-                          className="text-sm font-medium hover:cursor-pointer"
+                          className="text-sm font-medium text-white drop-shadow-lg hover:cursor-pointer"
                           onClick={() => handleOpenDialog(dessert)}
                         >
                           {language === "en" ? "Customise" : "定制"}
