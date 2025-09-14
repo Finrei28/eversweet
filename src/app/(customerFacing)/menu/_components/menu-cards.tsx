@@ -73,34 +73,14 @@ export default function MenuCards() {
       animationFrameRef.current = requestAnimationFrame(updateProgress);
     };
 
-    const events = ["scroll", "touchmove", "touchend", "touchcancel", "wheel"];
-    events.forEach((event) => {
-      container.addEventListener(event, throttledUpdateProgress, {
-        passive: true,
-      });
-    });
-
-    let momentumTimer: NodeJS.Timeout;
-    const handleMomentumScroll = () => {
-      clearTimeout(momentumTimer);
-      momentumTimer = setTimeout(() => {
-        // Final progress update after momentum ends
-        throttledUpdateProgress();
-      }, 50);
-    };
-
-    container.addEventListener("scroll", handleMomentumScroll, {
+    container.addEventListener("scroll", throttledUpdateProgress, {
       passive: true,
     });
 
     updateProgress();
 
     return () => {
-      events.forEach((event) => {
-        container.removeEventListener(event, throttledUpdateProgress);
-      });
-      container.removeEventListener("scroll", handleMomentumScroll);
-      clearTimeout(momentumTimer);
+      container.removeEventListener("scroll", throttledUpdateProgress);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -176,55 +156,6 @@ export default function MenuCards() {
   };
 
   const handleMouseLeave = () => {
-    setIsDragging(false);
-    setStartX(0);
-    setTimeout(() => setDragDistance(0), 100);
-
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!scrollContainerRef.current) return;
-
-    setStartX(e.touches[0]!.pageX - scrollContainerRef.current.offsetLeft);
-    setScrollLeft(scrollContainerRef.current.scrollLeft);
-    setDragDistance(0);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!scrollContainerRef.current || startX === 0) return;
-
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-
-    animationFrameRef.current = requestAnimationFrame(() => {
-      if (!scrollContainerRef.current) return;
-
-      const x = e.touches[0]!.pageX - scrollContainerRef.current.offsetLeft;
-      const walk = (x - startX) * 2;
-      const distance = Math.abs(walk);
-
-      setDragDistance(distance);
-
-      if (distance > 5) {
-        setIsDragging(true);
-        const newScrollLeft = scrollLeft - walk;
-        scrollContainerRef.current.scrollLeft = newScrollLeft;
-
-        const scrollWidth =
-          scrollContainerRef.current.scrollWidth -
-          scrollContainerRef.current.clientWidth;
-        const progress =
-          scrollWidth > 0 ? (newScrollLeft / scrollWidth) * 100 : 0;
-        setScrollProgress(Math.max(0, Math.min(100, progress)));
-      }
-    });
-  };
-
-  const handleTouchEnd = () => {
     setIsDragging(false);
     setStartX(0);
     setTimeout(() => setDragDistance(0), 100);
@@ -318,9 +249,6 @@ export default function MenuCards() {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
           >
             {categoriesWithDesserts.map((category) => (
               <Button
