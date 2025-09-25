@@ -46,7 +46,7 @@ export default function ProductDialogContext({
             {
               id: "ingredients",
               label: language === "en" ? "Ingredients" : "原料",
-              value: product.ingredients.join(","),
+              value: product.ingredients.map((i) => i.name).join(", "),
             },
             {
               id: "categoryId",
