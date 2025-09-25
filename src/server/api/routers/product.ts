@@ -49,10 +49,7 @@ export const productRouter = createTRPCRouter({
         priceInCents: true,
         imagePath: true,
         ingredients: { include: { ingredient: true } },
-        isAvailableForPurchase: true,
-        imagePublicId: true,
-        createdAt: true,
-        updatedAt: true,
+        categoryId: true,
       },
     });
     const desserts = rawDesserts.map((dessert) => ({

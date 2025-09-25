@@ -21,28 +21,15 @@ import {
   DessertAnimation,
   DessertType,
 } from "./_top-desserts-components.tsx/dessert-animation";
-import { Ingredients } from "~/app/components/types";
-
-type dessert = {
-  id: string;
-  name: string;
-  description: string | null;
-  chineseName: string;
-  priceInCents: number;
-  imagePath: string;
-  ingredients: Ingredients;
-  imagePublicId: string;
-  isAvailableForPurchase: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-};
+import { dessertOnClient, Ingredients } from "~/app/components/types";
 
 export function TopDesserts() {
   const { data: topDesserts, isLoading } =
     api.dessert.getMostPopularProducts.useQuery();
   const [isPaused, setIsPaused] = useState(false);
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
-  const [selectedDessert, setSelectedDessert] = useState<dessert | null>(null);
+  const [selectedDessert, setSelectedDessert] =
+    useState<dessertOnClient | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { language } = useLanguage();
   const [dessertAnimation, setDessertAnimation] = useState<DessertType | null>(
@@ -79,7 +66,7 @@ export function TopDesserts() {
     setDessertAnimation(animationType);
   }, []);
 
-  const handleCardClick = (dessert: dessert) => {
+  const handleCardClick = (dessert: dessertOnClient) => {
     setSelectedDessert(dessert);
     setIsDialogOpen(true);
     setIsPaused(true); // Pause carousel when dialog opens

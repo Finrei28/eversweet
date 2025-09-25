@@ -161,16 +161,21 @@ export const productCustomisationRouter = createTRPCRouter({
       };
     }),
 
-  availableDessertCustomisations: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db.ingredient.findMany({
-      where: { isAvailableForPurchase: true },
-      orderBy: { priceInCents: "asc" },
-      select: {
-        id: true,
-        chineseName: true,
-        name: true,
-        priceInCents: true,
-      },
-    });
-  }),
+  availableDessertCustomisations: publicProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      return await ctx.db.ingredient.findMany({
+        where: {
+          isAvailableForPurchase: true,
+          categories: { some: { categoryId: input.id } },
+        },
+        orderBy: { priceInCents: "asc" },
+        select: {
+          id: true,
+          chineseName: true,
+          name: true,
+          priceInCents: true,
+        },
+      });
+    }),
 });

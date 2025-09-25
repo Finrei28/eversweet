@@ -38,6 +38,7 @@ export type dessertOnClient = {
   ingredients: Ingredients;
   priceInCents: number;
   imagePath: string;
+  categoryId: string;
 };
 
 export type Ingredient = {

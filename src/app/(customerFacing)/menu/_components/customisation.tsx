@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, Info, SquarePen } from "lucide-react";
+import { Minus, Plus, Info, SquarePen, Loader2 } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import {
@@ -44,8 +44,10 @@ export default function CustomisationDialog({
   onClose,
   cartItem,
 }: CustomisationDialogProps) {
-  const [customisations] =
-    api.productCustomisation.availableDessertCustomisations.useSuspenseQuery();
+  const { data: customisations = [], isLoading: isCustomisationLoading } =
+    api.productCustomisation.availableDessertCustomisations.useQuery({
+      id: dessert.categoryId,
+    });
   const { language } = useLanguage();
   const [totalQuantity, setTotalQuantity] = useState(
     customisations.map((customisation) => {
@@ -74,6 +76,25 @@ export default function CustomisationDialog({
   const [dialogOpen, setDialogOpen] = useState(false);
   const cart = useContext(CartContext);
   const pathName = usePathname();
+
+  useEffect(() => {
+    if (!customisations.length) return;
+
+    setTotalQuantity(
+      customisations.map((customisation) => {
+        const customisationIncluded = dessert.ingredients.some(
+          (ingredient) => customisation.id === ingredient.id,
+        );
+
+        return {
+          id: customisation.id,
+          name: customisation.name,
+          chineseName: customisation.chineseName,
+          quantity: customisationIncluded ? 1 : 0,
+        };
+      }),
+    );
+  }, [customisations, dessert]);
 
   useEffect(() => {
     if (!dessert) return;
@@ -266,6 +287,16 @@ export default function CustomisationDialog({
     (c) => !dessert.ingredients.some((ingredient) => ingredient.id === c.id),
   );
 
+  if (isCustomisationLoading) {
+    return (
+      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Dialog
       open={customOpen ? customOpen : dialogOpen}
@@ -325,13 +356,15 @@ export default function CustomisationDialog({
                     <Info className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    {language === "en"
-                      ? "Customize your dessert below"
-                      : "在下面定制您的甜点"}
-                  </p>
-                </TooltipContent>
+                {customisations.length > 0 && (
+                  <TooltipContent>
+                    <p>
+                      {language === "en"
+                        ? "Customise your dessert below"
+                        : "在下面定制您的甜点"}
+                    </p>
+                  </TooltipContent>
+                )}
               </Tooltip>
             </TooltipProvider>
           </div>
