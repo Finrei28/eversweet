@@ -49,9 +49,10 @@ export default function CustomisationDialog({
   const { language } = useLanguage();
   const [totalQuantity, setTotalQuantity] = useState(
     customisations.map((customisation) => {
-      const customisationIncluded = dessert.ingredients.includes(
-        customisation.name,
+      const customisationIncluded = dessert.ingredients.some(
+        (ingredient) => customisation.id === ingredient.id,
       );
+
       return {
         id: customisation.id,
         name: customisation.name,
@@ -113,7 +114,9 @@ export default function CustomisationDialog({
       getCustomisationQuantity.quantity === 0
     ) {
       setModifications((prev) => {
-        const customisationNotInDessert = !dessert.ingredients.includes(name);
+        const customisationNotInDessert = !dessert.ingredients.some(
+          (ingredient) => ingredient.id === id,
+        );
         const exists = prev.some((item) => item.id === id);
         if (customisationNotInDessert) {
           return [...prev, { id, name, chineseName, quantity: 1 }];
@@ -138,7 +141,9 @@ export default function CustomisationDialog({
     const getCustomisationQuantity = totalQuantity.find(
       (quantity) => quantity.id === id,
     );
-    const customisationNotInDessert = !dessert.ingredients.includes(name);
+    const customisationNotInDessert = !dessert.ingredients.some(
+      (ingredient) => ingredient.id === id,
+    );
 
     if (customisationNotInDessert) {
       setModifications((prev) => {
@@ -203,8 +208,8 @@ export default function CustomisationDialog({
         const previousQuantity = cartItem?.customisations.find(
           (c) => c.id === customisation.id,
         )?.quantity;
-        const customisationIncluded = dessert.ingredients.includes(
-          customisation.name,
+        const customisationIncluded = dessert.ingredients.some(
+          (ingredient) => ingredient.id === customisation.id,
         );
 
         return {
@@ -254,11 +259,11 @@ export default function CustomisationDialog({
 
   // Group customizations by included vs additional
   const includedCustomisations = customisations.filter((c) =>
-    dessert.ingredients.includes(c.name),
+    dessert.ingredients.some((ingredient) => ingredient.id === c.id),
   );
 
   const additionalCustomisations = customisations.filter(
-    (c) => !dessert.ingredients.includes(c.name),
+    (c) => !dessert.ingredients.some((ingredient) => ingredient.id === c.id),
   );
 
   return (
@@ -343,7 +348,9 @@ export default function CustomisationDialog({
               <div className="space-y-3">
                 {includedCustomisations.map((c) => {
                   const item = totalQuantity.find((item) => item.id === c.id);
-                  const isIncluded = dessert.ingredients.includes(c.name);
+                  const isIncluded = dessert.ingredients.some(
+                    (ingredient) => ingredient.id === c.id,
+                  );
 
                   return (
                     <div

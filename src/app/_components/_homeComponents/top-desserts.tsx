@@ -21,6 +21,7 @@ import {
   DessertAnimation,
   DessertType,
 } from "./_top-desserts-components.tsx/dessert-animation";
+import { Ingredients } from "~/app/components/types";
 
 type dessert = {
   id: string;
@@ -29,7 +30,7 @@ type dessert = {
   chineseName: string;
   priceInCents: number;
   imagePath: string;
-  ingredients: string[];
+  ingredients: Ingredients;
   imagePublicId: string;
   isAvailableForPurchase: boolean;
   createdAt: Date;

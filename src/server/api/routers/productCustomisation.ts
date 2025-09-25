@@ -13,12 +13,12 @@ export const productCustomisationRouter = createTRPCRouter({
       z.object({
         name: z.string().min(1),
         chineseName: z.string(),
-        priceInCents: z.coerce.number().int().min(1),
+        priceInCents: z.coerce.number().int().optional(),
         categories: z.array(z.string()),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const exists = await ctx.db.dessertCustomisation.findFirst({
+      const exists = await ctx.db.ingredient.findFirst({
         where: {
           OR: [{ name: input.name }, { chineseName: input.chineseName }],
         },
@@ -37,11 +37,11 @@ export const productCustomisationRouter = createTRPCRouter({
         });
       }
 
-      return await ctx.db.dessertCustomisation.create({
+      return await ctx.db.ingredient.create({
         data: {
           name: input.name,
           chineseName: input.chineseName,
-          priceInCents: input.priceInCents,
+          priceInCents: input.priceInCents ?? 0,
           categories: {
             create: input.categories.map((categoryId) => ({
               category: { connect: { id: categoryId } },
@@ -52,7 +52,7 @@ export const productCustomisationRouter = createTRPCRouter({
     }),
 
   dessertCustomisations: publicProcedure.query(async ({ ctx }) => {
-    const customisations = await ctx.db.dessertCustomisation.findMany({
+    const customisations = await ctx.db.ingredient.findMany({
       include: {
         categories: {
           include: {
@@ -78,14 +78,14 @@ export const productCustomisationRouter = createTRPCRouter({
           z.object({
             id: z.string(),
             isAvailableForPurchase: z.boolean().optional(),
-            priceInCents: z.coerce.number().int().min(1).optional(),
+            priceInCents: z.coerce.number().int().optional(),
           }),
         ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const updatePromises = input.updates.map((customization) =>
-        ctx.db.dessertCustomisation.update({
+        ctx.db.ingredient.update({
           where: { id: customization.id },
           data: {
             isAvailableForPurchase: customization.isAvailableForPurchase,
@@ -102,18 +102,17 @@ export const productCustomisationRouter = createTRPCRouter({
       z.object({
         id: z.string().min(1),
         isAvailableForPurchase: z.boolean().optional(),
-        priceInCents: z.coerce.number().int().min(1),
+        priceInCents: z.coerce.number().int(),
         name: z.string().min(1),
         chineseName: z.string().min(1),
         categories: z.array(z.string().min(1)),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const existingCustomisation =
-        await ctx.db.dessertCustomisation.findUnique({
-          where: { id: input.id },
-          include: { categories: true }, // Get linked categories
-        });
+      const existingCustomisation = await ctx.db.ingredient.findUnique({
+        where: { id: input.id },
+        include: { categories: true }, // Get linked categories
+      });
 
       // Extract current category IDs
       const existingCategoryIds =
@@ -143,7 +142,7 @@ export const productCustomisationRouter = createTRPCRouter({
       }
 
       // Perform update
-      const updatedCustomisations = await ctx.db.dessertCustomisation.update({
+      const updatedCustomisations = await ctx.db.ingredient.update({
         where: { id: input.id },
         data: updateData,
         include: {
@@ -163,7 +162,7 @@ export const productCustomisationRouter = createTRPCRouter({
     }),
 
   availableDessertCustomisations: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db.dessertCustomisation.findMany({
+    return await ctx.db.ingredient.findMany({
       where: { isAvailableForPurchase: true },
       orderBy: { priceInCents: "asc" },
       select: {

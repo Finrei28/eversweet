@@ -5,12 +5,20 @@ export const imageSchema = fileSchema.refine(
   (file) => file.size === 0 || file.type.startsWith("image/"),
 );
 
+export const ingredientSchema = z.object({
+  name: z.string().min(1),
+  id: z.string().min(1),
+  priceInCents: z.coerce.number().int().optional(),
+  chineseName: z.string().min(1),
+  isAvailableForPurchase: z.boolean().optional(),
+});
+
 export const addSchema = z.object({
   name: z.string().min(1),
   chineseName: z.string().min(1),
-  priceInCents: z.coerce.number().int().min(1),
+  priceInCents: z.coerce.number().int(),
   description: z.string().optional(),
-  ingredients: z.string().optional(),
+  ingredients: z.array(ingredientSchema).default([]),
   image: imageSchema.refine((file) => file.size > 0, "Image is Required"),
   categoryId: z.string().min(1),
 });
@@ -20,7 +28,7 @@ export const createProductSchema = z.object({
   chineseName: z.string().min(1),
   priceInCents: z.coerce.number().int().min(1),
   description: z.string().optional(),
-  ingredients: z.string().optional(),
+  ingredients: z.array(ingredientSchema).default([]),
   imagePath: z.string().min(1),
   imagePublicId: z.string().min(1),
   categoryId: z.string().min(1),

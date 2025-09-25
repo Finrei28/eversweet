@@ -37,7 +37,7 @@ export const productRouter = createTRPCRouter({
     });
     console.log(popularDesserts);
     // Fetch the actual dessert details
-    const desserts = await ctx.db.dessert.findMany({
+    const rawDesserts = await ctx.db.dessert.findMany({
       where: {
         id: { in: popularDesserts.map((d) => d.dessertId) }, // Get desserts with matching IDs
       },
@@ -48,19 +48,23 @@ export const productRouter = createTRPCRouter({
         description: true,
         priceInCents: true,
         imagePath: true,
-        ingredients: true,
+        ingredients: { include: { ingredient: true } },
         isAvailableForPurchase: true,
         imagePublicId: true,
         createdAt: true,
         updatedAt: true,
       },
     });
+    const desserts = rawDesserts.map((dessert) => ({
+      ...dessert,
+      ingredients: dessert.ingredients.map((i) => i.ingredient),
+    }));
     return desserts;
   }),
 
   //get products for menu display
   getProductsForMenuByCategory: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db.category.findMany({
+    const rawProducts = await ctx.db.category.findMany({
       orderBy: { sortOrder: "asc" },
       include: {
         desserts: {
@@ -72,16 +76,24 @@ export const productRouter = createTRPCRouter({
             chineseName: true,
             priceInCents: true,
             imagePath: true,
-            ingredients: true,
+            ingredients: { include: { ingredient: true } },
             description: true,
           },
         },
       },
     });
+    const menu = rawProducts.map((category) => ({
+      ...category,
+      desserts: category.desserts.map((dessert) => ({
+        ...dessert,
+        ingredients: dessert.ingredients.map((i) => i.ingredient),
+      })),
+    }));
+    return menu;
   }),
 
   getProductsForAdminByCategory: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db.category.findMany({
+    const rawProducts = await ctx.db.category.findMany({
       orderBy: { sortOrder: "asc" },
       include: {
         desserts: {
@@ -92,7 +104,7 @@ export const productRouter = createTRPCRouter({
             chineseName: true,
             priceInCents: true,
             imagePath: true,
-            ingredients: true,
+            ingredients: { include: { ingredient: true } },
             description: true,
             isAvailableForPurchase: true,
             category: {
@@ -105,6 +117,15 @@ export const productRouter = createTRPCRouter({
         },
       },
     });
+
+    const menu = rawProducts.map((category) => ({
+      ...category,
+      desserts: category.desserts.map((dessert) => ({
+        ...dessert,
+        ingredients: dessert.ingredients.map((i) => i.ingredient),
+      })),
+    }));
+    return menu;
   }),
 
   createProduct: protectedProcedure
@@ -132,11 +153,6 @@ export const productRouter = createTRPCRouter({
         });
       }
 
-      // Process ingredients
-      const ingredientsArray = data.ingredients
-        ? data.ingredients.split(",").map((i) => i.trim())
-        : [];
-
       // Save to database
       const product = await ctx.db.dessert.create({
         data: {
@@ -144,7 +160,13 @@ export const productRouter = createTRPCRouter({
           chineseName: data.chineseName,
           priceInCents: data.priceInCents,
           description: data.description,
-          ingredients: ingredientsArray,
+          ingredients: {
+            create: data.ingredients.map((ingredient) => ({
+              ingredient: {
+                connect: { id: ingredient.id },
+              },
+            })),
+          },
           imagePath: data.imagePath,
           imagePublicId: data.imagePublicId,
           category: {
@@ -159,7 +181,7 @@ export const productRouter = createTRPCRouter({
     }),
 
   getProducts: protectedProcedure.query(async ({ ctx }) => {
-    return await ctx.db.dessert.findMany({
+    const rawDesserts = await ctx.db.dessert.findMany({
       orderBy: {
         createdAt: "asc",
       },
@@ -169,7 +191,7 @@ export const productRouter = createTRPCRouter({
         chineseName: true,
         priceInCents: true,
         imagePath: true,
-        ingredients: true,
+        ingredients: { include: { ingredient: true } },
         description: true,
         isAvailableForPurchase: true,
         category: {
@@ -180,6 +202,12 @@ export const productRouter = createTRPCRouter({
         },
       },
     });
+
+    const desserts = rawDesserts.map((dessert) => ({
+      ...dessert,
+      ingredients: dessert.ingredients.map((i) => i.ingredient),
+    }));
+    return desserts;
   }),
 
   editProduct: protectedProcedure
@@ -218,11 +246,6 @@ export const productRouter = createTRPCRouter({
         });
       }
 
-      // Process ingredients
-      const ingredientsArray = data.ingredients
-        ? data.ingredients.split(",").map((i) => i.trim())
-        : [];
-
       // Save to database
       const product = await ctx.db.dessert.update({
         where: { id: data.id },
@@ -231,7 +254,15 @@ export const productRouter = createTRPCRouter({
           chineseName: data.chineseName,
           priceInCents: data.priceInCents,
           description: data.description,
-          ingredients: ingredientsArray,
+          ingredients: {
+            // Remove all existing ingredients and add the new ones
+            deleteMany: {},
+            create: data.ingredients.map((ingredient) => ({
+              ingredient: {
+                connect: { id: ingredient.id },
+              },
+            })),
+          },
           imagePath: imagePath,
           imagePublicId: imagePublicId,
           isAvailableForPurchase: data.isAvailableForPurchase,
@@ -260,7 +291,7 @@ export const productRouter = createTRPCRouter({
       });
 
       // Fetch available customisations
-      const customisations = await ctx.db.dessertCustomisation.findMany({
+      const customisations = await ctx.db.ingredient.findMany({
         where: {
           id: { in: input.customisationIds },
         },
@@ -324,5 +355,9 @@ export const productRouter = createTRPCRouter({
         name: true,
       },
     });
+  }),
+
+  getIngredients: protectedProcedure.query(async ({ ctx }) => {
+    return await ctx.db.ingredient.findMany({});
   }),
 });

@@ -36,9 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { Category } from "~/app/components/types";
+import { Category, Ingredients } from "~/app/components/types";
 import { toast } from "~/hooks/use-toast";
 import { useLanguage } from "~/app/components/language";
+import { IngredientsMultiSelect } from "./ingredientSelect";
 
 // Validation schemas
 
@@ -73,6 +74,7 @@ export function AddProduct({
   const [error, setError] = useState<string | null>(null);
   const [addLoading, setAddLoading] = useState(false);
   const utils = api.useUtils();
+  const [ingredients] = api.dessert.getIngredients.useSuspenseQuery();
   const addProduct = api.dessert.createProduct.useMutation({
     onSuccess: async (data) => {
       await utils.dessert.invalidate();
@@ -100,7 +102,7 @@ export function AddProduct({
       chineseName: "",
       description: "",
       categoryId: "",
-      ingredients: "",
+      ingredients: [],
       priceInCents: 0,
       image: new File([], ""),
     },
@@ -200,13 +202,22 @@ export function AddProduct({
                                     }
                                   }}
                                 />
-                              ) : id === "description" ||
-                                id === "ingredients" ? (
+                              ) : id === "description" ? (
                                 <Textarea
                                   draggable="false"
                                   value={field.value?.toString()}
                                   onChange={field.onChange}
                                   className="resize-none"
+                                />
+                              ) : id === "ingredients" ? (
+                                <IngredientsMultiSelect
+                                  allIngredients={ingredients}
+                                  value={
+                                    Array.isArray(field.value)
+                                      ? (field.value as Ingredients)
+                                      : []
+                                  } // field.value from react-hook-form
+                                  onChange={field.onChange}
                                 />
                               ) : id === "categoryId" ? (
                                 <Select

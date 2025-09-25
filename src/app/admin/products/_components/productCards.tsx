@@ -116,14 +116,9 @@ export function ProductCards() {
                         </p>
                         <p className="line-clamp-2 text-gray-400">
                           {language === "en"
-                            ? dessert.ingredients.join(" • ")
+                            ? dessert.ingredients.map((i) => i.name).join(" • ")
                             : dessert.ingredients
-                                .map((ingredient) => {
-                                  const match = customisations?.find(
-                                    (c) => c.name === ingredient,
-                                  );
-                                  return match?.chineseName || ingredient;
-                                })
+                                .map((ingredient) => ingredient.chineseName)
                                 .join(" • ")}
                         </p>
                       </div>

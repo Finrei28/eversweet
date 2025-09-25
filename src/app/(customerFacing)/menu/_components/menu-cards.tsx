@@ -242,7 +242,7 @@ export default function MenuCards() {
         <div className="mb-8">
           <div
             ref={scrollContainerRef}
-            className={`md:scrollbar-hide flex select-none gap-2 overflow-x-auto pb-2 ${
+            className={`flex select-none gap-2 overflow-x-auto pb-2 md:scrollbar-hide ${
               isDragging ? "cursor-grabbing" : "cursor-grab"
             }`}
             onMouseDown={handleMouseDown}
@@ -348,21 +348,10 @@ export default function MenuCards() {
                         </div>
                         <CardDescription className="line-clamp-2 text-[0.70rem] md:text-xs">
                           {language === "en"
-                            ? dessert.ingredients.join(" • ")
-                            : (() => {
-                                const chineseNames = dessert.ingredients
-                                  .map((ingredient) => {
-                                    const match = customisations?.find(
-                                      (c) => c.name === ingredient,
-                                    );
-                                    return match?.chineseName;
-                                  })
-                                  .filter(Boolean); // remove undefined
-
-                                return chineseNames.length > 0
-                                  ? chineseNames.join(" • ")
-                                  : "";
-                              })()}
+                            ? dessert.ingredients.map((i) => i.name).join(" • ")
+                            : dessert.ingredients
+                                .map((ingredient) => ingredient.chineseName)
+                                .join(" • ")}
                         </CardDescription>
                       </CardHeader>
                       <CardFooter className="mt-auto pt-4">

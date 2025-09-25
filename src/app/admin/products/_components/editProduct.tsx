@@ -27,7 +27,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { formatCurrency } from "~/lib/formatters";
 import { editSchema } from "~/app/components/schemas";
-import type { Category, DessertOnForm } from "~/app/components/types";
+import type {
+  Category,
+  DessertOnForm,
+  Ingredients,
+} from "~/app/components/types";
 import { api } from "~/trpc/react";
 import { Textarea } from "~/components/ui/textarea";
 import {
@@ -41,6 +45,7 @@ import {
 } from "~/components/ui/select";
 import { toast } from "~/hooks/use-toast";
 import { useLanguage } from "~/app/components/language";
+import { IngredientsMultiSelect } from "./ingredientSelect";
 
 interface Field {
   id: string;
@@ -76,6 +81,7 @@ export function EditProduct({
   );
   const [error, setError] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  const [ingredients] = api.dessert.getIngredients.useSuspenseQuery();
   const utils = api.useUtils();
   const editProduct = api.dessert.editProduct.useMutation({
     onSuccess: async (data) => {
@@ -223,6 +229,16 @@ export function EditProduct({
                                         field,
                                       )}
                                     />
+                                  ) : id === "ingredients" ? (
+                                    <IngredientsMultiSelect
+                                      allIngredients={ingredients}
+                                      value={
+                                        Array.isArray(field.value)
+                                          ? (field.value as Ingredients)
+                                          : []
+                                      } // field.value from react-hook-form
+                                      onChange={field.onChange}
+                                    />
                                   ) : typeof field.value === "object" ? (
                                     <FormInput
                                       type="file"
@@ -237,8 +253,7 @@ export function EditProduct({
                                         }
                                       }}
                                     />
-                                  ) : id === "description" ||
-                                    id === "ingredients" ? (
+                                  ) : id === "description" ? (
                                     <Textarea
                                       draggable="false"
                                       value={field.value?.toString()}

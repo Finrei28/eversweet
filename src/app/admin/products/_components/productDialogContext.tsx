@@ -77,7 +77,7 @@ export default function ProductDialogContext({
             name: product.name,
             chineseName: product.chineseName,
             description: product.description ?? "",
-            ingredients: product.ingredients.join(","),
+            ingredients: product.ingredients,
             priceInCents: product.priceInCents,
             imagePath: product.imagePath,
             isAvailableForPurchase: product.isAvailableForPurchase,
