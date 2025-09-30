@@ -70,6 +70,7 @@ model Membership {
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
   isActive              Boolean           @default(false)
+  cancel                Boolean           @default(false)
   stripePaymentMethodId String?
   stripeSubscriptionId  String?           @unique
   paymentStatus         PaymentStatus     @default(PENDING)
@@ -213,6 +214,7 @@ model Order {
   customerPhoneNumber String?
   completedAt         DateTime?
   pickedUpAt          DateTime?
+  dineIn              Boolean        @default(false)
   status              Status
   pickUpTime          DateTime       @default(now())
   GST                 Int
@@ -300,6 +302,11 @@ model CustomisationInCartItem {
   customisation   Ingredient @relation(fields: [customisationId], references: [id], onDelete: Cascade)
 
   @@unique([cartItemId, customisationId])
+}
+
+model RestaurantStatus {
+  id                  String    @id @default(cuid())
+  dineInAvailability  Boolean
 }
 
 enum PaymentStatus {
