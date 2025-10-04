@@ -92,6 +92,7 @@ model Offer {
   category         Category?         @relation(fields: [categoryId], references: [id])
   dessert          Dessert?          @relation(fields: [dessertId], references: [id])
   redemptions      OfferRedemption[]
+  orderDessert     OrderDessert[]
 }
 
 model OfferRedemption {
@@ -99,6 +100,7 @@ model OfferRedemption {
   offerId      String
   membershipId String
   redeemedAt   DateTime   @default(now())
+  renewsAt     DateTime?
   used         Int        @default(0)
   membership   Membership @relation(fields: [membershipId], references: [id])
   offer        Offer      @relation(fields: [offerId], references: [id], onDelete: Cascade)
@@ -206,6 +208,7 @@ model Order {
   id                  String         @id @default(cuid())
   tempOrderId         String
   priceInCents        Int
+  discountedAmountInCents  Int       @default(0)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   customerFirstName   String
@@ -214,8 +217,8 @@ model Order {
   customerPhoneNumber String?
   completedAt         DateTime?
   pickedUpAt          DateTime?
-  dineIn              Boolean        @default(false)
   status              Status
+  dineIn              Boolean        @default(false)
   pickUpTime          DateTime       @default(now())
   GST                 Int
   appUserId           String?
@@ -242,11 +245,14 @@ model OrderDessert {
   id                String                      @id @default(cuid())
   orderId           String
   dessertId         String
+  offerId           String?
   quantity          Int
   priceInCents      Int                         @default(0)
+  discountedAmountInCents  Int                  @default(0)
   loyaltyPointsUsed Int?
   dessert           Dessert                     @relation(fields: [dessertId], references: [id])
   order             Order                       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  offer             Offer?                    @relation(fields: [offerId], references: [id], onDelete: Cascade)
   customisations    OrderDessertCustomisation[]
 
   @@unique([orderId, dessertId, id])
@@ -266,6 +272,17 @@ model Loyalty {
   points Int
   userId String @unique
   User   User   @relation(fields: [userId], references: [id])
+  records LoyaltyRecord[]
+}
+
+model LoyaltyRecord {
+  id         String   @id @default(cuid())
+  change     Int      // positive = earned, negative = spent
+  reason     String
+  createdAt  DateTime @default(now())
+
+  loyaltyId  String
+  loyalty    Loyalty  @relation(fields: [loyaltyId], references: [id])
 }
 
 model Cart {
@@ -280,17 +297,18 @@ model Cart {
 }
 
 model CartItem {
-  id                String                    @id @default(cuid())
-  dessertId         String
-  itemPriceInCents  Int
-  quantity          Int
-  loyaltyPointsUsed Int?
-  cartId            String
-  offerId           String?
-  cart              Cart                      @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  dessert           Dessert                   @relation(fields: [dessertId], references: [id])
-  offer             Offer?                    @relation(fields: [offerId], references: [id], onDelete: Cascade)
-  customisations    CustomisationInCartItem[]
+  id                          String                    @id @default(cuid())
+  dessertId                   String
+  itemPriceInCents            Int
+  discountedAmountInCents     Int                       @default(0)
+  quantity                    Int
+  loyaltyPointsUsed           Int?
+  cartId                      String
+  offerId                     String?
+  cart                        Cart                      @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  dessert                     Dessert                   @relation(fields: [dessertId], references: [id])
+  offer                       Offer?                    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  customisations              CustomisationInCartItem[]
 }
 
 model CustomisationInCartItem {
@@ -307,6 +325,7 @@ model CustomisationInCartItem {
 model RestaurantStatus {
   id                  String    @id @default(cuid())
   dineInAvailability  Boolean
+  unavailableUntil    DateTime?
 }
 
 enum PaymentStatus {
