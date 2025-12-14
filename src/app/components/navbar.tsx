@@ -11,6 +11,7 @@ import { formatCurrency } from "~/lib/formatters";
 import Image from "next/image";
 import { useLanguage } from "./language";
 import { Globe } from "lucide-react";
+import ScrollToTopButton from "../(customerFacing)/menu/_components/toTop";
 
 export function Navbar({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -209,11 +210,12 @@ export function Navbar({ children }: { children: React.ReactNode }) {
           {isOpen ? <X size={30} /> : <Menu size={30} />}
         </Button>
       </div>
+      <ScrollToTopButton />
       {cartQuantity !== null &&
         cartQuantity > 0 &&
         pathName !== "/checkout" &&
         !pathName.startsWith("/admin") && (
-          <div className="fixed bottom-16 right-5 z-50 flex pr-5 sm:max-w-lg md:max-w-md md:pr-7 lg:max-w-lg 2xl:hidden">
+          <div className="fixed bottom-10 right-5 z-50 flex pr-5 sm:max-w-lg md:max-w-md md:pr-7 lg:max-w-lg 2xl:hidden">
             <Button
               className="border-primary bg-secondary text-base hover:cursor-pointer lg:p-6 lg:text-xl"
               onClick={() => setIsCartOpen(true)}

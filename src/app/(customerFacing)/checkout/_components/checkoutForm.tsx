@@ -43,7 +43,7 @@ export default function CheckoutForm({
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [orderId, setOrderId] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [warned, setWarned] = useState(false);
 
   let dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
@@ -55,20 +55,6 @@ export default function CheckoutForm({
       ),
     ),
   ];
-
-  const utils = api.useUtils();
-  const createOrder = api.order.create.useMutation({
-    onSuccess: async (data) => {
-      setPaymentSuccess(true);
-      cart?.clearCart();
-      const orderId = data.id;
-      setOrderId(orderId);
-      await utils.order.invalidate();
-      setTimeout(() => {
-        router.push(`/order?orderId=${orderId}`);
-      }, 3000);
-    },
-  });
 
   const { error, refetch } = api.dessert.scanCart.useQuery(
     { dessertIds, customisationIds },
@@ -125,16 +111,6 @@ export default function CheckoutForm({
       return;
     }
 
-    setPaymentLoading(true);
-    setPaymentError("");
-    const { error: submitError, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/order-confirmation`,
-      },
-      redirect: "if_required",
-    });
-
     if (!pickUpTime) {
       setPaymentError("Please select a pick up time.");
       return;
@@ -183,31 +159,39 @@ export default function CheckoutForm({
       setWarned(true);
     }
 
+    setPaymentLoading(true);
+    setPaymentError("");
+    const { error: submitError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      redirect: "if_required",
+    });
+
     if (submitError) {
       setPaymentError(
         submitError.message || "Payment failed. Please try again.",
       );
       setPaymentLoading(false);
-    } else if (paymentIntent && paymentIntent.status === "succeeded") {
-      const mappedDesserts =
-        cart?.cart?.map((item) => ({
-          dessert: {
-            id: item.dessert.id,
-            quantity: item.quantity,
-          },
-          priceInCents: item.priceInCents,
-          customisations: item.customisations, // Default to empty array if undefined
-        })) ?? [];
-
-      createOrder.mutate({
-        dessert: mappedDesserts,
-        customerFirstName: customerInfo.customerFirstName,
-        customerLastName: customerInfo.customerLastName,
-        customerEmail: customerInfo.customerEmail,
-        customerPhoneNumber: customerInfo.phone,
-        totalPriceInCents: totalPriceInCents,
-        pickUpTime: newPickUpTime ? newPickUpTime : pickUpTime,
+    } else if (paymentIntent.status === "requires_action") {
+      const { error: actionError } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/order?paymentId=${paymentIntent.id}`,
+        },
+        redirect: "if_required",
       });
+      if (actionError) {
+        setPaymentError(
+          actionError.message || "Payment failed. Please try again.",
+        );
+      }
+    }
+    if (paymentIntent && paymentIntent.status === "succeeded") {
+      setPaymentSuccess(true);
+      cart?.clearCart();
+      setPaymentIntentId(paymentIntent.id);
+      setTimeout(() => {
+        router.push(`/order?paymentId=${paymentIntent.id}`);
+      }, 3000);
     } else {
       setPaymentLoading(false);
     }
@@ -230,7 +214,7 @@ export default function CheckoutForm({
             ? "If not directed, you can click the button below to view your order details."
             : "如果没有指示，您可以点击下面的按钮查看您的订单详情。"}
         </p>
-        <Link href={`/order?orderId=${orderId}`}>
+        <Link href={`/order?paymentId=${paymentIntentId}`}>
           <Button>
             {language === "en" ? "View Order Details" : "查看订单详情"}
           </Button>

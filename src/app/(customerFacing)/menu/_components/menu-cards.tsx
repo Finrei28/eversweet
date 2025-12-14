@@ -376,7 +376,7 @@ export default function MenuCards() {
           </motion.div>
         ))}
       </div>
-      <ScrollToTopButton />
+
       {isDialogOpen && selectedDessert && (
         <CustomisationDialog
           customOpen={isDialogOpen}

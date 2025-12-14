@@ -38,13 +38,49 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!cart?.totalPrice) return;
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const nzPhoneRegex = /^\+?64[2-9]\d{8,10}$/;
+    if (
+      !customerInfo.customerFirstName?.trim() ||
+      !customerInfo.customerLastName?.trim() ||
+      !customerInfo.customerEmail?.trim() ||
+      !emailRegex.test(customerInfo.customerEmail.trim()) ||
+      (customerInfo.phone && !nzPhoneRegex.test(customerInfo.phone.trim()))
+    ) {
+      return;
+    }
+
+    if (!pickUpTime) {
+      return;
+    }
+
+    const mappedDesserts =
+      cart?.cart?.map((item) => ({
+        dessert: {
+          id: item.dessert.id,
+          quantity: item.quantity,
+        },
+        priceInCents: item.priceInCents,
+        customisations: item.customisations, // Default to empty array if undefined
+      })) ?? [];
+
+    const orderData = {
+      dessert: mappedDesserts,
+      customerFirstName: customerInfo.customerFirstName,
+      customerLastName: customerInfo.customerLastName,
+      customerEmail: customerInfo.customerEmail,
+      customerPhoneNumber: customerInfo.phone,
+      totalPriceInCents: cart.totalPrice,
+      pickUpTime: pickUpTime,
+    };
+
     setIsLoading(true);
     fetch("/api/checkout_sessions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ amount: cart?.totalPrice }),
+      body: JSON.stringify({ orderData }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -55,7 +91,7 @@ export default function CheckoutPage() {
         setError("Failed to initialize payment. Please try again.");
         setIsLoading(false);
       });
-  }, [cart?.totalPrice, isClient]);
+  }, [cart?.totalPrice, isClient, customerInfo, pickUpTime]);
 
   const handleCustomerInfoChange = (
     value: string | React.ChangeEvent<HTMLInputElement>,

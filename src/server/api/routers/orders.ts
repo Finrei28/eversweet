@@ -14,100 +14,27 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY as string);
 
 export const orderRouter = createTRPCRouter({
-  create: publicProcedure
-    .input(
-      z.object({
-        dessert: z.array(orderSchema),
-        customerFirstName: z.string().min(1),
-        customerLastName: z.string().min(1),
-        customerEmail: z.string().email(),
-        customerPhoneNumber: z.string().nullable(),
-        totalPriceInCents: z.coerce.number().int().min(1),
-        pickUpTime: z.date(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Normalize to midnight
-
-      let counter = await ctx.db.tempOrderCounter.findUnique({
-        where: { date: today },
-      });
-
-      if (!counter) {
-        counter = await ctx.db.tempOrderCounter.create({
-          data: {
-            date: today,
-            counter: 1000,
-          },
-        });
-      } else {
-        counter = await ctx.db.tempOrderCounter.update({
-          where: { date: today },
-          data: { counter: counter.counter + 1 },
-        });
-      }
-      const order = await ctx.db.order.create({
-        data: {
-          tempOrderId: String(counter.counter),
-          customerFirstName: input.customerFirstName,
-          customerLastName: input.customerLastName,
-          customerEmail: input.customerEmail,
-          customerPhoneNumber: input.customerPhoneNumber,
-          priceInCents: input.totalPriceInCents,
-          GST: input.totalPriceInCents * 0.15, // GST in cents
-          pickUpTime: input.pickUpTime,
-          status: "PENDING",
-          desserts: {
-            create: input.dessert.map((dessertItem) => ({
-              dessert: {
-                connect: {
-                  id: dessertItem.dessert.id, // Ensure dessert exists before connecting
-                },
-              },
-              quantity: dessertItem.dessert.quantity,
-              customisations: {
-                create: dessertItem.customisations.map(
-                  (customisationsItem) => ({
-                    customisation: {
-                      connect: {
-                        id: customisationsItem.id, // Ensure customisation exists before connecting
-                      },
-                    },
-                    quantity: customisationsItem.quantity,
-                  }),
-                ),
-              },
-            })),
-          },
-        },
-        include: {
-          desserts: {
-            include: {
-              dessert: true,
-              customisations: {
-                include: { customisation: true },
-              },
-            },
-          },
-        },
-      });
-
-      await resend.emails.send({
-        from: '"Eversweet" <eversweet@eversweet.co.nz>',
-        to: input.customerEmail,
-        subject: "Order Confirmation",
-        react: EmailOrderConfirmation({ order }),
-      });
-
-      return order;
-    }),
-
   getOrder: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
       return await ctx.db.order.findFirst({
         where: { id: input.id },
+        include: {
+          desserts: {
+            include: {
+              dessert: true,
+              customisations: { include: { customisation: true } },
+            },
+          },
+        },
+      });
+    }),
+
+  findOrderWithPaymentIntentId: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input, ctx }) => {
+      return await ctx.db.order.findFirst({
+        where: { paymentIntentId: input.id },
         include: {
           desserts: {
             include: {
