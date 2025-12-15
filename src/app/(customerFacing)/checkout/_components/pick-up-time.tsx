@@ -274,7 +274,7 @@ export function PickupTimePicker({
     }
 
     const dayHours = getBusinessHoursForDate(date);
-    const { startDateTime, endDateTime } = getStartEndHours(dayHours, date);
+    const { startDateTime } = getStartEndHours(dayHours, date);
 
     // Keep the same time if possible, otherwise set to opening time
 

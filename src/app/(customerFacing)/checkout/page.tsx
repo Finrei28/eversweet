@@ -65,10 +65,6 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!pickUpTime) {
-      return;
-    }
-
     setIsLoading(true);
     fetch("/api/checkout_sessions", {
       method: "POST",

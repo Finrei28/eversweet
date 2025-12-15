@@ -70,22 +70,24 @@ export default function CheckoutForm({
 
   const pollForOrderId = (interval = 5000) => {
     return new Promise<string>((resolve, reject) => {
-      const poll = setInterval(async () => {
-        try {
-          const { data: orderId } = await refetchOrderId();
-          if (orderId) {
-            console.log("Order found:", orderId);
-            clearInterval(poll); // Stop polling
-            resolve(orderId);
-          } else {
-            console.log("Order not yet available, retrying...");
+      const poll = setInterval(() => {
+        void (async () => {
+          try {
+            const { data: orderId } = await refetchOrderId();
+
+            if (orderId) {
+              clearInterval(poll);
+              resolve(orderId);
+            }
+          } catch (err) {
+            clearInterval(poll);
+            reject(
+              err instanceof Error
+                ? err
+                : new Error("Polling for order failed"),
+            );
           }
-        } catch (err) {
-          console.error("Polling error:", err);
-          // Optionally stop polling on error
-          clearInterval(poll);
-          reject(err);
-        }
+        })();
       }, interval);
     });
   };
