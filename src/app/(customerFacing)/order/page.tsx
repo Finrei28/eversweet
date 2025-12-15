@@ -37,33 +37,26 @@ function OrderDetails() {
   const { language } = useLanguage();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
-  const paymentIntentId = searchParams.get("paymentId");
   const [isClient, setIsClient] = useState(false);
   const router = useRouter();
   const {
     data: order,
     isLoading,
     error,
-  } = orderId
-    ? api.order.getOrder.useQuery(
-        { id: orderId ?? "" },
-        { enabled: !!orderId && isClient },
-      )
-    : api.order.findOrderWithPaymentIntentId.useQuery(
-        { id: paymentIntentId ?? "" },
-        { enabled: !!orderId && isClient },
-      );
+  } = api.order.getOrder.useQuery(
+    { id: orderId ?? "" },
+    { enabled: !!orderId && isClient },
+  );
+
   const twentyFourHours = 24 * 60 * 60 * 1000;
   useEffect(() => {
     setIsClient(true);
-    if (paymentIntentId && order) {
-      router.replace(`/order?orderId=${order.id}`);
-    }
+
     //If no order id or order is picked up and its been 24 hours already then redirect user back to home page
-    if (!orderId && !paymentIntentId) {
+    if (!orderId) {
       router.push("/");
     }
-  }, [paymentIntentId, orderId, router, isLoading]);
+  }, [orderId, router, isLoading]);
 
   // Handle printing the receipt
 

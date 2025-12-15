@@ -72,6 +72,7 @@ export default function CustomerInformation({
           <div className="space-y-2">
             <Label htmlFor="customerPhoneNumber">
               {language === "en" ? "Phone Number" : "手机号码"}
+              <span className="ml-1 text-destructive">*</span>
             </Label>
             <PhoneInput
               country={"nz"} // Automatically sets +64 and NZ flag

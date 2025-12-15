@@ -26,6 +26,7 @@ type checkoutFormProps = {
   pickUpTime: Date | null;
   setPickUpTime: (time: Date) => void;
   pickUpNextOpening: boolean;
+  paymentIntentId: string | null;
 };
 
 export default function CheckoutForm({
@@ -36,6 +37,7 @@ export default function CheckoutForm({
   pickUpTime,
   setPickUpTime,
   pickUpNextOpening,
+  paymentIntentId,
 }: checkoutFormProps) {
   const { language } = useLanguage();
   const stripe = useStripe();
@@ -43,7 +45,6 @@ export default function CheckoutForm({
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [warned, setWarned] = useState(false);
 
   let dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
@@ -60,6 +61,34 @@ export default function CheckoutForm({
     { dessertIds, customisationIds },
     { enabled: false }, // Prevents automatic execution
   );
+
+  const { refetch: refetchOrderId } =
+    api.order.findOrderWithPaymentIntentId.useQuery(
+      { id: paymentIntentId ?? "" },
+      { enabled: false },
+    );
+
+  const pollForOrderId = (interval = 5000) => {
+    return new Promise<string>((resolve, reject) => {
+      const poll = setInterval(async () => {
+        try {
+          const { data: orderId } = await refetchOrderId();
+          if (orderId) {
+            console.log("Order found:", orderId);
+            clearInterval(poll); // Stop polling
+            resolve(orderId);
+          } else {
+            console.log("Order not yet available, retrying...");
+          }
+        } catch (err) {
+          console.error("Polling error:", err);
+          // Optionally stop polling on error
+          clearInterval(poll);
+          reject(err);
+        }
+      }, interval);
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,8 +188,33 @@ export default function CheckoutForm({
       setWarned(true);
     }
 
+    const mappedDesserts =
+      cart?.cart?.map((item) => ({
+        dessert: {
+          id: item.dessert.id,
+          quantity: item.quantity,
+        },
+        priceInCents: item.priceInCents,
+        customisations: item.customisations, // Default to empty array if undefined
+      })) ?? [];
+
+    const orderData = {
+      dessert: mappedDesserts,
+      customerFirstName: customerInfo.customerFirstName,
+      customerLastName: customerInfo.customerLastName,
+      customerEmail: customerInfo.customerEmail,
+      customerPhoneNumber: customerInfo.phone,
+      totalPriceInCents: cart.totalPrice,
+      pickUpTime: pickUpTime,
+    };
     setPaymentLoading(true);
     setPaymentError("");
+    await fetch("/api/updatePaymentIntent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderData, paymentIntentId }),
+    });
+
     const { error: submitError, paymentIntent } = await stripe.confirmPayment({
       elements,
       redirect: "if_required",
@@ -187,11 +241,12 @@ export default function CheckoutForm({
     }
     if (paymentIntent && paymentIntent.status === "succeeded") {
       setPaymentSuccess(true);
-      cart?.clearCart();
-      setPaymentIntentId(paymentIntent.id);
-      setTimeout(() => {
-        router.push(`/order?paymentId=${paymentIntent.id}`);
-      }, 3000);
+
+      const orderId = await pollForOrderId();
+      if (orderId) {
+        cart?.clearCart();
+        router.push(`/order?orderId=${orderId}`);
+      }
     } else {
       setPaymentLoading(false);
     }
@@ -209,16 +264,6 @@ export default function CheckoutForm({
             ? "Thank you for your order. You will be redirected to the confirmation page shortly."
             : "感谢您的订购。您将被重定向至确认页面"}
         </p>
-        <p className="mb-4 text-gray-500">
-          {language === "en"
-            ? "If not directed, you can click the button below to view your order details."
-            : "如果没有指示，您可以点击下面的按钮查看您的订单详情。"}
-        </p>
-        <Link href={`/order?paymentId=${paymentIntentId}`}>
-          <Button>
-            {language === "en" ? "View Order Details" : "查看订单详情"}
-          </Button>
-        </Link>
       </div>
     );
   }

@@ -1,7 +1,5 @@
 import { Status } from "@prisma/client";
 import { z } from "zod";
-import { orderSchema } from "~/app/components/schemas";
-import EmailOrderConfirmation from "~/email/orderConfirmation";
 
 import {
   createTRPCRouter,
@@ -33,17 +31,11 @@ export const orderRouter = createTRPCRouter({
   findOrderWithPaymentIntentId: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
-      return await ctx.db.order.findFirst({
+      const order = await ctx.db.order.findFirst({
         where: { paymentIntentId: input.id },
-        include: {
-          desserts: {
-            include: {
-              dessert: true,
-              customisations: { include: { customisation: true } },
-            },
-          },
-        },
+        select: { id: true },
       });
+      return order ? order.id : null;
     }),
 
   getAllCurrentOrders: protectedProcedure.query(async ({ ctx }) => {

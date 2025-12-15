@@ -4,24 +4,24 @@ import { stripe } from "../../../lib/stripe";
 
 export async function POST(req: Request) {
   try {
-    const { totalPriceInCents } = await req.json();
+    const { orderData, paymentIntentId } = await req.json();
 
-    if (!totalPriceInCents) {
+    if (!orderData.totalPriceInCents) {
       return NextResponse.json(
         { error: "Amount is required" },
         { status: 400 },
       );
     }
-    console.log("totalPriceInCents:", totalPriceInCents);
-    const session = await stripe.paymentIntents.create({
-      amount: totalPriceInCents,
-      currency: "nzd",
-      payment_method_types: ["card"],
+    console.log("updating payment intent for:", orderData);
+    const paymentIntent = await stripe.paymentIntents.update(paymentIntentId, {
+      metadata: {
+        orderData: JSON.stringify(orderData),
+        webOrder: "true",
+      },
     });
-    console.log("session: ", session);
 
     return NextResponse.json(
-      { clientSecret: session.client_secret, paymentIntentId: session.id },
+      { paymentIntentId: paymentIntent.id },
       { status: 200 },
     );
   } catch (error) {

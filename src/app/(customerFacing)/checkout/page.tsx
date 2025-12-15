@@ -19,6 +19,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [customerInfo, setCustomerInfo] = useState({
     customerFirstName: "",
     customerLastName: "",
@@ -28,6 +29,10 @@ export default function CheckoutPage() {
 
   const [pickUpTime, setPickUpTime] = useState<Date | null>(null);
   const [pickUpNextOpening, setPickUpNextOpening] = useState(false);
+  const [debouncedCustomerInfo, setDebouncedCustomerInfo] =
+    useState(customerInfo);
+  const [isPaymentIntentInitialized, setIsPaymentIntentInitialized] =
+    useState(false);
 
   //Check if admin wants ASAP pick up time?
 
@@ -36,16 +41,26 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedCustomerInfo(customerInfo);
+    }, 500); // wait 500ms after typing stops
+
+    return () => clearTimeout(handler); // cancel previous timeout if typing continues
+  }, [customerInfo]);
+
+  useEffect(() => {
+    if (isPaymentIntentInitialized) return; // Prevent re-initialization
     if (!cart?.totalPrice) return;
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const nzPhoneRegex = /^\+?64[2-9]\d{8,10}$/;
     if (
-      !customerInfo.customerFirstName?.trim() ||
-      !customerInfo.customerLastName?.trim() ||
-      !customerInfo.customerEmail?.trim() ||
-      !emailRegex.test(customerInfo.customerEmail.trim()) ||
-      (customerInfo.phone && !nzPhoneRegex.test(customerInfo.phone.trim()))
+      !debouncedCustomerInfo.customerFirstName?.trim() ||
+      !debouncedCustomerInfo.customerLastName?.trim() ||
+      !debouncedCustomerInfo.customerEmail?.trim() ||
+      !emailRegex.test(debouncedCustomerInfo.customerEmail.trim()) ||
+      (debouncedCustomerInfo.phone &&
+        !nzPhoneRegex.test(debouncedCustomerInfo.phone.trim()))
     ) {
       return;
     }
@@ -54,44 +69,26 @@ export default function CheckoutPage() {
       return;
     }
 
-    const mappedDesserts =
-      cart?.cart?.map((item) => ({
-        dessert: {
-          id: item.dessert.id,
-          quantity: item.quantity,
-        },
-        priceInCents: item.priceInCents,
-        customisations: item.customisations, // Default to empty array if undefined
-      })) ?? [];
-
-    const orderData = {
-      dessert: mappedDesserts,
-      customerFirstName: customerInfo.customerFirstName,
-      customerLastName: customerInfo.customerLastName,
-      customerEmail: customerInfo.customerEmail,
-      customerPhoneNumber: customerInfo.phone,
-      totalPriceInCents: cart.totalPrice,
-      pickUpTime: pickUpTime,
-    };
-
     setIsLoading(true);
     fetch("/api/checkout_sessions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ orderData }),
+      body: JSON.stringify({ totalPriceInCents: cart?.totalPrice }),
     })
       .then((res) => res.json())
       .then((data) => {
         setClientSecret(data.clientSecret);
+        setPaymentIntentId(data.paymentIntentId);
+        setIsPaymentIntentInitialized(true);
         setIsLoading(false);
       })
       .catch(() => {
         setError("Failed to initialize payment. Please try again.");
         setIsLoading(false);
       });
-  }, [cart?.totalPrice, isClient, customerInfo, pickUpTime]);
+  }, [cart?.totalPrice, isClient, debouncedCustomerInfo]);
 
   const handleCustomerInfoChange = (
     value: string | React.ChangeEvent<HTMLInputElement>,
@@ -163,6 +160,7 @@ export default function CheckoutPage() {
         <div>
           <PaymentSection
             clientSecret={clientSecret}
+            paymentIntentId={paymentIntentId}
             cart={cart}
             customerInfo={customerInfo}
             pickUpTime={pickUpTime}
