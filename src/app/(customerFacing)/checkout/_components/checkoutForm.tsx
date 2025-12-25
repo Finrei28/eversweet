@@ -97,165 +97,169 @@ export default function CheckoutForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setHolidayNotificationShown(true); // delete after holiday
-    // setPaymentError("");
+    if (!pickUpTime) {
+      setHolidayNotificationShown(true); // delete after holiday
+      return;
+    }
 
-    // dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
+    setPaymentError("");
 
-    // customisationIds = [
-    //   ...new Set(
-    //     cart.cart.flatMap((dessert) =>
-    //       dessert.customisations.map((customisation) => customisation.id),
-    //     ),
-    //   ),
-    // ];
+    dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
 
-    // refetch();
+    customisationIds = [
+      ...new Set(
+        cart.cart.flatMap((dessert) =>
+          dessert.customisations.map((customisation) => customisation.id),
+        ),
+      ),
+    ];
 
-    // if (!stripe || !elements) {
-    //   return;
-    // }
+    refetch();
 
-    // if (error) {
-    //   setPaymentError(error.message);
-    //   return;
-    // }
+    if (!stripe || !elements) {
+      return;
+    }
 
-    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    // const nzPhoneRegex = /^\+?64[2-9]\d{8,10}$/;
-    // if (
-    //   !customerInfo.customerFirstName?.trim() ||
-    //   !customerInfo.customerLastName?.trim() ||
-    //   !customerInfo.customerEmail?.trim()
-    // ) {
-    //   setPaymentError("Please fill in all customer information fields.");
-    //   return;
-    // }
+    if (error) {
+      setPaymentError(error.message);
+      return;
+    }
 
-    // if (!emailRegex.test(customerInfo.customerEmail.trim())) {
-    //   setPaymentError("Please enter a valid email address.");
-    //   return;
-    // }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const nzPhoneRegex = /^\+?64[2-9]\d{8,10}$/;
+    if (
+      !customerInfo.customerFirstName?.trim() ||
+      !customerInfo.customerLastName?.trim() ||
+      !customerInfo.customerEmail?.trim()
+    ) {
+      setPaymentError("Please fill in all customer information fields.");
+      return;
+    }
 
-    // if (customerInfo.phone && !nzPhoneRegex.test(customerInfo.phone.trim())) {
-    //   setPaymentError("Please enter a valid New Zealand phone number.");
-    //   return;
-    // }
+    if (!emailRegex.test(customerInfo.customerEmail.trim())) {
+      setPaymentError("Please enter a valid email address.");
+      return;
+    }
 
-    // if (cart.cart.length === 0) {
-    //   return;
-    // }
+    if (customerInfo.phone && !nzPhoneRegex.test(customerInfo.phone.trim())) {
+      setPaymentError("Please enter a valid New Zealand phone number.");
+      return;
+    }
 
-    // if (!pickUpTime) {
-    //   setPaymentError("Please select a pick up time.");
-    //   return;
-    // }
-    // const now = new Date();
-    // const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
-    // let newPickUpTime = null;
-    // if (pickUpTime.getTime() < tenMinutesLater.getTime()) {
-    //   setPickUpTime(getNextValidTime());
-    //   newPickUpTime = getNextValidTime();
-    //   const isToday =
-    //     newPickUpTime?.getDate() === now.getDate() &&
-    //     newPickUpTime?.getMonth() === now.getMonth() &&
-    //     newPickUpTime?.getFullYear() === now.getFullYear();
+    if (cart.cart.length === 0) {
+      return;
+    }
 
-    //   if (!isToday && newPickUpTime && !warned) {
-    //     toast({
-    //       title:
-    //         language === "en"
-    //           ? "Your pick up time has changed!"
-    //           : "您的取货时间已更改！",
-    //       description: `${
-    //         language === "en" ? "Your pick up time is" : "您的取货时间是"
-    //       } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
-    //       variant: "destructive",
-    //     });
-    //     setWarned(true);
-    //     return;
-    //   }
-    // }
+    if (!pickUpTime) {
+      setPaymentError("Please select a pick up time.");
+      return;
+    }
+    const now = new Date();
+    const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
+    let newPickUpTime = null;
+    if (pickUpTime.getTime() < tenMinutesLater.getTime()) {
+      setPickUpTime(getNextValidTime());
+      newPickUpTime = getNextValidTime();
+      const isToday =
+        newPickUpTime?.getDate() === now.getDate() &&
+        newPickUpTime?.getMonth() === now.getMonth() &&
+        newPickUpTime?.getFullYear() === now.getFullYear();
 
-    // if (pickUpNextOpening && !warned) {
-    //   toast({
-    //     title:
-    //       language === "en"
-    //         ? "your pick up time is on another day!"
-    //         : "看来您的取货时间是在其他天！",
-    //     description: `${
-    //       language === "en"
-    //         ? "Please check your intended pick up date is at"
-    //         : "请确认您预计的取货日期是"
-    //     } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
-    //     variant: "destructive",
-    //     duration: Infinity,
-    //   });
-    //   setWarned(true);
-    // }
+      if (!isToday && newPickUpTime && !warned) {
+        toast({
+          title:
+            language === "en"
+              ? "Your pick up time has changed!"
+              : "您的取货时间已更改！",
+          description: `${
+            language === "en" ? "Your pick up time is" : "您的取货时间是"
+          } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
+          variant: "destructive",
+        });
+        setWarned(true);
+        return;
+      }
+    }
 
-    // const mappedDesserts =
-    //   cart?.cart?.map((item) => ({
-    //     dessert: {
-    //       id: item.dessert.id,
-    //       quantity: item.quantity,
-    //     },
-    //     priceInCents: item.priceInCents,
-    //     customisations: item.customisations, // Default to empty array if undefined
-    //   })) ?? [];
+    if (pickUpNextOpening && !warned) {
+      toast({
+        title:
+          language === "en"
+            ? "your pick up time is on another day!"
+            : "看来您的取货时间是在其他天！",
+        description: `${
+          language === "en"
+            ? "Please check your intended pick up date is at"
+            : "请确认您预计的取货日期是"
+        } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
+        variant: "destructive",
+        duration: Infinity,
+      });
+      setWarned(true);
+    }
 
-    // const orderData = {
-    //   dessert: mappedDesserts,
-    //   customerFirstName: customerInfo.customerFirstName,
-    //   customerLastName: customerInfo.customerLastName,
-    //   customerEmail: customerInfo.customerEmail,
-    //   customerPhoneNumber: customerInfo.phone,
-    //   totalPriceInCents: cart.totalPrice,
-    //   pickUpTime: pickUpTime,
-    // };
-    // setPaymentLoading(true);
-    // setPaymentError("");
-    // await fetch("/api/updatePaymentIntent", {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({ orderData, paymentIntentId }),
-    // });
+    const mappedDesserts =
+      cart?.cart?.map((item) => ({
+        dessert: {
+          id: item.dessert.id,
+          quantity: item.quantity,
+        },
+        priceInCents: item.priceInCents,
+        customisations: item.customisations, // Default to empty array if undefined
+      })) ?? [];
 
-    // const { error: submitError, paymentIntent } = await stripe.confirmPayment({
-    //   elements,
-    //   redirect: "if_required",
-    // });
+    const orderData = {
+      dessert: mappedDesserts,
+      customerFirstName: customerInfo.customerFirstName,
+      customerLastName: customerInfo.customerLastName,
+      customerEmail: customerInfo.customerEmail,
+      customerPhoneNumber: customerInfo.phone,
+      totalPriceInCents: cart.totalPrice,
+      pickUpTime: pickUpTime,
+    };
+    setPaymentLoading(true);
+    setPaymentError("");
+    await fetch("/api/updatePaymentIntent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderData, paymentIntentId }),
+    });
 
-    // if (submitError) {
-    //   setPaymentError(
-    //     submitError.message || "Payment failed. Please try again.",
-    //   );
-    //   setPaymentLoading(false);
-    // } else if (paymentIntent.status === "requires_action") {
-    //   const { error: actionError } = await stripe.confirmPayment({
-    //     elements,
-    //     confirmParams: {
-    //       return_url: `${window.location.origin}/order?paymentId=${paymentIntent.id}`,
-    //     },
-    //     redirect: "if_required",
-    //   });
-    //   if (actionError) {
-    //     setPaymentError(
-    //       actionError.message || "Payment failed. Please try again.",
-    //     );
-    //   }
-    // }
-    // if (paymentIntent && paymentIntent.status === "succeeded") {
-    //   setPaymentSuccess(true);
+    const { error: submitError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      redirect: "if_required",
+    });
 
-    //   const orderId = await pollForOrderId();
-    //   if (orderId) {
-    //     cart?.clearCart();
-    //     router.push(`/order?orderId=${orderId}`);
-    //   }
-    // } else {
-    //   setPaymentLoading(false);
-    // }
+    if (submitError) {
+      setPaymentError(
+        submitError.message || "Payment failed. Please try again.",
+      );
+      setPaymentLoading(false);
+    } else if (paymentIntent.status === "requires_action") {
+      const { error: actionError } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/order?paymentId=${paymentIntent.id}`,
+        },
+        redirect: "if_required",
+      });
+      if (actionError) {
+        setPaymentError(
+          actionError.message || "Payment failed. Please try again.",
+        );
+      }
+    }
+    if (paymentIntent && paymentIntent.status === "succeeded") {
+      setPaymentSuccess(true);
+
+      const orderId = await pollForOrderId();
+      if (orderId) {
+        cart?.clearCart();
+        router.push(`/order?orderId=${orderId}`);
+      }
+    } else {
+      setPaymentLoading(false);
+    }
   };
 
   if (paymentSuccess) {
