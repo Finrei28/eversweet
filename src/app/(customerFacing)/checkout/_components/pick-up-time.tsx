@@ -63,12 +63,15 @@ const getBusinessHoursForDate = (date: Date) => {
 };
 
 // Find the next open date
-const findNextOpenDate = (startDate: Date): Date => {
+const findNextOpenDate = (startDate: Date): Date | null => {
   let date = new Date(startDate);
   let daysChecked = 0;
 
   // Prevent infinite loop by checking up to 14 days
   while (!isBusinessDay(date) && daysChecked < 14) {
+    if (daysChecked >= 7) {
+      return null;
+    }
     date = addDays(date, 1);
     daysChecked++;
   }
@@ -125,6 +128,7 @@ export const getNextValidTime = () => {
     // Find the next open date
 
     const nextOpenDate = findNextOpenDate(addDays(now, 1));
+    if (!nextOpenDate) return null;
     const { startDateTime } = getStartEndHours(dayHours, nextOpenDate);
     return set(nextOpenDate, {
       hours: HOURS[getDay(nextOpenDate)]?.open || 12,
@@ -142,6 +146,7 @@ export const getNextValidTime = () => {
   } else if (dayHours && nextTime.getHours() >= (dayHours.close || 21)) {
     // After closing, find the next open date
     const nextOpenDate = findNextOpenDate(addDays(now, 1));
+    if (!nextOpenDate) return null;
     const { startDateTime } = getStartEndHours(dayHours, nextOpenDate);
     return set(nextOpenDate, {
       hours: HOURS[getDay(nextOpenDate)]?.open || 12,
@@ -171,6 +176,7 @@ export function PickupTimePicker({
       const diffInMs = value.getTime() - now.getTime();
       const diffInMinutes = diffInMs / 1000 / 60;
       const nextTime = getNextValidTime();
+      if (!nextTime) return;
       if (diffInMinutes < 10) {
         onChange(nextTime);
       }
@@ -264,6 +270,9 @@ export function PickupTimePicker({
     if (!isBusinessDay(date)) {
       // Find the next open date
       const nextOpenDate = findNextOpenDate(date);
+      if (!nextOpenDate) {
+        return;
+      }
       onChange(
         set(nextOpenDate, {
           hours: HOURS[getDay(nextOpenDate)]?.open || 12,
@@ -414,7 +423,7 @@ export function PickupTimePicker({
               <p className="font-medium">
                 {language === "en" ? "Estimated time: " : "预计时间: "}
                 {value
-                  ? format(getNextValidTime(), "EEE, h:mm a", {
+                  ? format(getNextValidTime() ?? "", "EEE, h:mm a", {
                       locale: language === "en" ? enNZ : zhCN,
                     })
                   : "Loading..."}
@@ -485,8 +494,6 @@ export function PickupTimePicker({
                   <div className="grid grid-cols-2 gap-2 pr-3">
                     {value && isBusinessDay(value) ? (
                       generateTimeSlots(value).map((time, i) => {
-                        console.log({ value: value });
-                        console.log({ time: time });
                         return (
                           <Button
                             key={i}

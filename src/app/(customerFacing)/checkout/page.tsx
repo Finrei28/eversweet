@@ -51,6 +51,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (isPaymentIntentInitialized) return; // Prevent re-initialization
     if (!cart?.totalPrice) return;
+    if (!pickUpTime) return; // delete after holiday
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const nzPhoneRegex = /^\+?64[2-9]\d{8,10}$/;

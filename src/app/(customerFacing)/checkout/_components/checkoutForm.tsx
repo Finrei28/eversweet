@@ -17,6 +17,7 @@ import { api } from "~/trpc/react";
 import { getNextValidTime } from "./pick-up-time";
 import { toast } from "~/hooks/use-toast";
 import { format } from "date-fns";
+import NotificationModal from "~/app/_components/_homeComponents/notification";
 
 type checkoutFormProps = {
   totalPriceInCents: number;
@@ -24,7 +25,7 @@ type checkoutFormProps = {
   router: any;
   cart: CartContextType;
   pickUpTime: Date | null;
-  setPickUpTime: (time: Date) => void;
+  setPickUpTime: (time: Date | null) => void;
   pickUpNextOpening: boolean;
   paymentIntentId: string | null;
 };
@@ -46,6 +47,8 @@ export default function CheckoutForm({
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [warned, setWarned] = useState(false);
+  const [holidayNotificationShown, setHolidayNotificationShown] =
+    useState(false);
 
   let dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
 
@@ -94,164 +97,165 @@ export default function CheckoutForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPaymentError("");
+    setHolidayNotificationShown(true); // delete after holiday
+    // setPaymentError("");
 
-    dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
+    // dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
 
-    customisationIds = [
-      ...new Set(
-        cart.cart.flatMap((dessert) =>
-          dessert.customisations.map((customisation) => customisation.id),
-        ),
-      ),
-    ];
+    // customisationIds = [
+    //   ...new Set(
+    //     cart.cart.flatMap((dessert) =>
+    //       dessert.customisations.map((customisation) => customisation.id),
+    //     ),
+    //   ),
+    // ];
 
-    refetch();
+    // refetch();
 
-    if (!stripe || !elements) {
-      return;
-    }
+    // if (!stripe || !elements) {
+    //   return;
+    // }
 
-    if (error) {
-      setPaymentError(error.message);
-      return;
-    }
+    // if (error) {
+    //   setPaymentError(error.message);
+    //   return;
+    // }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const nzPhoneRegex = /^\+?64[2-9]\d{8,10}$/;
-    if (
-      !customerInfo.customerFirstName?.trim() ||
-      !customerInfo.customerLastName?.trim() ||
-      !customerInfo.customerEmail?.trim()
-    ) {
-      setPaymentError("Please fill in all customer information fields.");
-      return;
-    }
+    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // const nzPhoneRegex = /^\+?64[2-9]\d{8,10}$/;
+    // if (
+    //   !customerInfo.customerFirstName?.trim() ||
+    //   !customerInfo.customerLastName?.trim() ||
+    //   !customerInfo.customerEmail?.trim()
+    // ) {
+    //   setPaymentError("Please fill in all customer information fields.");
+    //   return;
+    // }
 
-    if (!emailRegex.test(customerInfo.customerEmail.trim())) {
-      setPaymentError("Please enter a valid email address.");
-      return;
-    }
+    // if (!emailRegex.test(customerInfo.customerEmail.trim())) {
+    //   setPaymentError("Please enter a valid email address.");
+    //   return;
+    // }
 
-    if (customerInfo.phone && !nzPhoneRegex.test(customerInfo.phone.trim())) {
-      setPaymentError("Please enter a valid New Zealand phone number.");
-      return;
-    }
+    // if (customerInfo.phone && !nzPhoneRegex.test(customerInfo.phone.trim())) {
+    //   setPaymentError("Please enter a valid New Zealand phone number.");
+    //   return;
+    // }
 
-    if (cart.cart.length === 0) {
-      return;
-    }
+    // if (cart.cart.length === 0) {
+    //   return;
+    // }
 
-    if (!pickUpTime) {
-      setPaymentError("Please select a pick up time.");
-      return;
-    }
-    const now = new Date();
-    const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
-    let newPickUpTime = null;
-    if (pickUpTime.getTime() < tenMinutesLater.getTime()) {
-      setPickUpTime(getNextValidTime());
-      newPickUpTime = getNextValidTime();
-      const isToday =
-        newPickUpTime?.getDate() === now.getDate() &&
-        newPickUpTime?.getMonth() === now.getMonth() &&
-        newPickUpTime?.getFullYear() === now.getFullYear();
+    // if (!pickUpTime) {
+    //   setPaymentError("Please select a pick up time.");
+    //   return;
+    // }
+    // const now = new Date();
+    // const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
+    // let newPickUpTime = null;
+    // if (pickUpTime.getTime() < tenMinutesLater.getTime()) {
+    //   setPickUpTime(getNextValidTime());
+    //   newPickUpTime = getNextValidTime();
+    //   const isToday =
+    //     newPickUpTime?.getDate() === now.getDate() &&
+    //     newPickUpTime?.getMonth() === now.getMonth() &&
+    //     newPickUpTime?.getFullYear() === now.getFullYear();
 
-      if (!isToday && newPickUpTime && !warned) {
-        toast({
-          title:
-            language === "en"
-              ? "Your pick up time has changed!"
-              : "您的取货时间已更改！",
-          description: `${
-            language === "en" ? "Your pick up time is" : "您的取货时间是"
-          } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
-          variant: "destructive",
-        });
-        setWarned(true);
-        return;
-      }
-    }
+    //   if (!isToday && newPickUpTime && !warned) {
+    //     toast({
+    //       title:
+    //         language === "en"
+    //           ? "Your pick up time has changed!"
+    //           : "您的取货时间已更改！",
+    //       description: `${
+    //         language === "en" ? "Your pick up time is" : "您的取货时间是"
+    //       } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
+    //       variant: "destructive",
+    //     });
+    //     setWarned(true);
+    //     return;
+    //   }
+    // }
 
-    if (pickUpNextOpening && !warned) {
-      toast({
-        title:
-          language === "en"
-            ? "your pick up time is on another day!"
-            : "看来您的取货时间是在其他天！",
-        description: `${
-          language === "en"
-            ? "Please check your intended pick up date is at"
-            : "请确认您预计的取货日期是"
-        } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
-        variant: "destructive",
-        duration: Infinity,
-      });
-      setWarned(true);
-    }
+    // if (pickUpNextOpening && !warned) {
+    //   toast({
+    //     title:
+    //       language === "en"
+    //         ? "your pick up time is on another day!"
+    //         : "看来您的取货时间是在其他天！",
+    //     description: `${
+    //       language === "en"
+    //         ? "Please check your intended pick up date is at"
+    //         : "请确认您预计的取货日期是"
+    //     } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
+    //     variant: "destructive",
+    //     duration: Infinity,
+    //   });
+    //   setWarned(true);
+    // }
 
-    const mappedDesserts =
-      cart?.cart?.map((item) => ({
-        dessert: {
-          id: item.dessert.id,
-          quantity: item.quantity,
-        },
-        priceInCents: item.priceInCents,
-        customisations: item.customisations, // Default to empty array if undefined
-      })) ?? [];
+    // const mappedDesserts =
+    //   cart?.cart?.map((item) => ({
+    //     dessert: {
+    //       id: item.dessert.id,
+    //       quantity: item.quantity,
+    //     },
+    //     priceInCents: item.priceInCents,
+    //     customisations: item.customisations, // Default to empty array if undefined
+    //   })) ?? [];
 
-    const orderData = {
-      dessert: mappedDesserts,
-      customerFirstName: customerInfo.customerFirstName,
-      customerLastName: customerInfo.customerLastName,
-      customerEmail: customerInfo.customerEmail,
-      customerPhoneNumber: customerInfo.phone,
-      totalPriceInCents: cart.totalPrice,
-      pickUpTime: pickUpTime,
-    };
-    setPaymentLoading(true);
-    setPaymentError("");
-    await fetch("/api/updatePaymentIntent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderData, paymentIntentId }),
-    });
+    // const orderData = {
+    //   dessert: mappedDesserts,
+    //   customerFirstName: customerInfo.customerFirstName,
+    //   customerLastName: customerInfo.customerLastName,
+    //   customerEmail: customerInfo.customerEmail,
+    //   customerPhoneNumber: customerInfo.phone,
+    //   totalPriceInCents: cart.totalPrice,
+    //   pickUpTime: pickUpTime,
+    // };
+    // setPaymentLoading(true);
+    // setPaymentError("");
+    // await fetch("/api/updatePaymentIntent", {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify({ orderData, paymentIntentId }),
+    // });
 
-    const { error: submitError, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      redirect: "if_required",
-    });
+    // const { error: submitError, paymentIntent } = await stripe.confirmPayment({
+    //   elements,
+    //   redirect: "if_required",
+    // });
 
-    if (submitError) {
-      setPaymentError(
-        submitError.message || "Payment failed. Please try again.",
-      );
-      setPaymentLoading(false);
-    } else if (paymentIntent.status === "requires_action") {
-      const { error: actionError } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/order?paymentId=${paymentIntent.id}`,
-        },
-        redirect: "if_required",
-      });
-      if (actionError) {
-        setPaymentError(
-          actionError.message || "Payment failed. Please try again.",
-        );
-      }
-    }
-    if (paymentIntent && paymentIntent.status === "succeeded") {
-      setPaymentSuccess(true);
+    // if (submitError) {
+    //   setPaymentError(
+    //     submitError.message || "Payment failed. Please try again.",
+    //   );
+    //   setPaymentLoading(false);
+    // } else if (paymentIntent.status === "requires_action") {
+    //   const { error: actionError } = await stripe.confirmPayment({
+    //     elements,
+    //     confirmParams: {
+    //       return_url: `${window.location.origin}/order?paymentId=${paymentIntent.id}`,
+    //     },
+    //     redirect: "if_required",
+    //   });
+    //   if (actionError) {
+    //     setPaymentError(
+    //       actionError.message || "Payment failed. Please try again.",
+    //     );
+    //   }
+    // }
+    // if (paymentIntent && paymentIntent.status === "succeeded") {
+    //   setPaymentSuccess(true);
 
-      const orderId = await pollForOrderId();
-      if (orderId) {
-        cart?.clearCart();
-        router.push(`/order?orderId=${orderId}`);
-      }
-    } else {
-      setPaymentLoading(false);
-    }
+    //   const orderId = await pollForOrderId();
+    //   if (orderId) {
+    //     cart?.clearCart();
+    //     router.push(`/order?orderId=${orderId}`);
+    //   }
+    // } else {
+    //   setPaymentLoading(false);
+    // }
   };
 
   if (paymentSuccess) {
@@ -271,31 +275,42 @@ export default function CheckoutForm({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="space-y-6">
-        <PaymentElement />
+    <>
+      <form onSubmit={handleSubmit}>
+        <div className="space-y-6">
+          <PaymentElement />
 
-        {paymentError && (
-          <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
-            {paymentError}
-          </div>
-        )}
-
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={!stripe || !elements || paymentLoading}
-        >
-          {paymentLoading ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              {language === "en" ? "Processing..." : "正在处理"}
-            </>
-          ) : (
-            `${language === "en" ? "Pay " : "支付 "}${formatCurrency(totalPriceInCents / 100)}`
+          {paymentError && (
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
+              {paymentError}
+            </div>
           )}
-        </Button>
-      </div>
-    </form>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={!stripe || !elements || paymentLoading}
+          >
+            {paymentLoading ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                {language === "en" ? "Processing..." : "正在处理"}
+              </>
+            ) : (
+              `${language === "en" ? "Pay " : "支付 "}${formatCurrency(totalPriceInCents / 100)}`
+            )}
+          </Button>
+        </div>
+      </form>
+      <NotificationModal
+        open={holidayNotificationShown}
+        onClose={() => setHolidayNotificationShown(false)}
+        title={language === "en" ? "Announcement" : "通知"}
+      >
+        {language === "en"
+          ? "Merry Christmas and Happy New Year from Eversweet! We will be closed on December 25th to January 16th and will be back on January 17th. Wishing you all a joyful holiday season!"
+          : "Eversweet祝您圣诞快乐，新年快乐！我们将在12月25日至1月16日放假，将于1月17日正常营业。祝您节日愉快！"}
+      </NotificationModal>
+    </>
   );
 }

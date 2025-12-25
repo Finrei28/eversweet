@@ -23,7 +23,7 @@ type paymentSectionProps = {
   isLoading: boolean;
   error: string;
   pickUpTime: Date | null;
-  setPickUpTime: (time: Date) => void;
+  setPickUpTime: (time: Date | null) => void;
   pickUpNextOpening: boolean;
   paymentIntentId: string | null;
 };

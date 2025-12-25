@@ -12,13 +12,11 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    console.log("totalPriceInCents:", totalPriceInCents);
     const session = await stripe.paymentIntents.create({
       amount: totalPriceInCents,
       currency: "nzd",
       payment_method_types: ["card"],
     });
-    console.log("session: ", session);
 
     return NextResponse.json(
       { clientSecret: session.client_secret, paymentIntentId: session.id },

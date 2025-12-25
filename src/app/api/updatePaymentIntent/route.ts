@@ -12,7 +12,6 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    console.log("updating payment intent for:", orderData);
     const paymentIntent = await stripe.paymentIntents.update(paymentIntentId, {
       metadata: {
         orderData: JSON.stringify(orderData),

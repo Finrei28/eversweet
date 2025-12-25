@@ -35,7 +35,6 @@ export const productRouter = createTRPCRouter({
       },
       take: 10, // Get the top 10
     });
-    console.log(popularDesserts);
     // Fetch the actual dessert details
     const rawDesserts = await ctx.db.dessert.findMany({
       where: {
