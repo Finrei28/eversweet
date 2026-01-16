@@ -17,8 +17,16 @@ function HomePageContent() {
   const { language } = useLanguage();
   const searchParams = useSearchParams();
   const openingHoursRef = useRef<HTMLDivElement>(null);
+
+  // states for notifications
+
+  {
+    /* 
   const [notificationModalOpen, setNotificationModalOpen] = useState(false);
   const NOTIFICATION_KEY = "notification_shown";
+  */
+  }
+
   useEffect(() => {
     if (searchParams.get("scrollTo") === "opening-hours") {
       setTimeout(() => {
@@ -27,14 +35,16 @@ function HomePageContent() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    const hasShown = sessionStorage.getItem(NOTIFICATION_KEY);
+  // useeffect for notifications
 
-    if (!hasShown) {
-      setNotificationModalOpen(true);
-      sessionStorage.setItem(NOTIFICATION_KEY, "true");
-    }
-  }, []);
+  // useEffect(() => {
+  //   const hasShown = sessionStorage.getItem(NOTIFICATION_KEY);
+
+  //   if (!hasShown) {
+  //     setNotificationModalOpen(true);
+  //     sessionStorage.setItem(NOTIFICATION_KEY, "true");
+  //   }
+  // }, []);
 
   return (
     <>
@@ -87,6 +97,8 @@ function HomePageContent() {
           </div>
         </footer>
       </div>
+
+      {/* 
       <NotificationModal
         open={notificationModalOpen}
         onClose={() => setNotificationModalOpen(false)}
@@ -96,6 +108,8 @@ function HomePageContent() {
           ? "Merry Christmas and Happy New Year from Eversweet! We will be closed on December 25th to January 16th and will be back on January 17th. Wishing you all a joyful holiday season!"
           : "Eversweet祝您圣诞快乐，新年快乐！我们将在12月25日至1月16日放假，将于1月17日正常营业。祝您节日愉快！"}
       </NotificationModal>
+
+      */}
     </>
   );
 }
