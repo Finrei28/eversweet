@@ -206,6 +206,7 @@ export default function CheckoutForm({
         },
         priceInCents: item.priceInCents,
         customisations: item.customisations, // Default to empty array if undefined
+        discountedAmountInCents: item.discountedAmountInCents,
       })) ?? [];
 
     const orderData = {

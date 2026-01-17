@@ -255,6 +255,7 @@ export default function CustomisationDialog({
       dessert,
       priceInCents: totalPrice,
       quantity: dessertQuantity,
+      discountedAmountInCents: 0,
     };
 
     if (!cart) return null;
@@ -271,6 +272,7 @@ export default function CustomisationDialog({
       dessert,
       priceInCents: totalPrice,
       quantity: dessertQuantity,
+      discountedAmountInCents: cartItem.discountedAmountInCents,
     };
 
     cart.updateItemFromCart(cartItem.id, item);

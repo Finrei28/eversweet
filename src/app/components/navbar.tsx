@@ -279,7 +279,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                         : item.dessert.chineseName;
                     return (
                       <div
-                        key={item.id}
+                        key={`${item.id}-${item.promoNumber ?? "no-promo"}-${item.discountedAmountInCents}`}
                         className="flex items-center gap-4 border-b border-gray-100 pb-4"
                       >
                         <div className="flex flex-1 flex-col">
@@ -294,7 +294,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                             return (
                               <p
                                 className="ml-1 mt-1 items-center text-sm text-gray-500"
-                                key={customisation.id}
+                                key={`${customisation.id}-${item.promoNumber ?? "no-promo"}-${item.discountedAmountInCents}`}
                               >
                                 {customisation.quantity > 1
                                   ? `+ ${customisation.quantity} ${customisationName}`
@@ -305,7 +305,11 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                             );
                           })}
                           <p className="mt-1 text-sm text-gray-500">
-                            {formatCurrency(item.priceInCents / 100)}
+                            {formatCurrency(
+                              (item.priceInCents -
+                                item.discountedAmountInCents) /
+                                100,
+                            )}
                           </p>
                         </div>
 
@@ -326,6 +330,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                             size="icon"
                             className="h-7 w-7 rounded-full p-0"
                             onClick={() => cart.addExtraToCart(item.id)}
+                            disabled={!!item.promoNumber}
                           >
                             <Plus className="h-3 w-3" />
                           </Button>

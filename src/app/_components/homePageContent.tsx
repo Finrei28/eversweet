@@ -20,12 +20,12 @@ function HomePageContent() {
 
   // states for notifications
 
-  {
-    /* 
-  const [notificationModalOpen, setNotificationModalOpen] = useState(false);
-  const NOTIFICATION_KEY = "notification_shown";
-  */
-  }
+  // {
+  //   /*
+  const [notificationModalOpen, setNotificationModalOpen] = useState(true);
+  // const NOTIFICATION_KEY = "notification_shown";
+  // */
+  // }
 
   useEffect(() => {
     if (searchParams.get("scrollTo") === "opening-hours") {
@@ -98,18 +98,15 @@ function HomePageContent() {
         </footer>
       </div>
 
-      {/* 
       <NotificationModal
         open={notificationModalOpen}
         onClose={() => setNotificationModalOpen(false)}
         title={language === "en" ? "Announcement" : "通知"}
       >
         {language === "en"
-          ? "Merry Christmas and Happy New Year from Eversweet! We will be closed on December 25th to January 16th and will be back on January 17th. Wishing you all a joyful holiday season!"
-          : "Eversweet祝您圣诞快乐，新年快乐！我们将在12月25日至1月16日放假，将于1月17日正常营业。祝您节日愉快！"}
+          ? "We are excited to announce that Eversweet is now open again today! Enjoy our special promotion: Buy one get one half off on all Sago desserts, Steamed Milk Pudding desserts, and our refreshing drinks! Takeout only! 😃😃 This offer is valid until the end of the month on January 31, 2026! Don't miss out on this great deal 💝"
+          : "今天开张营业！全部$11.99和$9.99的西米露，各种双皮奶和冰糖雪梨，饮料系列的珍珠奶茶，烧仙草奶茶和红糖凉粉奶茶第一碗/杯原价，第二碗/杯半价！ 只限外卖！😃😃 活动到月底2026年1月31号结束！是时候来蹭一这波福利了💝"}
       </NotificationModal>
-
-      */}
     </>
   );
 }

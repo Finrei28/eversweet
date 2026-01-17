@@ -66,6 +66,8 @@ export default function OrderSummary({
             const editButton = (
               <CustomisationDialog dessert={item.dessert} cartItem={item} />
             );
+            const priceInCentsAfterDiscount =
+              item.priceInCents - item.discountedAmountInCents;
             const deleteButton = (
               <Button
                 variant="ghost"
@@ -134,10 +136,12 @@ export default function OrderSummary({
                   {/* Price Section */}
 
                   <p className="font-medium">
-                    {formatCurrency(item.priceInCents / 100)}
+                    {formatCurrency(priceInCentsAfterDiscount / 100)}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {formatCurrency((item.priceInCents / 100) * item.quantity)}
+                    {formatCurrency(
+                      (priceInCentsAfterDiscount / 100) * item.quantity,
+                    )}
                   </p>
 
                   {/* Edit Button */}

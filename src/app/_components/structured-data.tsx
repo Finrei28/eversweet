@@ -15,7 +15,7 @@ export default function StructuredData() {
           logo: "https://res.cloudinary.com/dlqjgl6ju/image/upload/v1743833655/eversweetTransLogo_qz1kmg.png",
           contactPoint: {
             "@type": "ContactPoint",
-            telephone: "+1-123-456-7890",
+            telephone: "09 949 1050",
             contactType: "customer service",
           },
         }),

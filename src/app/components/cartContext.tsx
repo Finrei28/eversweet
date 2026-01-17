@@ -3,6 +3,13 @@
 import { createContext, useState, useEffect, ReactNode, useRef } from "react";
 import { dessertOnClient } from "./types";
 
+const validPromoCategory = [
+  "cm90qekmo0000k0j44vqu4tdr",
+  "cm90qf2hb0000dlc9ein0forw",
+  "cm90qfk4j0000149n3y3c6dlc",
+  "cmfhv4lbp0000gf3qhbfe551p",
+];
+
 type customisations = {
   id: string;
   chineseName: string;
@@ -16,6 +23,8 @@ export type CartItem = {
   dessert: dessertOnClient;
   priceInCents: number;
   quantity: number;
+  promoNumber?: number;
+  discountedAmountInCents: number;
 };
 
 export type CartContextType = {
@@ -79,42 +88,180 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const addToCart = (item: CartItem) => {
     setCart((prev) => {
-      const exists = prev.find(
+      let updatedItem = { ...item };
+      let updatedCart = [...prev];
+
+      // promotion logic
+
+      if (
+        validPromoCategory.includes(item.dessert.categoryId) &&
+        prev.length > 0
+      ) {
+        const highestPromoNumber = prev.reduce(
+          (max, cartItem) => Math.max(max, cartItem.promoNumber ?? max),
+          0,
+        );
+
+        const nextPromoNumber = highestPromoNumber + 1;
+
+        for (let i = 0; i < updatedCart.length; i++) {
+          const cartItem = updatedCart[i]!;
+
+          if (
+            cartItem.promoNumber !== undefined ||
+            cartItem.dessert.categoryId !== item.dessert.categoryId
+          ) {
+            continue;
+          }
+
+          // clone before mutation
+          updatedCart[i] = {
+            ...cartItem,
+            promoNumber: nextPromoNumber,
+          };
+
+          updatedItem = {
+            ...updatedItem,
+            promoNumber: nextPromoNumber,
+            discountedAmountInCents: Math.floor(item.dessert.priceInCents / 2),
+          };
+
+          break;
+        }
+      }
+
+      // promotion logic ends
+
+      const exists = updatedCart.find(
         (cartItem) =>
-          areListsEqual(cartItem.customisations, item.customisations) &&
-          cartItem.dessert.name === item.dessert.name,
+          areListsEqual(cartItem.customisations, updatedItem.customisations) &&
+          cartItem.dessert.name === updatedItem.dessert.name &&
+          cartItem.priceInCents === updatedItem.priceInCents &&
+          cartItem.discountedAmountInCents ===
+            updatedItem.discountedAmountInCents &&
+          cartItem.promoNumber === updatedItem.promoNumber,
       );
 
       return exists
-        ? prev.map((cartItem) =>
+        ? updatedCart.map((cartItem) =>
             cartItem.id === exists.id
-              ? { ...cartItem, quantity: cartItem.quantity + item.quantity }
+              ? {
+                  ...cartItem,
+                  quantity: cartItem.quantity + updatedItem.quantity,
+                }
               : cartItem,
           )
-        : [...prev, { ...item, quantity: item.quantity }];
+        : [...updatedCart, updatedItem];
     });
   };
 
   const addExtraToCart = (id: string) => {
-    setCart((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, quantity: item.quantity + 1 } : item,
-      ),
-    );
+    setCart((prev) => {
+      // Clone the item we’re incrementing
+      let updatedCart = [...prev];
+
+      // Find the item we just incremented
+      const incrementedItem = updatedCart.find((item) => item.id === id);
+      if (!incrementedItem) return updatedCart;
+
+      // Only apply promo logic if the item is in a promo category
+      if (
+        validPromoCategory.includes(incrementedItem.dessert.categoryId) &&
+        incrementedItem.discountedAmountInCents === 0 // only if not already discounted
+      ) {
+        // Find the highest existing promo number
+        const highestPromoNumber = updatedCart.reduce(
+          (max, item) => Math.max(max, item.promoNumber ?? max),
+          0,
+        );
+        const nextPromoNumber = highestPromoNumber + 1;
+
+        // Apply promo: find first eligible item in the same category
+        for (let i = 0; i < updatedCart.length; i++) {
+          const cartItem = updatedCart[i]!;
+          if (
+            cartItem.promoNumber !== undefined ||
+            cartItem.dessert.categoryId !== incrementedItem.dessert.categoryId
+          ) {
+            continue;
+          }
+
+          updatedCart[i] = {
+            ...cartItem,
+            promoNumber: nextPromoNumber,
+          };
+
+          const newItem = {
+            ...cartItem,
+            promoNumber: nextPromoNumber,
+            discountedAmountInCents: Math.floor(
+              cartItem.dessert.priceInCents / 2,
+            ),
+          };
+
+          // Also update the incremented item
+          updatedCart = [...updatedCart, newItem];
+
+          break;
+        }
+      } else {
+        updatedCart = prev.map((item) =>
+          item.id === id ? { ...item, quantity: item.quantity + 1 } : item,
+        );
+      }
+
+      return updatedCart;
+    });
   };
 
   const removeFromCart = (id: string) => {
-    setCart((prev) =>
-      prev
-        .map((item) =>
-          item.id === id ? { ...item, quantity: item.quantity - 1 } : item,
-        )
-        .filter((item) => item.quantity > 0),
-    );
+    setCart((prev) => {
+      // First, find the promoNumber of the item being removed (if any)
+      const removedItem = prev.find((item) => item.id === id);
+
+      const promoToClear = removedItem?.promoNumber;
+
+      // Map over the cart to update quantities and clear promo numbers
+      const updatedCart = prev
+        .map((item) => {
+          // 1️⃣ decrement quantity for the item being removed
+          if (item.id === id) {
+            return { ...item, quantity: item.quantity - 1 };
+          }
+
+          // 2️⃣ clear promo for other items with the same promo number
+          if (promoToClear && item.promoNumber === promoToClear) {
+            return {
+              ...item,
+              promoNumber: undefined,
+              discountedAmountInCents: 0,
+            };
+          }
+
+          return item;
+        })
+        // 3️⃣ remove items with quantity <= 0
+        .filter((item) => item.quantity > 0);
+
+      return updatedCart;
+    });
   };
 
   const removeAllSameItemFromCart = (id: string) => {
-    setCart((prev) => prev.filter((item) => item.id != id));
+    setCart((prev) => {
+      const removedItem = prev.find((item) => item.id === id);
+      if (!removedItem) return prev;
+
+      const promoToRemove = removedItem.promoNumber;
+
+      // If it has a promoNumber, remove all items with that promoNumber
+      if (promoToRemove !== undefined) {
+        return prev.filter((item) => item.promoNumber !== promoToRemove);
+      }
+
+      // Otherwise, just remove the item itself
+      return prev.filter((item) => item.id !== id);
+    });
   };
 
   const updateItemFromCart = (id: string, item: CartItem) => {
@@ -147,7 +294,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const clearCart = () => setCart([]);
 
   const totalPrice = cart.reduce(
-    (total, item) => total + item.priceInCents * item.quantity,
+    (total, item) =>
+      total +
+      (item.priceInCents - item.discountedAmountInCents) * item.quantity,
     0,
   );
 
