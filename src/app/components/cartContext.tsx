@@ -7,7 +7,6 @@ const validPromoCategory = [
   "cm90qekmo0000k0j44vqu4tdr",
   "cm90qf2hb0000dlc9ein0forw",
   "cm90qfk4j0000149n3y3c6dlc",
-  "cmfhv4lbp0000gf3qhbfe551p",
 ];
 
 type customisations = {
