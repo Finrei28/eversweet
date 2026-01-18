@@ -9,6 +9,11 @@ const validPromoCategory = [
   "cm90qfk4j0000149n3y3c6dlc",
 ];
 
+const invalidPromoDesserts = [
+  "cmfl1m6ib0000swzjrxv5fo01",
+  "cmfjigzhq0009v9yt3gfmtdf5",
+];
+
 type customisations = {
   id: string;
   chineseName: string;
@@ -94,6 +99,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
       if (
         validPromoCategory.includes(item.dessert.categoryId) &&
+        !invalidPromoDesserts.includes(item.dessert.id) &&
         prev.length > 0
       ) {
         const highestPromoNumber = prev.reduce(
@@ -108,7 +114,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
           if (
             cartItem.promoNumber !== undefined ||
-            cartItem.dessert.categoryId !== item.dessert.categoryId
+            cartItem.dessert.categoryId !== item.dessert.categoryId ||
+            invalidPromoDesserts.includes(cartItem.dessert.id)
           ) {
             continue;
           }
@@ -166,6 +173,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       // Only apply promo logic if the item is in a promo category
       if (
         validPromoCategory.includes(incrementedItem.dessert.categoryId) &&
+        !invalidPromoDesserts.includes(incrementedItem.dessert.id) &&
         incrementedItem.discountedAmountInCents === 0 // only if not already discounted
       ) {
         // Find the highest existing promo number
@@ -180,7 +188,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           const cartItem = updatedCart[i]!;
           if (
             cartItem.promoNumber !== undefined ||
-            cartItem.dessert.categoryId !== incrementedItem.dessert.categoryId
+            cartItem.dessert.categoryId !==
+              incrementedItem.dessert.categoryId ||
+            invalidPromoDesserts.includes(cartItem.dessert.id)
           ) {
             continue;
           }
