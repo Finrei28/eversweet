@@ -222,7 +222,8 @@ function OrderDetails() {
             <div className="space-y-4">
               {order.desserts.map((item) => {
                 const pricePerItem =
-                  (item.dessert.priceInCents +
+                  (item.dessert.priceInCents -
+                    item.discountedAmountInCents +
                     item.customisations.reduce((total, customisation) => {
                       return (
                         total +
