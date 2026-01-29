@@ -104,8 +104,8 @@ function HomePageContent() {
         title={language === "en" ? "Announcement" : "通知"}
       >
         {language === "en"
-          ? "We are excited to announce that Eversweet is now open again today! Enjoy our special promotion: Buy one get one half off on all Sago desserts (excluding Durian Sago), Steamed Milk Pudding desserts (excluding Egg Milk Pudding), and our refreshing drinks! Takeout only! 😃😃 This offer is valid until the end of the month on January 31, 2026! Don't miss out on this great deal 💝"
-          : "今天开张营业！全部$11.99和$9.99的西米露，各种双皮奶和冰糖雪梨，饮料系列的珍珠奶茶，烧仙草奶茶和红糖凉粉奶茶第一碗/杯原价，第二碗/杯半价！ 只限外卖！😃😃 活动到月底2026年1月31号结束！是时候来蹭一这波福利了💝"}
+          ? "We are excited to announce that Eversweet is now open again! Enjoy our special promotion: Buy one get one half off on all Sago desserts (excluding Durian Sago and Mango Pomelo Sago), Steamed Milk Pudding desserts (excluding Egg Milk Pudding), and our refreshing drinks! Takeout only! 😃😃 This offer is valid until the end of the month on January 31, 2026! Don't miss out on this great deal 💝"
+          : "今天开张营业！全部$11.99和$9.99的西米露 (除杨枝甘露和榴莲河粉西米露)，各种双皮奶和冰糖雪梨，饮料系列的珍珠奶茶，烧仙草奶茶和红糖凉粉奶茶第一碗/杯原价，第二碗/杯半价！ 只限外卖！😃😃 活动到月底2026年1月31号结束！是时候来蹭一这波福利了💝"}
       </NotificationModal>
     </>
   );

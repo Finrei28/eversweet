@@ -12,6 +12,7 @@ const validPromoCategory = [
 const invalidPromoDesserts = [
   "cmfl1m6ib0000swzjrxv5fo01",
   "cmfjigzhq0009v9yt3gfmtdf5",
+  "cm91d3hap0032aijdqbwutdja",
 ];
 
 type customisations = {
