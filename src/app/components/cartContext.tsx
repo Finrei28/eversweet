@@ -85,7 +85,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const addToCart = (item: CartItem) => {
     setCart((prev) => {
-      let updatedItem = { ...item };
+      const updatedItem = { ...item };
       const updatedCart = [...prev];
 
       // promotion logic
