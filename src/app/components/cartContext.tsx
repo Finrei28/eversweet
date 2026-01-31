@@ -3,17 +3,9 @@
 import { createContext, useState, useEffect, ReactNode, useRef } from "react";
 import { dessertOnClient } from "./types";
 
-const validPromoCategory = [
-  "cm90qekmo0000k0j44vqu4tdr",
-  "cm90qf2hb0000dlc9ein0forw",
-  "cm90qfk4j0000149n3y3c6dlc",
-];
+const validPromoCategory = [""];
 
-const invalidPromoDesserts = [
-  "cmfl1m6ib0000swzjrxv5fo01",
-  "cmfjigzhq0009v9yt3gfmtdf5",
-  "cm91d3hap0032aijdqbwutdja",
-];
+const invalidPromoDesserts = [""];
 
 type customisations = {
   id: string;
@@ -98,44 +90,44 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
       // promotion logic
 
-      if (
-        validPromoCategory.includes(item.dessert.categoryId) &&
-        !invalidPromoDesserts.includes(item.dessert.id) &&
-        prev.length > 0
-      ) {
-        const highestPromoNumber = prev.reduce(
-          (max, cartItem) => Math.max(max, cartItem.promoNumber ?? max),
-          0,
-        );
+      // if (
+      //   validPromoCategory.includes(item.dessert.categoryId) &&
+      //   !invalidPromoDesserts.includes(item.dessert.id) &&
+      //   prev.length > 0
+      // ) {
+      //   const highestPromoNumber = prev.reduce(
+      //     (max, cartItem) => Math.max(max, cartItem.promoNumber ?? max),
+      //     0,
+      //   );
 
-        const nextPromoNumber = highestPromoNumber + 1;
+      //   const nextPromoNumber = highestPromoNumber + 1;
 
-        for (let i = 0; i < updatedCart.length; i++) {
-          const cartItem = updatedCart[i]!;
+      //   for (let i = 0; i < updatedCart.length; i++) {
+      //     const cartItem = updatedCart[i]!;
 
-          if (
-            cartItem.promoNumber !== undefined ||
-            cartItem.dessert.categoryId !== item.dessert.categoryId ||
-            invalidPromoDesserts.includes(cartItem.dessert.id)
-          ) {
-            continue;
-          }
+      //     if (
+      //       cartItem.promoNumber !== undefined ||
+      //       cartItem.dessert.categoryId !== item.dessert.categoryId ||
+      //       invalidPromoDesserts.includes(cartItem.dessert.id)
+      //     ) {
+      //       continue;
+      //     }
 
-          // clone before mutation
-          updatedCart[i] = {
-            ...cartItem,
-            promoNumber: nextPromoNumber,
-          };
+      //     // clone before mutation
+      //     updatedCart[i] = {
+      //       ...cartItem,
+      //       promoNumber: nextPromoNumber,
+      //     };
 
-          updatedItem = {
-            ...updatedItem,
-            promoNumber: nextPromoNumber,
-            discountedAmountInCents: Math.floor(item.dessert.priceInCents / 2),
-          };
+      //     updatedItem = {
+      //       ...updatedItem,
+      //       promoNumber: nextPromoNumber,
+      //       discountedAmountInCents: Math.floor(item.dessert.priceInCents / 2),
+      //     };
 
-          break;
-        }
-      }
+      //     break;
+      //   }
+      // }
 
       // promotion logic ends
 
