@@ -354,7 +354,7 @@ export default function CustomisationDialog({
           <Button
             variant={`${pathName === "/checkout" ? "ghost" : "default"}`}
             className={`${pathName === "/checkout" ? "" : "w-full"}`}
-            size="icon"
+            size={`${pathName === "/checkout" ? "checkoutIcon" : "icon"}`}
           >
             {pathName === "/checkout" && (
               <SquarePen className="h-5 w-5 hover:cursor-pointer" />
@@ -592,11 +592,12 @@ export default function CustomisationDialog({
                 {/* Old price */}
                 <span className="relative text-base text-muted-foreground">
                   {formatCurrency(
-                    (dessert.priceInCents +
+                    ((dessert.priceInCents +
                       modifications.reduce(
                         (acc, m) => acc + m.priceInCents * m.quantity,
                         0,
-                      )) /
+                      )) *
+                      dessertQuantity) /
                       100,
                   )}
                   <span className="pointer-events-none absolute left-0 top-1/2 h-[1.5px] w-full rotate-[-8deg] bg-red-500" />
@@ -605,11 +606,12 @@ export default function CustomisationDialog({
                 {/* New price */}
                 <span className="text-lg font-semibold text-red-600">
                   {formatCurrency(
-                    (priceInCentsAfterPromo +
+                    ((priceInCentsAfterPromo +
                       modifications.reduce(
                         (acc, m) => acc + m.priceInCents * m.quantity,
                         0,
-                      )) /
+                      )) *
+                      dessertQuantity) /
                       100,
                   )}
                 </span>
@@ -617,11 +619,12 @@ export default function CustomisationDialog({
             ) : (
               <span className="text-lg font-semibold text-primary">
                 {formatCurrency(
-                  (dessert.priceInCents +
+                  ((dessert.priceInCents +
                     modifications.reduce(
                       (acc, m) => acc + m.priceInCents * m.quantity,
                       0,
-                    )) /
+                    )) *
+                    dessertQuantity) /
                     100,
                 )}
               </span>

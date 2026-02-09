@@ -72,7 +72,7 @@ export default function OrderSummary({
             const deleteButton = (
               <Button
                 variant="ghost"
-                size="icon"
+                size="checkoutIcon"
                 className="text-red-500 hover:bg-red-50 hover:text-red-600"
                 onClick={() => cart.removeAllSameItemFromCart(item.id)}
               >
@@ -108,15 +108,15 @@ export default function OrderSummary({
                         : item.dessert.chineseName}
                     </h4>
 
-                    <div className="-mr-3 grid grid-cols-1 items-center md:grid-cols-2">
-                      <div className="hidden items-center justify-end md:flex">
+                    <div className="grid grid-cols-1 items-center md:grid-cols-2">
+                      <div className="hidden items-center justify-end gap-1 md:flex">
                         {editButton} {deleteButton}
                       </div>
 
-                      <div className="flex w-auto min-w-[6%] flex-col items-center text-center md:text-right">
+                      <div className="flex flex-col items-end justify-end">
                         {/* Price Section */}
                         {item.discountedAmountInCents > 0 ? (
-                          <div className="flex flex-col items-end">
+                          <div className="flex flex-col text-right">
                             <p className="text-gray-500 line-through">
                               {formatCurrency(priceInCentsBeforeDiscount / 100)}
                             </p>
@@ -131,7 +131,7 @@ export default function OrderSummary({
                         )}
 
                         {/* Edit Button */}
-                        <div className="flex items-end justify-end md:hidden">
+                        <div className="flex items-end justify-end gap-1 md:hidden">
                           <div>{editButton}</div>
                           <div>{deleteButton}</div>
                         </div>
