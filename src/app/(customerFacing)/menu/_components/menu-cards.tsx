@@ -18,7 +18,6 @@ import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatCurrency } from "~/lib/formatters";
 import { dessertOnClient } from "~/app/components/types";
-import ScrollToTopButton from "./toTop";
 
 export default function MenuCards() {
   const { data: productCategory, isLoading: isProductLoading } =
@@ -289,50 +288,63 @@ export default function MenuCards() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 md:px-2 lg:grid-cols-4">
-              {category.desserts.map((dessert) => (
-                <motion.div
-                  key={dessert.id}
-                  whileHover={{ y: -5 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                >
-                  <Card className="flex h-full flex-col overflow-hidden border-2 border-transparent transition-all hover:border-secondary hover:shadow-lg">
-                    <div className="group relative aspect-square w-full overflow-hidden">
-                      <Image
-                        src={
-                          dessert.imagePath ??
-                          (process.env.NEXT_PUBLIC_FILLER_IMAGE_URL as string)
-                        }
-                        alt={
-                          language === "en" ? dessert.name : dessert.chineseName
-                        }
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
-                      <div className="absolute bottom-0 left-0 right-0 p-3 opacity-0 transition-opacity group-hover:opacity-100">
-                        <p
-                          className="text-sm font-medium text-white drop-shadow-lg hover:cursor-pointer"
-                          onClick={() =>
-                            handleOpenDialog({
-                              ...dessert,
-                              categoryId: category.id,
-                            })
+              {category.desserts.map((dessert) => {
+                const discountedAmountInCents = dessert.promo
+                  ? dessert.promo.type === "FIXED_AMOUNT"
+                    ? dessert.promo.value
+                    : Math.floor(
+                        dessert.priceInCents * (dessert.promo.value / 100),
+                      )
+                  : 0;
+
+                const priceInCentsAfterPromo =
+                  dessert.priceInCents - discountedAmountInCents;
+                return (
+                  <motion.div
+                    key={dessert.id}
+                    whileHover={{ y: -5 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    <Card className="flex h-full flex-col overflow-hidden border-2 border-transparent transition-all hover:border-secondary hover:shadow-lg">
+                      <div className="group relative aspect-square w-full overflow-hidden">
+                        <Image
+                          src={
+                            dessert.imagePath ??
+                            (process.env.NEXT_PUBLIC_FILLER_IMAGE_URL as string)
                           }
-                        >
-                          {language === "en" ? "Customise" : "定制"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-1 flex-col">
-                      <CardHeader className="space-y-2 pb-2">
-                        <div className="flex items-start justify-between">
-                          <CardTitle className="text-base md:text-xl">
-                            {language === "en"
+                          alt={
+                            language === "en"
                               ? dessert.name
-                              : dessert.chineseName}
-                          </CardTitle>
-                          {/* {dessert.isHot && (
+                              : dessert.chineseName
+                          }
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-110"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100"></div>
+                        <div className="absolute bottom-0 left-0 right-0 p-3 opacity-0 transition-opacity group-hover:opacity-100">
+                          <p
+                            className="text-sm font-medium text-white drop-shadow-lg hover:cursor-pointer"
+                            onClick={() =>
+                              handleOpenDialog({
+                                ...dessert,
+                                categoryId: category.id,
+                              })
+                            }
+                          >
+                            {language === "en" ? "Customise" : "定制"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-1 flex-col">
+                        <CardHeader className="space-y-2 pb-2">
+                          <div className="flex items-start justify-between">
+                            <CardTitle className="text-base md:text-xl">
+                              {language === "en"
+                                ? dessert.name
+                                : dessert.chineseName}
+                            </CardTitle>
+                            {/* {dessert.isHot && (
                             <Badge
                               variant="outline"
                               className="bg-red-100 text-red-600"
@@ -348,30 +360,52 @@ export default function MenuCards() {
                               {language === "en" ? "Cold" : "冷"}
                             </Badge>
                           )} */}
-                        </div>
-                        <CardDescription className="line-clamp-2 text-[0.70rem] md:text-xs">
-                          {language === "en"
-                            ? dessert.ingredients.map((i) => i.name).join(" • ")
-                            : dessert.ingredients
-                                .map((ingredient) => ingredient.chineseName)
-                                .join(" • ")}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardFooter className="mt-auto pt-4">
-                        <Button
-                          className="w-full"
-                          onClick={() =>
-                            handleOpenDialog({
-                              ...dessert,
-                              categoryId: category.id,
-                            })
-                          }
-                        >{`${language === "en" ? "Add " : "添加 "} ${formatCurrency(dessert.priceInCents / 100)}`}</Button>
-                      </CardFooter>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
+                          </div>
+                          <CardDescription className="line-clamp-2 text-[0.70rem] md:text-xs">
+                            {language === "en"
+                              ? dessert.ingredients
+                                  .map((i) => i.name)
+                                  .join(" • ")
+                              : dessert.ingredients
+                                  .map((ingredient) => ingredient.chineseName)
+                                  .join(" • ")}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardFooter className="mt-auto pt-4">
+                          <Button
+                            className="flex w-full items-center justify-center gap-2"
+                            onClick={() =>
+                              handleOpenDialog({
+                                ...dessert,
+                                categoryId: category.id,
+                              })
+                            }
+                          >
+                            {dessert.promo ? (
+                              <>
+                                {/* Old price */}
+                                <span className="relative text-sm text-muted-foreground">
+                                  {formatCurrency(dessert.priceInCents / 100)}
+                                  <span className="pointer-events-none absolute left-0 top-1/2 h-[1.5px] w-full rotate-[-8deg] bg-red-500" />
+                                </span>
+
+                                {/* New price */}
+                                <span className="text-base font-semibold text-red-600">
+                                  {formatCurrency(priceInCentsAfterPromo / 100)}
+                                </span>
+                              </>
+                            ) : (
+                              <span>
+                                {formatCurrency(dessert.priceInCents / 100)}
+                              </span>
+                            )}
+                          </Button>
+                        </CardFooter>
+                      </div>
+                    </Card>
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.div>
         ))}

@@ -67,6 +67,7 @@ export default function CheckoutPage() {
     }
 
     setIsLoading(true);
+    console.log({ totalPriceInCents: cart?.totalPrice });
     fetch("/api/checkout_sessions", {
       method: "POST",
       headers: {

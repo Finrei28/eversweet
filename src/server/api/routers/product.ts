@@ -49,6 +49,7 @@ export const productRouter = createTRPCRouter({
         imagePath: true,
         ingredients: { include: { ingredient: true } },
         categoryId: true,
+        promo: true,
       },
     });
     const desserts = rawDesserts.map((dessert) => ({
@@ -74,6 +75,7 @@ export const productRouter = createTRPCRouter({
             imagePath: true,
             ingredients: { include: { ingredient: true } },
             description: true,
+            promo: true,
           },
         },
       },
@@ -190,6 +192,7 @@ export const productRouter = createTRPCRouter({
         ingredients: { include: { ingredient: true } },
         description: true,
         isAvailableForPurchase: true,
+        promo: true,
         category: {
           select: {
             id: true,
@@ -342,6 +345,45 @@ export const productRouter = createTRPCRouter({
       }
 
       return { desserts, customisations };
+    }),
+
+  hasCartPriceChanged: publicProcedure
+    .input(
+      z.object({
+        cartItems: z.array(
+          z.object({
+            dessertId: z.string().min(1),
+            priceInCentsAfterPromo: z.number().int().nonnegative(),
+          }),
+        ),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const desserts = await ctx.db.dessert.findMany({
+        where: { id: { in: input.cartItems.map((item) => item.dessertId) } },
+        select: { id: true, priceInCents: true, promo: true },
+      });
+
+      const dbPriceMap = new Map(
+        desserts.map((d) => {
+          const discountedAmountInCents = d.promo
+            ? d.promo.type === "FIXED_AMOUNT"
+              ? d.promo.value
+              : Math.floor(d.priceInCents * (d.promo.value / 100))
+            : 0;
+          return [d.id, d.priceInCents - discountedAmountInCents];
+        }),
+      );
+
+      const mismatches = input.cartItems.filter((item) => {
+        const dbPrice = dbPriceMap.get(item.dessertId);
+
+        // dessert missing in DB or price mismatch
+        return dbPrice === undefined || dbPrice !== item.priceInCentsAfterPromo;
+      });
+
+      const hasPriceChanged = mismatches.length > 0;
+      return { hasPriceChanged };
     }),
 
   getCategories: protectedProcedure.query(async ({ ctx }) => {

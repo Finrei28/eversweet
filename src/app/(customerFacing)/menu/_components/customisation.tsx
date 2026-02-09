@@ -59,6 +59,7 @@ export default function CustomisationDialog({
         id: customisation.id,
         name: customisation.name,
         chineseName: customisation.chineseName,
+        priceInCents: customisation.priceInCents,
         quantity: customisationIncluded ? 1 : 0,
       };
     }),
@@ -67,9 +68,23 @@ export default function CustomisationDialog({
   const [modifications, setModifications] = useState<typeof totalQuantity>(
     cartItem ? cartItem.customisations : [],
   );
-  const [totalPrice, setTotalPrice] = useState(
-    cartItem ? cartItem.priceInCents : dessert.priceInCents,
-  );
+  const discountedAmountInCents = dessert.promo
+    ? dessert.promo.type === "FIXED_AMOUNT"
+      ? dessert.promo.value
+      : Math.floor(dessert.priceInCents * (dessert.promo.value / 100))
+    : 0;
+
+  const priceInCentsAfterPromo = dessert.priceInCents - discountedAmountInCents;
+  // const [totalPrice, setTotalPrice] = useState(
+  //   cartItem
+  //     ? cartItem.priceInCents -
+  //         cartItem.discountedAmountInCents +
+  //         cartItem.customisations.reduce(
+  //           (acc, item) => acc + item.priceInCents * item.quantity,
+  //           0,
+  //         ) // edit stage
+  //     : priceInCentsAfterPromo, // add new item stage
+  // );
   const [dessertQuantity, setDessertQuantity] = useState(
     cartItem ? cartItem.quantity : 1,
   );
@@ -90,29 +105,31 @@ export default function CustomisationDialog({
           id: customisation.id,
           name: customisation.name,
           chineseName: customisation.chineseName,
+          priceInCents: customisation.priceInCents,
           quantity: customisationIncluded ? 1 : 0,
         };
       }),
     );
   }, [customisations, dessert]);
 
-  useEffect(() => {
-    if (!dessert) return;
-    const totalPrice = modifications.reduce((acc, item) => {
-      // Find the customisation with the same ID
-      const customisation = customisations.find(
-        (custom) => custom.id === item.id,
-      );
+  // useEffect(() => {
+  //   if (!dessert) return;
+  //   const totalPrice = modifications.reduce((acc, item) => {
+  //     // Find the customisation with the same ID
+  //     const customisation = customisations.find(
+  //       (custom) => custom.id === item.id,
+  //     );
 
-      // If customisation is found, calculate the price
-      if (customisation) {
-        acc += customisation.priceInCents * item.quantity;
-      }
+  //     // If customisation is found, calculate the price
+  //     if (customisation) {
+  //       acc += customisation.priceInCents * item.quantity;
+  //     }
 
-      return acc;
-    }, 0);
-    setTotalPrice(totalPrice + dessert.priceInCents);
-  }, [totalQuantity, modifications, customisations, dessert, dessertQuantity]);
+  //     return acc;
+  //   }, 0);
+
+  //   setTotalPrice(totalPrice + priceInCentsAfterPromo);
+  // }, [totalQuantity, modifications, customisations, dessert, dessertQuantity]);
 
   // function for button to increase quantity associated with each customisation
   const handleIncrease = (id: string, name: string, chineseName: string) => {
@@ -128,7 +145,16 @@ export default function CustomisationDialog({
                 ? { ...item, quantity: item.quantity + 1 }
                 : item,
             )
-          : [...prev, { id, name, chineseName, quantity: 1 }]; // Initialize if missing
+          : [
+              ...prev,
+              {
+                id,
+                name,
+                chineseName,
+                priceInCents: getCustomisationQuantity.priceInCents,
+                quantity: 1,
+              },
+            ]; // Initialize if missing
       });
     } else if (
       getCustomisationQuantity &&
@@ -140,7 +166,16 @@ export default function CustomisationDialog({
         );
         const exists = prev.some((item) => item.id === id);
         if (customisationNotInDessert) {
-          return [...prev, { id, name, chineseName, quantity: 1 }];
+          return [
+            ...prev,
+            {
+              id,
+              name,
+              chineseName,
+              priceInCents: getCustomisationQuantity.priceInCents,
+              quantity: 1,
+            },
+          ];
         }
         return exists
           ? prev.filter((item) => item.id !== id) // Remove the modification with the matching id
@@ -192,7 +227,16 @@ export default function CustomisationDialog({
       getCustomisationQuantity.quantity === 1
     ) {
       setModifications((prev) => {
-        return [...prev, { id, name, chineseName, quantity: 0 }];
+        return [
+          ...prev,
+          {
+            id,
+            name,
+            chineseName,
+            priceInCents: getCustomisationQuantity.priceInCents,
+            quantity: 0,
+          },
+        ];
       });
     } else if (
       getCustomisationQuantity &&
@@ -237,6 +281,7 @@ export default function CustomisationDialog({
           id: customisation.id,
           name: customisation.name,
           chineseName: customisation.chineseName,
+          priceInCents: customisation.priceInCents,
           quantity:
             previousQuantity && previousQuantity > 0 && customisationIncluded
               ? previousQuantity + 1
@@ -253,9 +298,9 @@ export default function CustomisationDialog({
       id: nanoid(),
       customisations: modifications,
       dessert,
-      priceInCents: totalPrice,
+      priceInCents: dessert.priceInCents,
       quantity: dessertQuantity,
-      discountedAmountInCents: 0,
+      discountedAmountInCents,
     };
 
     if (!cart) return null;
@@ -270,7 +315,7 @@ export default function CustomisationDialog({
       id: cartItem.id,
       customisations: modifications,
       dessert,
-      priceInCents: totalPrice,
+      priceInCents: dessert.priceInCents,
       quantity: dessertQuantity,
       discountedAmountInCents: cartItem.discountedAmountInCents,
     };
@@ -542,9 +587,45 @@ export default function CustomisationDialog({
             <div className="text-sm text-gray-500">
               {language === "en" ? "Total" : "总计:"}
             </div>
-            <div className="text-lg font-bold text-primary">
-              {formatCurrency((totalPrice * dessertQuantity) / 100)}
-            </div>
+            {dessert.promo ? (
+              <div className="flex items-center justify-end gap-2">
+                {/* Old price */}
+                <span className="relative text-base text-muted-foreground">
+                  {formatCurrency(
+                    (dessert.priceInCents +
+                      modifications.reduce(
+                        (acc, m) => acc + m.priceInCents * m.quantity,
+                        0,
+                      )) /
+                      100,
+                  )}
+                  <span className="pointer-events-none absolute left-0 top-1/2 h-[1.5px] w-full rotate-[-8deg] bg-red-500" />
+                </span>
+
+                {/* New price */}
+                <span className="text-lg font-semibold text-red-600">
+                  {formatCurrency(
+                    (priceInCentsAfterPromo +
+                      modifications.reduce(
+                        (acc, m) => acc + m.priceInCents * m.quantity,
+                        0,
+                      )) /
+                      100,
+                  )}
+                </span>
+              </div>
+            ) : (
+              <span className="text-lg font-semibold text-primary">
+                {formatCurrency(
+                  (dessert.priceInCents +
+                    modifications.reduce(
+                      (acc, m) => acc + m.priceInCents * m.quantity,
+                      0,
+                    )) /
+                    100,
+                )}
+              </span>
+            )}
           </div>
         </div>
 

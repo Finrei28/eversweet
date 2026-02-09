@@ -66,8 +66,9 @@ export default function OrderSummary({
             const editButton = (
               <CustomisationDialog dessert={item.dessert} cartItem={item} />
             );
+            const priceInCentsBeforeDiscount = item.priceInCents;
             const priceInCentsAfterDiscount =
-              item.priceInCents - item.discountedAmountInCents;
+              priceInCentsBeforeDiscount - item.discountedAmountInCents;
             const deleteButton = (
               <Button
                 variant="ghost"
@@ -99,55 +100,83 @@ export default function OrderSummary({
                     </div>
                   )}
                 </div>
-                <div className="flex flex-1 flex-col">
-                  <h4 className="font-medium">
-                    {language === "en"
-                      ? item.dessert.name
-                      : item.dessert.chineseName}
-                  </h4>
-                  {item.customisations?.map((customisation) => {
-                    const customisationName =
-                      language === "en"
-                        ? customisation.name
-                        : customisation.chineseName;
-                    return (
-                      <p
-                        className="ml-1 mt-1 items-center text-xs text-gray-500 md:text-base"
-                        key={customisation.id}
-                      >
-                        {customisation.quantity > 1
-                          ? `+ ${customisation.quantity} ${customisationName}`
-                          : customisation.quantity === 1
-                            ? `+ ${customisationName}`
-                            : `- ${customisationName}`}
-                      </p>
-                    );
-                  })}
-                  <p className="mt-1 text-xs font-semibold text-gray-500 md:text-base">
-                    {language === "en" ? "Quantity:" : "数量:"}
-                    {item.quantity}
-                  </p>
-                </div>
-                <div className="hidden w-auto min-w-[6%] md:flex">
-                  {editButton} {deleteButton}
-                </div>
+                <div className="flex w-full flex-col justify-between">
+                  <div className="flex flex-row items-start justify-between md:items-center">
+                    <h4 className="font-medium">
+                      {language === "en"
+                        ? item.dessert.name
+                        : item.dessert.chineseName}
+                    </h4>
 
-                <div className="flex w-auto min-w-[6%] flex-col text-right md:text-right">
-                  {/* Price Section */}
+                    <div className="-mr-3 grid grid-cols-1 items-center md:grid-cols-2">
+                      <div className="hidden items-center justify-end md:flex">
+                        {editButton} {deleteButton}
+                      </div>
 
-                  <p className="font-medium">
-                    {formatCurrency(priceInCentsAfterDiscount / 100)}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {formatCurrency(
-                      (priceInCentsAfterDiscount / 100) * item.quantity,
-                    )}
-                  </p>
+                      <div className="flex w-auto min-w-[6%] flex-col items-center text-center md:text-right">
+                        {/* Price Section */}
+                        {item.discountedAmountInCents > 0 ? (
+                          <div className="flex flex-col items-end">
+                            <p className="text-gray-500 line-through">
+                              {formatCurrency(priceInCentsBeforeDiscount / 100)}
+                            </p>
+                            <p className="font-medium">
+                              {formatCurrency(priceInCentsAfterDiscount / 100)}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="font-medium">
+                            {formatCurrency(priceInCentsBeforeDiscount / 100)}
+                          </p>
+                        )}
 
-                  {/* Edit Button */}
-                  <div className="flex items-center justify-end md:hidden">
-                    <div className="text-center">{editButton}</div>
-                    <div>{deleteButton}</div>
+                        {/* Edit Button */}
+                        <div className="flex items-end justify-end md:hidden">
+                          <div>{editButton}</div>
+                          <div>{deleteButton}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center justify-center">
+                    {item.customisations?.map((customisation) => {
+                      const customisationName =
+                        language === "en"
+                          ? customisation.name
+                          : customisation.chineseName;
+                      return (
+                        <div
+                          className="flex w-full items-center justify-between"
+                          key={customisation.id}
+                        >
+                          <p
+                            className="ml-1 mt-1 items-center text-xs text-gray-500 md:text-sm"
+                            key={customisation.id}
+                          >
+                            {customisation.quantity > 1
+                              ? `x${customisation.quantity} ${customisationName}`
+                              : customisation.quantity === 1
+                                ? `x1 ${customisationName}`
+                                : `- ${customisationName}`}
+                          </p>
+                          <div className="flex w-auto flex-col text-right md:text-right">
+                            <p className="text-xs text-gray-500 md:text-sm">
+                              {formatCurrency(
+                                (customisation.priceInCents *
+                                  customisation.quantity) /
+                                  100,
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-row items-center justify-between">
+                    <p className="mt-1 text-xs font-semibold text-gray-500 md:text-base">
+                      {language === "en" ? "Quantity: " : "数量: "}
+                      {item.quantity}
+                    </p>
                   </div>
                 </div>
               </div>

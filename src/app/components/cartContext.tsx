@@ -2,6 +2,7 @@
 
 import { createContext, useState, useEffect, ReactNode, useRef } from "react";
 import { dessertOnClient } from "./types";
+import { api } from "~/trpc/react";
 
 const validPromoCategory = [""];
 
@@ -11,6 +12,7 @@ type customisations = {
   id: string;
   chineseName: string;
   name: string;
+  priceInCents: number;
   quantity: number;
 }[];
 
@@ -46,6 +48,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
     return [];
   });
+
+  const { data: hasPriceChanged } = api.dessert.hasCartPriceChanged.useQuery({
+    cartItems: cart.map((item) => ({
+      dessertId: item.dessert.id,
+      priceInCentsAfterPromo: item.priceInCents - item.discountedAmountInCents,
+    })),
+  });
+
   const prevCartRef = useRef(cart);
 
   useEffect(() => {
@@ -59,6 +69,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const timestamp = localStorage.getItem("cartTimestamp");
+    if (hasPriceChanged) {
+      localStorage.removeItem("cart");
+      localStorage.removeItem("cartTimestamp");
+      setCart([]);
+    }
     if (timestamp) {
       const lastModified = parseInt(timestamp, 10);
       const now = Date.now();
@@ -67,6 +82,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
         localStorage.removeItem("cart");
         localStorage.removeItem("cartTimestamp");
+        setCart([]);
       }
     }
   }, []);
@@ -298,7 +314,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const totalPrice = cart.reduce(
     (total, item) =>
       total +
-      (item.priceInCents - item.discountedAmountInCents) * item.quantity,
+      (item.priceInCents -
+        item.discountedAmountInCents +
+        item.customisations.reduce(
+          (acc, customisation) =>
+            acc + customisation.priceInCents * customisation.quantity,
+          0,
+        )) *
+        item.quantity,
     0,
   );
 

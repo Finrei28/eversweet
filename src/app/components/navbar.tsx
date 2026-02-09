@@ -307,7 +307,11 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                           <p className="mt-1 text-sm text-gray-500">
                             {formatCurrency(
                               (item.priceInCents -
-                                item.discountedAmountInCents) /
+                                item.discountedAmountInCents +
+                                item.customisations.reduce(
+                                  (sum, c) => sum + c.priceInCents * c.quantity,
+                                  0,
+                                )) /
                                 100,
                             )}
                           </p>

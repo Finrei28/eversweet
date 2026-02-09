@@ -38,6 +38,15 @@ export type dessertOnClient = {
   ingredients: Ingredients;
   priceInCents: number;
   imagePath: string;
+  promo: {
+    type: "PERCENTAGE" | "FIXED_AMOUNT";
+    value: number;
+    name: string;
+    id: string;
+    isActive: boolean;
+    startsAt: Date | null;
+    endsAt: Date | null;
+  } | null;
   categoryId: string;
 };
 
