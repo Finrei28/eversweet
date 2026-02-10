@@ -22,7 +22,7 @@ export type CartItem = {
   dessert: dessertOnClient;
   priceInCents: number;
   quantity: number;
-  promoNumber?: number;
+  promoNumber?: number; // identifier for which items are in the same promotion group i.e buy one get one half off
   discountedAmountInCents: number;
 };
 

@@ -207,6 +207,7 @@ export default function CheckoutForm({
         priceInCents: item.priceInCents,
         customisations: item.customisations, // Default to empty array if undefined
         discountedAmountInCents: item.discountedAmountInCents,
+        promoId: item.dessert.promo ? item.dessert.promo.id : null,
       })) ?? [];
 
     const orderData = {
