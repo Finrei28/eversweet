@@ -6,12 +6,6 @@ export async function POST(req: Request) {
   try {
     const { orderData, paymentIntentId } = await req.json();
 
-    if (!orderData.totalPriceInCents) {
-      return NextResponse.json(
-        { error: "Amount is required" },
-        { status: 400 },
-      );
-    }
     const paymentIntent = await stripe.paymentIntents.update(paymentIntentId, {
       metadata: {
         orderData: JSON.stringify(orderData),

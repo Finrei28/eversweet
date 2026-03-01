@@ -196,6 +196,7 @@ export default function CheckoutForm({
         duration: Infinity,
       });
       setWarned(true);
+      return;
     }
 
     const mappedDesserts =
@@ -216,8 +217,8 @@ export default function CheckoutForm({
       customerLastName: customerInfo.customerLastName,
       customerEmail: customerInfo.customerEmail,
       customerPhoneNumber: customerInfo.phone,
-      totalPriceInCents: cart.totalPrice,
-      pickUpTime: pickUpTime,
+      totalPriceInCents,
+      pickUpTime,
     };
     setPaymentLoading(true);
     setPaymentError("");
