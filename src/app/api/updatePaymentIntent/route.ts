@@ -6,6 +6,8 @@ export async function POST(req: Request) {
   try {
     const { orderData, paymentIntentId } = await req.json();
 
+    console.log("paymentIntentId: ", paymentIntentId);
+
     const paymentIntent = await stripe.paymentIntents.update(paymentIntentId, {
       metadata: {
         orderData: JSON.stringify(orderData),

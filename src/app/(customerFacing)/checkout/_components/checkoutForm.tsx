@@ -47,8 +47,25 @@ export default function CheckoutForm({
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [warned, setWarned] = useState(false);
+  const [createOrderFailed, setCreateOrderFailed] = useState(false);
   const [holidayNotificationShown, setHolidayNotificationShown] =
     useState(false);
+  const utils = api.useUtils();
+  const createOrder = api.order.createNewOrder.useMutation({
+    onSuccess: async () => {
+      await utils.order.invalidate();
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: language === "en" ? "Order Failed" : "订单失败",
+        description:
+          language === "en"
+            ? "Your order failed to sent to the kitchen, Please take a photo of this."
+            : "您的订单未能成功发送到厨房，请拍照保存此信息。",
+      });
+    },
+  });
 
   let dessertIds = [...new Set(cart.cart.map((dessert) => dessert.dessert.id))];
 
@@ -212,7 +229,7 @@ export default function CheckoutForm({
       })) ?? [];
 
     const orderData = {
-      dessert: mappedDesserts,
+      desserts: mappedDesserts,
       customerFirstName: customerInfo.customerFirstName,
       customerLastName: customerInfo.customerLastName,
       customerEmail: customerInfo.customerEmail,
@@ -222,11 +239,17 @@ export default function CheckoutForm({
     };
     setPaymentLoading(true);
     setPaymentError("");
-    await fetch("/api/updatePaymentIntent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderData, paymentIntentId }),
-    });
+    try {
+      await fetch("/api/updatePaymentIntent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderData, paymentIntentId }),
+      });
+      console.log("updated payment Intent success");
+    } catch (error) {
+      console.log("updated payment Intent failed");
+      setCreateOrderFailed(true);
+    }
 
     const { error: submitError, paymentIntent } = await stripe.confirmPayment({
       elements,
@@ -253,8 +276,12 @@ export default function CheckoutForm({
       }
     }
     if (paymentIntent && paymentIntent.status === "succeeded") {
+      if (createOrderFailed && paymentIntentId) {
+        await createOrder.mutateAsync({
+          orderData: { ...orderData, paymentIntentId },
+        });
+      }
       setPaymentSuccess(true);
-
       const orderId = await pollForOrderId();
       if (orderId) {
         cart?.clearCart();

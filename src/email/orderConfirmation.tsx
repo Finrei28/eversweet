@@ -408,7 +408,7 @@ export default function EmailOrderConfirmation({
 
           {/* Order Details Card */}
 
-          <Section className="overflow-hidden rounded-xl border-solid bg-white lg:border-2 lg:bg-orange-50 lg:p-6">
+          <Section className="overflow-hidden rounded-xl border-solid bg-white p-4 lg:border-2 lg:bg-orange-50 lg:p-6">
             <Section className="rounded-xl bg-white md:p-6">
               <Row>
                 <Heading as="h2">Order #{order.tempOrderId}</Heading>
@@ -440,7 +440,7 @@ export default function EmailOrderConfirmation({
                 </Heading>
 
                 <Text className="lg:text-base">
-                  Pick up time at{" "}
+                  Estimated pick up time at{" "}
                   <strong>{getCollectionTime(order.pickUpTime)}</strong>
                 </Text>
 
@@ -532,40 +532,45 @@ export default function EmailOrderConfirmation({
 
               {order.desserts.map((item) => {
                 const pricePerItem =
-                  (item.dessert.priceInCents +
-                    item.customisations.reduce((total, customisation) => {
-                      return (
-                        total +
-                        customisation.customisation.priceInCents *
-                          customisation.quantity
-                      );
-                    }, 0)) /
-                  100;
+                  (item.priceInCents - item.discountedAmountInCents) / 100;
                 return (
-                  <Row key={item.id}>
-                    <Column className="h-20 w-20 py-4 align-top">
-                      {item.dessert.imagePath ? (
-                        <Img
-                          src={item.dessert.imagePath}
-                          alt={item.dessert.name}
-                          width={"100%"}
-                          height={"100%"}
-                          className="rounded-xl object-cover"
-                        />
-                      ) : (
-                        <Column className="flex h-full w-full items-center justify-center bg-gray-100">
-                          {/* <ShoppingBag className="h-8 w-8 text-gray-400" /> */}
-                        </Column>
-                      )}
+                  <Row key={item.id} className="py-2">
+                    {/* Dessert Image */}
+                    <Column align="left" className="h-20 w-20">
+                      <Img
+                        src={
+                          item.dessert.imagePath ??
+                          "https://res.cloudinary.com/dlqjgl6ju/image/upload/v1757935847/products/products/1d1e48faa59e9416678b39dccd72a73197335d11.jpg"
+                        }
+                        alt={item.dessert.name}
+                        width="100%"
+                        height="100%"
+                        className="rounded-xl object-cover"
+                      />
                     </Column>
-                    <Column className="flex flex-1 flex-col px-2">
-                      <Row>
-                        <Heading as="h4">{item.dessert.name}</Heading>
 
+                    {/* Dessert Info + Quantity + Total */}
+                    <Row className="mx-1">
+                      <Column>
+                        <Row>
+                          <Column>
+                            <Heading as="h4">
+                              {/* Dessert Name */}
+                              {item.dessert.name}
+                            </Heading>
+                          </Column>
+
+                          <Column align="right">
+                            {/* Price per item */}
+                            <Text>{formatCurrency(pricePerItem)}</Text>
+                          </Column>
+                        </Row>
+
+                        {/* Customisations */}
                         {item.customisations?.map((customisation) => (
                           <Text
-                            className="-mb-4 -mt-4 ml-1 text-sm text-gray-500"
                             key={customisation.id}
+                            className="text-sm leading-tight text-gray-500"
                           >
                             {customisation.quantity > 1
                               ? `+ ${customisation.quantity} ${customisation.customisation.name}`
@@ -574,19 +579,23 @@ export default function EmailOrderConfirmation({
                                 : `- ${customisation.customisation.name}`}
                           </Text>
                         ))}
+                      </Column>
+                    </Row>
 
+                    {/* Quantity + Total Price aligned */}
+                    <Row className="mx-1 mt-1">
+                      <Column>
                         <Text className="text-sm text-gray-500">
                           Quantity: {item.quantity}
                         </Text>
-                      </Row>
-                    </Column>
-                    <Column align="right" className="align-bottom">
-                      <Text className="">{formatCurrency(pricePerItem)}</Text>
+                      </Column>
 
-                      <Text className="text-sm text-gray-500">
-                        {formatCurrency(pricePerItem * item.quantity)}
-                      </Text>
-                    </Column>
+                      <Column align="right">
+                        <Text className="font-semibold">
+                          {formatCurrency(pricePerItem * item.quantity)}
+                        </Text>
+                      </Column>
+                    </Row>
                   </Row>
                 );
               })}
@@ -596,14 +605,30 @@ export default function EmailOrderConfirmation({
               {/* Order Summary */}
 
               <Row>
-                <Text>GST included</Text>
+                <Column className="align-bottom">
+                  <Text>GST included</Text>
+                </Column>
+                <Column align="right">
+                  <Text>
+                    {formatCurrency(
+                      ((order.priceInCents - order.discountedAmountInCents) *
+                        0.15) /
+                        100,
+                    )}
+                  </Text>
+                </Column>
               </Row>
               <Row>
                 <Column className="align-bottom">
                   <Text>Total</Text>
                 </Column>
                 <Column align="right">
-                  <Text>{formatCurrency(order.priceInCents / 100)}</Text>
+                  <Text className="font-semibold">
+                    {formatCurrency(
+                      (order.priceInCents - order.discountedAmountInCents) /
+                        100,
+                    )}
+                  </Text>
                 </Column>
               </Row>
             </Section>
@@ -618,7 +643,7 @@ export default function EmailOrderConfirmation({
             </Column>
             <Column>
               <Button
-                href={`${process.env.NEXT_PUBLIC_SERVER_URL}/menu`}
+                href={`https://eversweet.co.nz/menu`}
                 className="ml-2 flex h-9 items-center rounded-xl bg-[hsl(28,66%,70%)] px-4 py-2 text-white shadow hover:bg-secondary"
               >
                 <Text className="ml-2">Have a look at our menu</Text>

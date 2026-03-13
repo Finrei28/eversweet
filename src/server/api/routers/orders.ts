@@ -1,5 +1,8 @@
 import { Status } from "@prisma/client";
 import { z } from "zod";
+import { createOrderSchema } from "~/app/components/schemas";
+import EmailOrderConfirmation from "~/email/orderConfirmation";
+import { Resend } from "resend";
 
 import {
   createTRPCRouter,
@@ -7,7 +10,134 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 
+const resend = new Resend(process.env.RESEND_API_KEY!);
+
 export const orderRouter = createTRPCRouter({
+  createNewOrder: publicProcedure
+    .input(z.object({ orderData: createOrderSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const { orderData } = input;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Normalize to midnight
+
+      let counter = await ctx.db.tempOrderCounter.findUnique({
+        where: { date: today },
+      });
+
+      if (!counter) {
+        counter = await ctx.db.tempOrderCounter.create({
+          data: {
+            date: today,
+            counter: 6000,
+          },
+        });
+      } else {
+        counter = await ctx.db.tempOrderCounter.update({
+          where: { date: today },
+          data: { counter: counter.counter + 1 },
+        });
+      }
+
+      const newOrder = await ctx.db.order.create({
+        data: {
+          tempOrderId: counter.counter.toString(),
+          customerFirstName: orderData.customerFirstName ?? "",
+          customerLastName: orderData.customerLastName ?? "",
+          customerEmail: orderData.customerEmail,
+          customerPhoneNumber: orderData.customerPhoneNumber,
+          source: "WEBSITE",
+          priceInCents: orderData.totalPriceInCents,
+          GST: orderData.totalPriceInCents * 0.15, // GST in cents
+          pickUpTime: orderData.pickUpTime,
+          dineIn: false,
+          status: "PENDING",
+          paymentIntentId: orderData.paymentIntentId,
+          desserts: {
+            create: orderData.desserts.map((dessertItem) => ({
+              dessert: {
+                connect: {
+                  id: dessertItem.dessert.id, // Ensure dessert exists before connecting
+                },
+              },
+
+              quantity: dessertItem.dessert.quantity,
+              priceInCents: dessertItem.priceInCents, // get price from order item
+              discountedAmountInCents: dessertItem.discountedAmountInCents,
+              promoId: dessertItem.promoId,
+              customisations: {
+                create: dessertItem.customisations.map(
+                  (customisationsItem) => ({
+                    customisation: {
+                      connect: {
+                        id: customisationsItem.id, // Ensure customisation exists before connecting
+                      },
+                    },
+                    quantity: customisationsItem.quantity,
+                  }),
+                ),
+              },
+            })),
+          },
+        },
+        select: {
+          id: true,
+          tempOrderId: true,
+          status: true,
+          createdAt: true,
+          customerFirstName: true,
+          customerLastName: true,
+          customerEmail: true,
+          customerPhoneNumber: true,
+          priceInCents: true,
+          discountedAmountInCents: true,
+          pickUpTime: true,
+          dineIn: true,
+          pickedUpAt: true,
+          GST: true,
+          notified: true,
+          desserts: {
+            select: {
+              orderId: true,
+              id: true,
+              quantity: true,
+              priceInCents: true,
+              discountedAmountInCents: true,
+              dessert: {
+                select: {
+                  id: true,
+                  name: true,
+                  chineseName: true,
+                  imagePath: true,
+                },
+              },
+              customisations: {
+                select: {
+                  id: true,
+                  quantity: true,
+                  customisation: {
+                    select: {
+                      id: true,
+                      name: true,
+                      chineseName: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      await resend.emails.send({
+        from: '"Eversweet" <eversweet@eversweet.co.nz>',
+        to: orderData.customerEmail,
+        subject: "Order Confirmation",
+        react: EmailOrderConfirmation({ order: newOrder }),
+      });
+      return;
+    }),
+
   getOrder: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {

@@ -64,7 +64,7 @@ export type CustomerInfo = {
   customerFirstName: string;
   customerLastName: string;
   customerEmail: string;
-  phone: string | null;
+  phone: string;
 };
 
 export type OrderType = {
@@ -107,38 +107,35 @@ export type FullOrderType = {
   id: string;
   tempOrderId: string;
   priceInCents: number;
+  discountedAmountInCents: number;
   GST: number;
   createdAt: Date;
-  updatedAt: Date;
   customerFirstName: string;
   customerLastName: string;
   customerEmail: string;
   customerPhoneNumber: string | null;
-  completedAt: Date | null;
   pickedUpAt: Date | null;
   pickUpTime: Date;
-  status: $Enums.Status; // Assuming $Enums.Status refers to an enum for order status
+  status: "PENDING" | "ACCEPTED" | "MAKING" | "READY" | "PICKED_UP"; // Assuming $Enums.Status refers to an enum for order status
   desserts: {
     id: string;
-    dessertId: string;
     orderId: string;
     quantity: number;
+    priceInCents: number;
+    discountedAmountInCents: number;
     dessert: {
       id: string;
       name: string;
       chineseName: string;
       imagePath: string;
-      priceInCents: number;
     };
     customisations: {
       id: string;
-      customisationId: string;
       quantity: number;
       customisation: {
         id: string;
         name: string;
-        priceInCents: number;
-        isAvailableForPurchase: boolean;
+        chineseName: string;
       };
     }[];
   }[];

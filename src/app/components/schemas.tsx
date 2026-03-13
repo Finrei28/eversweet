@@ -62,4 +62,17 @@ export const orderSchema = z.object({
   priceInCents: z.coerce.number().int().min(1),
   dessert: dessertSchema,
   customisations: z.array(customisationSchema).default([]),
+  discountedAmountInCents: z.coerce.number().int().optional(),
+  promoId: z.string().nullable().optional(),
+});
+
+export const createOrderSchema = z.object({
+  desserts: z.array(orderSchema).min(1),
+  paymentIntentId: z.string().min(1),
+  customerFirstName: z.string().min(1),
+  customerLastName: z.string().min(1),
+  customerEmail: z.string().email(),
+  customerPhoneNumber: z.string().min(1),
+  totalPriceInCents: z.coerce.number().int().positive(),
+  pickUpTime: z.date(),
 });
