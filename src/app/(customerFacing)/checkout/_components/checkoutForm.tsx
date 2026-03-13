@@ -47,7 +47,6 @@ export default function CheckoutForm({
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [warned, setWarned] = useState(false);
-  const [createOrderFailed, setCreateOrderFailed] = useState(false);
   const [holidayNotificationShown, setHolidayNotificationShown] =
     useState(false);
   const utils = api.useUtils();
@@ -239,17 +238,6 @@ export default function CheckoutForm({
     };
     setPaymentLoading(true);
     setPaymentError("");
-    try {
-      await fetch("/api/updatePaymentIntent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderData, paymentIntentId }),
-      });
-      console.log("updated payment Intent success");
-    } catch (error) {
-      console.log("updated payment Intent failed");
-      setCreateOrderFailed(true);
-    }
 
     const { error: submitError, paymentIntent } = await stripe.confirmPayment({
       elements,
@@ -276,11 +264,10 @@ export default function CheckoutForm({
       }
     }
     if (paymentIntent && paymentIntent.status === "succeeded") {
-      if (createOrderFailed && paymentIntentId) {
-        await createOrder.mutateAsync({
-          orderData: { ...orderData, paymentIntentId },
-        });
-      }
+      await createOrder.mutateAsync({
+        orderData: { ...orderData, paymentIntentId: paymentIntentId ?? "" },
+      });
+
       setPaymentSuccess(true);
       const orderId = await pollForOrderId();
       if (orderId) {
