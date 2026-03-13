@@ -10,7 +10,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 
-const resend = new Resend(process.env.RESEND_API_KEY!);
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const orderRouter = createTRPCRouter({
   createNewOrder: publicProcedure
