@@ -1,3 +1,4 @@
+// @ts-ignore: side-effect import for global CSS without type declarations
 import "~/styles/globals.css";
 
 import { GeistSans } from "geist/font/sans";

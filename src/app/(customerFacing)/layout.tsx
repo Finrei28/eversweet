@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import NotificationModal from "../_components/_homeComponents/notification";
 import { useLanguage } from "../components/language";
 import { Navbar, NavbarLink } from "../components/navbar";
 
@@ -7,6 +9,7 @@ export default function CustomerFacingLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { language } = useLanguage();
+  const [notificationModalOpen, setNotificationModalOpen] = useState(true);
   return (
     <>
       <Navbar>
@@ -25,6 +28,15 @@ export default function CustomerFacingLayout({
       </Navbar>
 
       <div>{children}</div>
+      <NotificationModal
+        open={notificationModalOpen}
+        onClose={() => setNotificationModalOpen(false)}
+        title={language === "en" ? "Announcement" : "通知"}
+      >
+        {language === "en"
+          ? "We are closed today on the 26/05/2026. Sorry for the inconvenience! We will be back to normal business hours tomorrow. Thank you for your understanding!"
+          : "我们将于2026年5月26日（今天）休息一天。对于由此带来的不便，我们深表歉意！我们将于明天恢复正常营业时间。感谢您的理解！"}
+      </NotificationModal>
     </>
   );
 }
