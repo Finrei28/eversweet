@@ -98,15 +98,15 @@ function HomePageContent() {
         </footer>
       </div>
 
-      {/* <NotificationModal
+      <NotificationModal
         open={notificationModalOpen}
         onClose={() => setNotificationModalOpen(false)}
         title={language === "en" ? "Announcement" : "通知"}
       >
         {language === "en"
-          ? "We are excited to announce that Eversweet is now open again! Enjoy our special promotion: Buy one get one half off on all Sago desserts (excluding Durian Sago and Mango Pomelo Sago), Steamed Milk Pudding desserts (excluding Egg Milk Pudding), and our refreshing drinks! Takeout only! 😃😃 This offer is valid until the end of the month on January 31, 2026! Don't miss out on this great deal 💝"
-          : "今天开张营业！全部$11.99和$9.99的西米露 (除杨枝甘露和榴莲河粉西米露)，各种双皮奶和冰糖雪梨，饮料系列的珍珠奶茶，烧仙草奶茶和红糖凉粉奶茶第一碗/杯原价，第二碗/杯半价！ 只限外卖！😃😃 活动到月底2026年1月31号结束！是时候来蹭一这波福利了💝"}
-      </NotificationModal> */}
+          ? "We are closed today on the 26/05/2026. Sorry for the inconvenience! We will be back to normal business hours tomorrow. Thank you for your understanding!"
+          : "我们将于2026年5月26日（今天）休息一天。对于由此带来的不便，我们深表歉意！我们将于明天恢复正常营业时间。感谢您的理解！"}
+      </NotificationModal>
     </>
   );
 }
