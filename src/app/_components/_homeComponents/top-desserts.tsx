@@ -155,49 +155,82 @@ export function TopDesserts() {
             setApi={setCarouselApi}
           >
             <CarouselContent className="-ml-4">
-              {topDesserts?.map((dessert) => (
-                <CarouselItem
-                  key={dessert.id}
-                  className="basis-1/2 overflow-visible pl-4 md:basis-1/4 lg:basis-1/4"
-                >
-                  <div className="overflow-hidden">
-                    <Card
-                      className="h-full select-none overflow-hidden border-2 border-secondary transition-transform duration-300 md:hover:scale-105 md:hover:cursor-pointer"
-                      onClick={() => handleCardClick(dessert)}
-                    >
-                      <CardContent className="p-0">
-                        <div className="relative aspect-square w-full">
-                          <Image
-                            src={
-                              dessert.imagePath ||
-                              (process.env
-                                .NEXT_PUBLIC_FILLER_IMAGE_URL as string)
-                            }
-                            alt={
-                              language === "en"
+              {topDesserts?.map((dessert) => {
+                const discountedAmountInCents = dessert.promo
+                  ? dessert.promo.type === "FIXED_AMOUNT"
+                    ? dessert.promo.value
+                    : Math.floor(
+                        dessert.priceInCents * (dessert.promo.value / 100),
+                      )
+                  : 0;
+
+                const priceInCentsAfterPromo =
+                  dessert.priceInCents - discountedAmountInCents;
+                return (
+                  <CarouselItem
+                    key={dessert.id}
+                    className="basis-1/2 overflow-visible pl-4 md:basis-1/4 lg:basis-1/4"
+                  >
+                    <div className="overflow-hidden">
+                      <Card
+                        className="h-full select-none overflow-hidden border-2 border-secondary transition-transform duration-300 md:hover:scale-105 md:hover:cursor-pointer"
+                        onClick={() => handleCardClick(dessert)}
+                      >
+                        <CardContent className="p-0">
+                          <div className="relative aspect-square w-full">
+                            <Image
+                              src={
+                                dessert.imagePath ||
+                                (process.env
+                                  .NEXT_PUBLIC_FILLER_IMAGE_URL as string)
+                              }
+                              alt={
+                                language === "en"
+                                  ? dessert.name
+                                  : dessert.chineseName
+                              }
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            />
+                          </div>
+                          <div className="bg-white p-4 text-center">
+                            <h3 className="flex flex-col items-center justify-center truncate text-lg font-semibold text-primary">
+                              {language === "en"
                                 ? dessert.name
-                                : dessert.chineseName
-                            }
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          />
-                        </div>
-                        <div className="bg-white p-4 text-center">
-                          <h3 className="truncate text-lg font-semibold text-primary">
-                            {language === "en"
-                              ? dessert.name
-                              : dessert.chineseName}{" "}
-                            <span className="block sm:inline">
-                              {formatCurrency(dessert.priceInCents / 100)}
-                            </span>
-                          </h3>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </CarouselItem>
-              ))}
+                                : dessert.chineseName}{" "}
+                              <span>
+                                {dessert.promo ? (
+                                  <>
+                                    {/* Old price */}
+                                    <span className="relative text-sm text-muted-foreground">
+                                      {formatCurrency(
+                                        dessert.priceInCents / 100,
+                                      )}
+                                      <span className="pointer-events-none absolute left-0 top-1/2 h-[1.5px] w-full rotate-[-8deg] bg-red-500" />
+                                    </span>
+
+                                    {/* New price */}
+                                    <span className="text-base font-semibold text-red-600">
+                                      {formatCurrency(
+                                        priceInCentsAfterPromo / 100,
+                                      )}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span>
+                                    {formatCurrency(dessert.priceInCents / 100)}
+                                  </span>
+                                )}
+                              </span>
+                            </h3>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CarouselItem>
+                );
+              })}
             </CarouselContent>
             <div
               className="absolute left-0 top-0 h-full"
