@@ -176,8 +176,8 @@ export function TopDesserts() {
                         className="h-full select-none overflow-hidden border-2 border-secondary transition-transform duration-300 md:hover:scale-105 md:hover:cursor-pointer"
                         onClick={() => handleCardClick(dessert)}
                       >
-                        <CardContent className="p-0">
-                          <div className="relative aspect-square w-full">
+                        <CardContent className="flex h-full flex-col p-0">
+                          <div className="relative aspect-square w-full shrink-0">
                             <Image
                               src={
                                 dessert.imagePath ||
@@ -194,36 +194,36 @@ export function TopDesserts() {
                               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             />
                           </div>
-                          <div className="bg-white p-4 text-center">
-                            <h3 className="flex flex-col items-center justify-center truncate text-lg font-semibold text-primary">
+                          <div className="flex flex-1 flex-col justify-between bg-white p-4 text-center">
+                            {/* Dessert name */}
+                            <h3 className="min-h-[3.5rem] text-lg font-semibold text-primary">
                               {language === "en"
                                 ? dessert.name
                                 : dessert.chineseName}{" "}
-                              <span>
-                                {dessert.promo ? (
-                                  <>
-                                    {/* Old price */}
-                                    <span className="relative text-sm text-muted-foreground">
-                                      {formatCurrency(
-                                        dessert.priceInCents / 100,
-                                      )}
-                                      <span className="pointer-events-none absolute left-0 top-1/2 h-[1.5px] w-full rotate-[-8deg] bg-red-500" />
-                                    </span>
-
-                                    {/* New price */}
-                                    <span className="text-base font-semibold text-red-600">
-                                      {formatCurrency(
-                                        priceInCentsAfterPromo / 100,
-                                      )}
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span>
-                                    {formatCurrency(dessert.priceInCents / 100)}
-                                  </span>
-                                )}
-                              </span>
                             </h3>
+                            {/* Dessert price */}
+                            <span>
+                              {dessert.promo ? (
+                                <span className="flex items-center justify-center gap-2">
+                                  {/* Old price */}
+                                  <span className="relative text-base font-bold text-primary">
+                                    {formatCurrency(dessert.priceInCents / 100)}
+                                    <span className="pointer-events-none absolute left-0 top-1/2 h-[1.5px] w-full rotate-[-8deg] bg-red-500" />
+                                  </span>
+
+                                  {/* New price */}
+                                  <span className="text-lg font-semibold text-red-600">
+                                    {formatCurrency(
+                                      priceInCentsAfterPromo / 100,
+                                    )}
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-lg font-semibold text-primary">
+                                  {formatCurrency(dessert.priceInCents / 100)}
+                                </span>
+                              )}
+                            </span>
                           </div>
                         </CardContent>
                       </Card>
