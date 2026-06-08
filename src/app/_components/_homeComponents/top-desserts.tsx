@@ -194,9 +194,9 @@ export function TopDesserts() {
                               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             />
                           </div>
-                          <div className="flex flex-1 flex-col justify-between bg-white p-4 text-center">
+                          <div className="flex flex-1 flex-col justify-between bg-white p-2 text-center">
                             {/* Dessert name */}
-                            <h3 className="min-h-[3.5rem] text-lg font-semibold text-primary">
+                            <h3 className="min-h-[5.5rem] text-lg font-semibold text-primary md:min-h-[4.5rem]">
                               {language === "en"
                                 ? dessert.name
                                 : dessert.chineseName}{" "}
