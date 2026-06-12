@@ -196,7 +196,7 @@ export function TopDesserts() {
                           </div>
                           <div className="flex flex-1 flex-col justify-between bg-white p-2 text-center">
                             {/* Dessert name */}
-                            <h3 className="min-h-[5.5rem] text-lg font-semibold text-primary md:min-h-[4.5rem]">
+                            <h3 className="min-h-[6rem] text-lg font-semibold text-primary md:min-h-[4.5rem]">
                               {language === "en"
                                 ? dessert.name
                                 : dessert.chineseName}{" "}
