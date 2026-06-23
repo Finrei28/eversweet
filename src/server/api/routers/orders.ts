@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createOrderSchema } from "~/app/components/schemas";
 import EmailOrderConfirmation from "~/email/orderConfirmation";
 import { Resend } from "resend";
+import { formatInTimeZone } from "date-fns-tz";
 
 import {
   createTRPCRouter,
@@ -18,23 +19,26 @@ export const orderRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { orderData } = input;
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Normalize to midnight
+      const todayNZ = formatInTimeZone(
+        new Date(),
+        "Pacific/Auckland",
+        "yyyy-MM-dd",
+      );
 
       let counter = await ctx.db.tempOrderCounter.findUnique({
-        where: { date: today },
+        where: { date: todayNZ },
       });
 
       if (!counter) {
         counter = await ctx.db.tempOrderCounter.create({
           data: {
-            date: today,
+            date: todayNZ,
             counter: 6000,
           },
         });
       } else {
         counter = await ctx.db.tempOrderCounter.update({
-          where: { date: today },
+          where: { date: todayNZ },
           data: { counter: counter.counter + 1 },
         });
       }
