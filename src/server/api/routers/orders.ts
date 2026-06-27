@@ -100,6 +100,7 @@ export const orderRouter = createTRPCRouter({
           pickedUpAt: true,
           GST: true,
           notified: true,
+          appUserId: true,
           desserts: {
             select: {
               orderId: true,
@@ -119,11 +120,13 @@ export const orderRouter = createTRPCRouter({
                 select: {
                   id: true,
                   quantity: true,
+                  discountedAmountInCents: true,
                   customisation: {
                     select: {
                       id: true,
                       name: true,
                       chineseName: true,
+                      priceInCents: true,
                     },
                   },
                 },
