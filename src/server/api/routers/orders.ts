@@ -19,26 +19,26 @@ export const orderRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { orderData } = input;
 
-      const todayNZ = formatInTimeZone(
-        new Date(),
+      const pickUpNZDate = formatInTimeZone(
+        new Date(orderData.pickUpTime),
         "Pacific/Auckland",
         "yyyy-MM-dd",
       );
 
       let counter = await ctx.db.tempOrderCounter.findUnique({
-        where: { date: todayNZ },
+        where: { date: pickUpNZDate },
       });
 
       if (!counter) {
         counter = await ctx.db.tempOrderCounter.create({
           data: {
-            date: todayNZ,
+            date: pickUpNZDate,
             counter: 6000,
           },
         });
       } else {
         counter = await ctx.db.tempOrderCounter.update({
-          where: { date: todayNZ },
+          where: { date: pickUpNZDate },
           data: { counter: counter.counter + 1 },
         });
       }
