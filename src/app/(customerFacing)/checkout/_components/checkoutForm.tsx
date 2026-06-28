@@ -249,6 +249,7 @@ export default function CheckoutForm({
         submitError.message || "Payment failed. Please try again.",
       );
       setPaymentLoading(false);
+      return;
     } else if (paymentIntent.status === "requires_action") {
       const { error: actionError } = await stripe.confirmPayment({
         elements,
@@ -261,6 +262,8 @@ export default function CheckoutForm({
         setPaymentError(
           actionError.message || "Payment failed. Please try again.",
         );
+        setPaymentLoading(false);
+        return;
       }
     }
     if (paymentIntent && paymentIntent.status === "succeeded") {
