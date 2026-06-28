@@ -236,48 +236,38 @@ export default function CheckoutForm({
       totalPriceInCents,
       pickUpTime,
     };
-    setPaymentLoading(true);
-    setPaymentError("");
 
-    const { error: submitError, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      redirect: "if_required",
-    });
+    try {
+      setPaymentLoading(true);
+      setPaymentError("");
 
-    if (submitError) {
-      setPaymentError(
-        submitError.message || "Payment failed. Please try again.",
-      );
-      setPaymentLoading(false);
-      return;
-    } else if (paymentIntent.status === "requires_action") {
-      const { error: actionError } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/order?paymentId=${paymentIntent.id}`,
+      const { error: submitError, paymentIntent } = await stripe.confirmPayment(
+        {
+          elements,
+          redirect: "if_required",
         },
-        redirect: "if_required",
-      });
-      if (actionError) {
-        setPaymentError(
-          actionError.message || "Payment failed. Please try again.",
-        );
-        setPaymentLoading(false);
-        return;
-      }
-    }
-    if (paymentIntent && paymentIntent.status === "succeeded") {
-      await createOrder.mutateAsync({
-        orderData: { ...orderData, paymentIntentId: paymentIntentId ?? "" },
-      });
+      );
 
-      setPaymentSuccess(true);
-      const orderId = await pollForOrderId();
-      if (orderId) {
-        cart?.clearCart();
-        router.push(`/order?orderId=${orderId}`);
+      if (submitError) {
+        setPaymentError(
+          submitError.message || "Payment failed. Please try again.",
+        );
       }
-    } else {
+      if (paymentIntent && paymentIntent.status === "succeeded") {
+        await createOrder.mutateAsync({
+          orderData: { ...orderData, paymentIntentId: paymentIntentId ?? "" },
+        });
+
+        setPaymentSuccess(true);
+        const orderId = await pollForOrderId();
+        if (orderId) {
+          cart?.clearCart();
+          router.push(`/order?orderId=${orderId}`);
+        }
+      }
+    } catch (error) {
+      setPaymentError((error as Error).message);
+    } finally {
       setPaymentLoading(false);
     }
   };
