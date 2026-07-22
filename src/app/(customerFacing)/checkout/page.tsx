@@ -11,6 +11,7 @@ import CustomerInformation from "./_components/customerInformation";
 import OrderSummary from "./_components/orderSummary";
 import { useLanguage } from "~/app/components/language";
 import Loader from "~/app/components/customLoading";
+import parsePhoneNumberFromString from "libphonenumber-js";
 
 export default function CheckoutPage() {
   const cart = useContext(CartContext);
@@ -54,14 +55,13 @@ export default function CheckoutPage() {
     if (!pickUpTime) return; // delete after holiday
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const nzPhoneRegex = /^\+?64[2-9]\d{8,10}$/;
+    const phone = parsePhoneNumberFromString(debouncedCustomerInfo.phone, "NZ");
     if (
       !debouncedCustomerInfo.customerFirstName?.trim() ||
       !debouncedCustomerInfo.customerLastName?.trim() ||
       !debouncedCustomerInfo.customerEmail?.trim() ||
       !emailRegex.test(debouncedCustomerInfo.customerEmail.trim()) ||
-      (debouncedCustomerInfo.phone &&
-        !nzPhoneRegex.test(debouncedCustomerInfo.phone.trim()))
+      !phone?.isValid()
     ) {
       return;
     }

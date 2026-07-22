@@ -45,6 +45,7 @@ export default function OrderSummary({
             onChange={setPickUpTime}
             setPickUpNextOpening={setPickUpNextOpening}
             pickUpNextOpening={pickUpNextOpening}
+            numberOfItems={cart.totalItems}
           />
 
           {pickUpTime && (

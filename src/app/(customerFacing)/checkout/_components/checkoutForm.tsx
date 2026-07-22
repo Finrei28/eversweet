@@ -18,6 +18,7 @@ import { getNextValidTime } from "./pick-up-time";
 import { toast } from "~/hooks/use-toast";
 import { format } from "date-fns";
 import NotificationModal from "~/app/_components/_homeComponents/notification";
+import parsePhoneNumberFromString from "libphonenumber-js";
 
 type checkoutFormProps = {
   totalPriceInCents: number;
@@ -142,7 +143,7 @@ export default function CheckoutForm({
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const nzPhoneRegex = /^\+?64[2-9]\d{8,10}$/;
+    const phone = parsePhoneNumberFromString(customerInfo.phone, "NZ");
     if (
       !customerInfo.customerFirstName?.trim() ||
       !customerInfo.customerLastName?.trim() ||
@@ -157,7 +158,7 @@ export default function CheckoutForm({
       return;
     }
 
-    if (customerInfo.phone && !nzPhoneRegex.test(customerInfo.phone.trim())) {
+    if (!phone?.isValid()) {
       setPaymentError("Please enter a valid New Zealand phone number.");
       return;
     }
@@ -174,8 +175,8 @@ export default function CheckoutForm({
     const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
     let newPickUpTime = null;
     if (pickUpTime.getTime() < tenMinutesLater.getTime()) {
-      setPickUpTime(getNextValidTime());
-      newPickUpTime = getNextValidTime();
+      setPickUpTime(getNextValidTime(cart.totalItems));
+      newPickUpTime = getNextValidTime(cart.totalItems);
       const isToday =
         newPickUpTime?.getDate() === now.getDate() &&
         newPickUpTime?.getMonth() === now.getMonth() &&

@@ -39,6 +39,7 @@ interface PickupTimeProps {
   value: Date | null;
   setPickUpNextOpening: (boolean: boolean) => void;
   pickUpNextOpening: boolean;
+  numberOfItems: number;
   // Optional custom business hours
 }
 
@@ -105,7 +106,7 @@ const getStartEndHours = (dayHours: dayHoursType, selectedDate: Date) => {
   return { startDateTime, endDateTime };
 };
 
-export const getNextValidTime = () => {
+export const getNextValidTime = (numberOfItems: number) => {
   const now = new Date();
 
   // Round to next 5 minutes
@@ -116,8 +117,11 @@ export const getNextValidTime = () => {
   let nextTime = new Date(now);
   // nextTime.setMinutes(roundedMinutes, 0, 0);
   // console.log(roundedMinutes);
-  // Add 10 minutes for preparation time
-  nextTime.setMinutes(nextTime.getMinutes() + 10);
+  // Add preparation time
+  let prepTime = 20; // default to item count > 6, taking 20 minutes to prepare
+  if (numberOfItems <= 3) prepTime = 10;
+  else if (numberOfItems <= 6) prepTime = 15;
+  nextTime.setMinutes(nextTime.getMinutes() + prepTime);
 
   const dayHours = getBusinessHoursForDate(nextTime);
 
@@ -162,6 +166,7 @@ export function PickupTimePicker({
   value,
   setPickUpNextOpening,
   pickUpNextOpening,
+  numberOfItems,
 }: PickupTimeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"asap" | "custom">("asap");
@@ -175,7 +180,7 @@ export function PickupTimePicker({
       const now = new Date();
       const diffInMs = value.getTime() - now.getTime();
       const diffInMinutes = diffInMs / 1000 / 60;
-      const nextTime = getNextValidTime();
+      const nextTime = getNextValidTime(numberOfItems);
       if (!nextTime) return;
       if (diffInMinutes < 10) {
         onChange(nextTime);
@@ -249,14 +254,14 @@ export function PickupTimePicker({
   // Set initial value if not provided
   useEffect(() => {
     if (!value) {
-      onChange(getNextValidTime());
+      onChange(getNextValidTime(numberOfItems));
     }
   }, [value, onChange]);
 
   // Handle ASAP selection
   const handleAsapSelect = () => {
     setSelectedTab("asap");
-    onChange(getNextValidTime());
+    onChange(getNextValidTime(numberOfItems));
     setIsOpen(false);
   };
 
@@ -423,9 +428,13 @@ export function PickupTimePicker({
               <p className="font-medium">
                 {language === "en" ? "Estimated time: " : "预计时间: "}
                 {value
-                  ? format(getNextValidTime() ?? "", "EEE, h:mm a", {
-                      locale: language === "en" ? enNZ : zhCN,
-                    })
+                  ? format(
+                      getNextValidTime(numberOfItems) ?? "",
+                      "EEE, h:mm a",
+                      {
+                        locale: language === "en" ? enNZ : zhCN,
+                      },
+                    )
                   : "Loading..."}
               </p>
             </div>
