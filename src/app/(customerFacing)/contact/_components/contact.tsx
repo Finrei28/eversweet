@@ -12,7 +12,7 @@ export default function ContactComponent() {
   const { language } = useLanguage();
   const storeLocation = useMemo(() => {
     return {
-      address: "5D/119 Meadowland Drive, Somerville, Auckland 2014",
+      address: "Eversweet, 5D/119 Meadowland Drive, Somerville, Auckland 2014",
       lat: -36.8894, // Replace with actual latitude
       lng: 174.9112, // Replace with actual longitude
     };
@@ -155,9 +155,7 @@ export default function ContactComponent() {
                   5D/119 Meadowland Drive, Somerville, Auckland 2014
                 </p>
                 <Link
-                  href={
-                    "https://www.google.com/maps/place/5D%2F119+Meadowland+Drive,+Somerville,+Auckland+2014"
-                  }
+                  href={`https://www.google.com/maps/place/EVERSWEET/@-36.9125301,174.9266263,17z/data=!4m14!1m7!3m6!1s0x6d0d4b005804e6ff:0x6884c715c4f2b74f!2sEVERSWEET!8m2!3d-36.9125301!4d174.9292012!16s%2Fg%2F11mcysftnm!3m5!1s0x6d0d4b005804e6ff:0x6884c715c4f2b74f!8m2!3d-36.9125301!4d174.9292012!16s%2Fg%2F11mcysftnm?entry=ttu&g_ep=EgoyMDI2MDcyNi4wIKXMDSoASAFQAw%3D%3D`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
