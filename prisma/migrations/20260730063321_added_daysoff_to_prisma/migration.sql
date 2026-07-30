@@ -1,0 +1,9 @@
+-- CreateTable
+CREATE TABLE "DaysOff" (
+    "id" TEXT NOT NULL,
+    "dayOff" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "DaysOff_pkey" PRIMARY KEY ("id")
+);
