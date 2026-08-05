@@ -12,20 +12,18 @@ export default function CustomerFacingLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const { language } = useLanguage();
   const [notificationModalOpen, setNotificationModalOpen] = useState(true);
-  const { data } = api.store.getDaysOff.useQuery();
-  const daysOff = data ?? [];
-  const sortedDaysOff = [...daysOff].sort((a, b) => a.getTime() - b.getTime());
+  const { data: daysOff } = api.store.getDaysOff.useQuery();
+
   const formattedDaysOffText =
-    sortedDaysOff.length === 0
-      ? ""
-      : sortedDaysOff.length === 1
-        ? format(sortedDaysOff[0]!, "dd/MM")
-        : `${sortedDaysOff
+    daysOff && daysOff.length > 0
+      ? daysOff.length === 1
+        ? format(daysOff[0]!, "dd/MM")
+        : `${daysOff
             .slice(0, -1)
             .map((date) => format(date, "dd/MM"))
-            .join(
-              ", ",
-            )} and ${format(sortedDaysOff[sortedDaysOff.length - 1]!, "dd/MM")}`;
+            .join(", ")} and ${format(daysOff[daysOff.length - 1]!, "dd/MM")}`
+      : "";
+
   return (
     <>
       <Navbar>
