@@ -18,7 +18,7 @@ import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
 
-import { Category } from "~/app/components/types";
+import { Category } from "~/lib/types";
 
 import EditCustomisationDialog from "./editCustomisationDialog";
 import CustomisationForm from "./customisationForm";

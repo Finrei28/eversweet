@@ -1,6 +1,6 @@
 "use client";
 
-import { dessertFromDB } from "~/app/components/types";
+import { dessertFromDB } from "~/lib/types";
 import { AddProduct } from "./addProduct";
 import { EditProduct } from "./editProduct";
 import { api } from "~/trpc/react";

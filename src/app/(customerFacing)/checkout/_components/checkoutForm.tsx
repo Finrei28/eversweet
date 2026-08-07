@@ -6,19 +6,17 @@ import {
   useStripe,
 } from "@stripe/react-stripe-js";
 import { CheckCircle, Loader2 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 import { CartContextType } from "~/app/components/cartContext";
 import { useLanguage } from "~/app/components/language";
-import { CustomerInfo } from "~/app/components/types";
+import { CustomerInfo } from "~/lib/types";
 import { Button } from "~/components/ui/button";
 import { formatCurrency } from "~/lib/formatters";
 import { api } from "~/trpc/react";
-import { getNextValidTime } from "./pick-up-time";
 import { toast } from "~/hooks/use-toast";
 import { format } from "date-fns";
-import NotificationModal from "~/app/_components/_homeComponents/notification";
 import parsePhoneNumberFromString from "libphonenumber-js";
+import { getNextValidTime, getNowNZ } from "~/lib/pickUpTimeHelper";
 
 type checkoutFormProps = {
   totalPriceInCents: number;
@@ -48,8 +46,6 @@ export default function CheckoutForm({
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [warned, setWarned] = useState(false);
-  const [holidayNotificationShown, setHolidayNotificationShown] =
-    useState(false);
   const utils = api.useUtils();
   const createOrder = api.order.createNewOrder.useMutation({
     onSuccess: async () => {
@@ -171,7 +167,7 @@ export default function CheckoutForm({
       setPaymentError("Please select a pick up time.");
       return;
     }
-    const now = new Date();
+    const now = getNowNZ();
     const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
     let newPickUpTime = null;
     if (pickUpTime.getTime() < tenMinutesLater.getTime()) {

@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { Category, Ingredients } from "~/app/components/types";
+import { Category, Ingredients } from "~/lib/types";
 import { toast } from "~/hooks/use-toast";
 import { useLanguage } from "~/app/components/language";
 import { IngredientsMultiSelect } from "./ingredientSelect";

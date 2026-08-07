@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useState, useEffect, ReactNode, useRef } from "react";
-import { dessertOnClient } from "./types";
+import { dessertOnClient } from "../../lib/types";
 import { api } from "~/trpc/react";
 
 const validPromoCategory = [""];

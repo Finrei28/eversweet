@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
-import { Category, Customisation } from "~/app/components/types";
+import { Category, Customisation } from "~/lib/types";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {

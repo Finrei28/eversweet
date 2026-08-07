@@ -10,7 +10,7 @@ import {
 import CheckoutForm from "./checkoutForm";
 import { CartContextType } from "~/app/components/cartContext";
 import { loadStripe } from "@stripe/stripe-js";
-import { CustomerInfo } from "~/app/components/types";
+import { CustomerInfo } from "~/lib/types";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "~/components/ui/button";

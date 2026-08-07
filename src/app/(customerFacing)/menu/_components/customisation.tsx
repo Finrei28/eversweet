@@ -27,7 +27,7 @@ import {
 } from "~/components/ui/tooltip";
 import { useLanguage } from "~/app/components/language";
 import { usePathname } from "next/navigation";
-import { dessertOnClient } from "~/app/components/types";
+import { dessertOnClient } from "~/lib/types";
 
 type CustomisationDialogProps = {
   dessert: dessertOnClient;

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Ingredient } from "~/app/components/types";
+import { Ingredient } from "~/lib/types";
 
 interface Props {
   allIngredients: Ingredient[];

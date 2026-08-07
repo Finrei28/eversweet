@@ -154,3 +154,20 @@ export type Customisation = {
   isAvailableForPurchase?: boolean;
   categories: Category[];
 };
+
+export type dayHoursType = {
+  open: number | null;
+  close: number | null;
+  displayName: string;
+};
+
+export type BusinessHoursType = Record<number, dayHoursType>;
+
+export type PickupTimeProps = {
+  onChange: (date: Date | null) => void;
+  value: Date | null;
+  setPickUpNextOpening: (boolean: boolean) => void;
+  pickUpNextOpening: boolean;
+  numberOfItems: number;
+  // Optional custom business hours
+};

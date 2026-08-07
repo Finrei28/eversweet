@@ -15,7 +15,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { api } from "~/trpc/react";
 import { useCallback } from "react";
-import { OrderType } from "~/app/components/types";
+import { OrderType } from "~/lib/types";
 import { useLanguage } from "~/app/components/language";
 import { toast } from "~/hooks/use-toast";
 

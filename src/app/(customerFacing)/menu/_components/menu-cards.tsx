@@ -17,7 +17,7 @@ import { useLanguage } from "~/app/components/language";
 import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatCurrency } from "~/lib/formatters";
-import { dessertOnClient } from "~/app/components/types";
+import { dessertOnClient } from "~/lib/types";
 
 export default function MenuCards() {
   const { data: productCategory, isLoading: isProductLoading } =

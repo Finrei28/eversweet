@@ -10,6 +10,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { getNowNZ } from "~/lib/pickUpTimeHelper";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -250,10 +251,10 @@ export const orderRouter = createTRPCRouter({
         where: { id: input.id },
         data: {
           status: input.status as Status,
-          pickedUpAt: input.status === "PICKED_UP" ? new Date() : null,
+          pickedUpAt: input.status === "PICKED_UP" ? getNowNZ() : null,
           completedAt:
             input.status === "READY" || input.status === "PICKED_UP"
-              ? new Date()
+              ? getNowNZ()
               : input.status === "PENDING"
                 ? null
                 : undefined,
@@ -333,10 +334,10 @@ export const orderRouter = createTRPCRouter({
   }),
 
   getSalesToday: protectedProcedure.query(async ({ ctx }) => {
-    const startOfToday = new Date();
+    const startOfToday = getNowNZ();
     startOfToday.setHours(0, 0, 0, 0); // Set to 00:00:00 of today
 
-    const endOfToday = new Date();
+    const endOfToday = getNowNZ();
     endOfToday.setHours(23, 59, 59, 999); // Set to 23:59:59 of today
 
     const salesToday = await ctx.db.order.aggregate({

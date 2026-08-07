@@ -21,7 +21,7 @@ import {
   DessertAnimation,
   DessertType,
 } from "./_top-desserts-components.tsx/dessert-animation";
-import { dessertOnClient, Ingredients } from "~/app/components/types";
+import { dessertOnClient, Ingredients } from "~/lib/types";
 
 export function TopDesserts() {
   const { data: topDesserts, isLoading } =

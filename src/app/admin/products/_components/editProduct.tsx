@@ -27,11 +27,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { formatCurrency } from "~/lib/formatters";
 import { editSchema } from "~/app/components/schemas";
-import type {
-  Category,
-  DessertOnForm,
-  Ingredients,
-} from "~/app/components/types";
+import type { Category, DessertOnForm, Ingredients } from "~/lib/types";
 import { api } from "~/trpc/react";
 import { Textarea } from "~/components/ui/textarea";
 import {

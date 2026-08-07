@@ -4,7 +4,7 @@ import type React from "react";
 
 import { Edit } from "lucide-react";
 import CustomDialog from "~/app/components/customDialog";
-import type { Category, Customisation } from "~/app/components/types";
+import type { Category, Customisation } from "~/lib/types";
 import { Button } from "~/components/ui/button";
 import CustomisationForm from "./customisationForm";
 import { useState, useEffect, useRef } from "react";

@@ -19,147 +19,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "~/components/ui/tooltip";
-import { customBusinessHours } from "~/lib/businessHours";
 import { useLanguage } from "~/app/components/language";
 import { zhCN, enNZ } from "date-fns/locale";
-
-// Define business hours for each day of the week
-// 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-type BusinessHoursType = Record<
-  number,
-  {
-    open: number | null;
-    close: number | null;
-    displayName: string;
-  }
->;
-
-interface PickupTimeProps {
-  onChange: (date: Date | null) => void;
-  value: Date | null;
-  setPickUpNextOpening: (boolean: boolean) => void;
-  pickUpNextOpening: boolean;
-  numberOfItems: number;
-  // Optional custom business hours
-}
-
-type dayHoursType = {
-  open: number | null;
-  close: number | null;
-  displayName: string;
-};
-
-const HOURS = customBusinessHours as BusinessHoursType;
-
-// Check if a date is a business day (open)
-const isBusinessDay = (date: Date): boolean => {
-  const day = getDay(date);
-  return HOURS[day]?.open !== null;
-};
-
-// Get business hours for a specific date
-const getBusinessHoursForDate = (date: Date) => {
-  const day = getDay(date);
-  return HOURS[day] as dayHoursType;
-};
-
-// Find the next open date
-const findNextOpenDate = (startDate: Date): Date | null => {
-  let date = new Date(startDate);
-  let daysChecked = 0;
-
-  // Prevent infinite loop by checking up to 14 days
-  while (!isBusinessDay(date) && daysChecked < 14) {
-    if (daysChecked >= 7) {
-      return null;
-    }
-    date = addDays(date, 1);
-    daysChecked++;
-  }
-
-  return date;
-};
-
-// Helper to convert 12.5 -> [12, 30]
-const convertFractionalHour = (hour: number): [number, number] => {
-  const h = Math.floor(hour);
-  const m = (hour - h) * 60;
-  return [h, Math.round(m)];
-};
-
-const getStartEndHours = (dayHours: dayHoursType, selectedDate: Date) => {
-  const [openHour, openMinute] = convertFractionalHour(dayHours.open as number);
-  const [closeHour, closeMinute] = convertFractionalHour(
-    dayHours.close as number,
-  );
-
-  const startDateTime = set(new Date(selectedDate), {
-    hours: openHour,
-    minutes: openMinute,
-  });
-
-  const endDateTime = set(new Date(selectedDate), {
-    hours: closeHour,
-    minutes: closeMinute,
-  });
-
-  return { startDateTime, endDateTime };
-};
-
-export const getNextValidTime = (numberOfItems: number) => {
-  const now = new Date();
-
-  // Round to next 5 minutes
-  // const minutes = now.getMinutes();
-  // const remainder = minutes % 5;
-  // const roundedMinutes = remainder === 0 ? minutes : minutes + (5 - remainder);
-
-  let nextTime = new Date(now);
-  // nextTime.setMinutes(roundedMinutes, 0, 0);
-  // console.log(roundedMinutes);
-  // Add preparation time
-  let prepTime = 20; // default to item count > 6, taking 20 minutes to prepare
-  if (numberOfItems <= 3) prepTime = 10;
-  else if (numberOfItems <= 6) prepTime = 15;
-  nextTime.setMinutes(nextTime.getMinutes() + prepTime);
-
-  const dayHours = getBusinessHoursForDate(nextTime);
-
-  const { startDateTime } = getStartEndHours(dayHours, now);
-
-  // Check if we're closed today
-  if (dayHours && dayHours.open === null) {
-    // Find the next open date
-
-    const nextOpenDate = findNextOpenDate(addDays(now, 1));
-    if (!nextOpenDate) return null;
-    const { startDateTime } = getStartEndHours(dayHours, nextOpenDate);
-    return set(nextOpenDate, {
-      hours: HOURS[getDay(nextOpenDate)]?.open || 12,
-      minutes: startDateTime.getMinutes(),
-    });
-  }
-
-  // Check if within business hours
-  if (dayHours && dayHours.open && nextTime.getHours() < dayHours.open) {
-    // Before opening, set to opening time
-    nextTime = set(nextTime, {
-      hours: dayHours.open,
-      minutes: startDateTime.getMinutes(),
-    });
-  } else if (dayHours && nextTime.getHours() >= (dayHours.close || 21)) {
-    // After closing, find the next open date
-    const nextOpenDate = findNextOpenDate(addDays(now, 1));
-    if (!nextOpenDate) return null;
-    const { startDateTime } = getStartEndHours(dayHours, nextOpenDate);
-    return set(nextOpenDate, {
-      hours: HOURS[getDay(nextOpenDate)]?.open || 12,
-      minutes: startDateTime.getMinutes(),
-    });
-  }
-
-  return nextTime;
-};
+import { PickupTimeProps } from "~/lib/types";
+import {
+  findNextOpenDate,
+  getBusinessHoursForDate,
+  getNextValidTime,
+  getNowNZ,
+  getStartEndHours,
+  getTodayNZ,
+  HOURS,
+  isBusinessDay,
+} from "~/lib/pickUpTimeHelper";
+import { api } from "~/trpc/react";
 
 export function PickupTimePicker({
   onChange,
@@ -171,13 +44,14 @@ export function PickupTimePicker({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"asap" | "custom">("asap");
   const { language } = useLanguage();
+  const { data: daysOff = [] } = api.store.getDaysOff.useQuery();
 
   // Get the next valid time (rounded to nearest 15 minutes)
 
   useEffect(() => {
     const interval = setInterval(() => {
       if (!value) return;
-      const now = new Date();
+      const now = getNowNZ();
       const diffInMs = value.getTime() - now.getTime();
       const diffInMinutes = diffInMs / 1000 / 60;
       const nextTime = getNextValidTime(numberOfItems);
@@ -194,14 +68,14 @@ export function PickupTimePicker({
           setPickUpNextOpening(true);
         }
       }
-    }, 10000); // check every 10 seconds
+    }, 5000); // check every 5 seconds
 
     return () => clearInterval(interval);
   }, [value, onChange, pickUpNextOpening, setPickUpNextOpening]);
 
   // Generate time slots for the selected date
   const generateTimeSlots = (selectedDate: Date) => {
-    const now = new Date();
+    const now = getNowNZ();
     const isToday =
       selectedDate.getDate() === now.getDate() &&
       selectedDate.getMonth() === now.getMonth() &&
@@ -272,9 +146,9 @@ export function PickupTimePicker({
     setSelectedTab("custom");
 
     // Check if the selected date is a business day
-    if (!isBusinessDay(date)) {
+    if (!isBusinessDay(date, daysOff)) {
       // Find the next open date
-      const nextOpenDate = findNextOpenDate(date);
+      const nextOpenDate = findNextOpenDate(date, daysOff);
       if (!nextOpenDate) {
         return;
       }
@@ -288,7 +162,7 @@ export function PickupTimePicker({
     }
 
     const dayHours = getBusinessHoursForDate(date);
-    const { startDateTime } = getStartEndHours(dayHours, date);
+    const { startDateTime, endDateTime } = getStartEndHours(dayHours, date);
 
     // Keep the same time if possible, otherwise set to opening time
 
@@ -308,8 +182,9 @@ export function PickupTimePicker({
       dayHours?.open !== null &&
       dayHours?.close !== null &&
       newDate.getHours() >= dayHours?.open &&
-      newDate.getHours() < dayHours?.close &&
-      newDate.getMinutes() >= startDateTime.getMinutes()
+      newDate.getHours() < dayHours?.close && // making sure time is within business hours
+      newDate.getMinutes() >= startDateTime.getMinutes() &&
+      newDate.getMinutes() - 10 < endDateTime.getMinutes() // making sure time is 10 minutes before closing time
     ) {
       onChange(newDate);
       return;
@@ -409,9 +284,7 @@ export function PickupTimePicker({
               </TabsTrigger>
               <TabsTrigger
                 value="custom"
-                onClick={() =>
-                  handleDateSelect(new Date(new Date().setHours(0, 0, 0, 0)))
-                }
+                onClick={() => handleDateSelect(getTodayNZ())}
               >
                 {language === "en" ? "Pick up later" : "稍后取货"}
               </TabsTrigger>
@@ -445,20 +318,19 @@ export function PickupTimePicker({
               <div className="w-full md:w-auto">
                 <Calendar
                   mode="single"
-                  locale={language === "en" ? enNZ : zhCN}
+                  locale={enNZ}
                   selected={value || undefined}
                   onSelect={handleDateSelect}
                   disabled={(date) => {
-                    const now = new Date();
                     // Disable past dates, dates more than 2 weeks in the future, and closed days
                     return (
-                      isBefore(date, new Date(now.setHours(0, 0, 0, 0))) ||
-                      isAfter(date, addDays(new Date(), 14)) ||
-                      !isBusinessDay(date)
+                      isBefore(date, getTodayNZ()) ||
+                      isAfter(date, addDays(getNowNZ(), 14)) ||
+                      !isBusinessDay(date, daysOff)
                     );
                   }}
                   modifiers={{
-                    closed: (date) => !isBusinessDay(date),
+                    closed: (date) => !isBusinessDay(date, daysOff),
                   }}
                   modifiersClassNames={{
                     closed: "text-red-500 line-through opacity-50",
@@ -501,7 +373,7 @@ export function PickupTimePicker({
                 </h3>
                 <ScrollArea className="h-72">
                   <div className="grid grid-cols-2 gap-2 pr-3">
-                    {value && isBusinessDay(value) ? (
+                    {value && isBusinessDay(value, daysOff) ? (
                       generateTimeSlots(value).map((time, i) => {
                         return (
                           <Button
@@ -526,7 +398,7 @@ export function PickupTimePicker({
                       </p>
                     ) : null}
                     {value &&
-                      isBusinessDay(value) &&
+                      isBusinessDay(value, daysOff) &&
                       generateTimeSlots(value).length === 0 && (
                         <p className="col-span-2 py-4 text-center text-sm text-muted-foreground">
                           {language === "en"

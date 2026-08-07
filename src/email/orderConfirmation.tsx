@@ -1,4 +1,4 @@
-import { FullOrderType } from "~/app/components/types";
+import { FullOrderType } from "~/lib/types";
 
 import {
   formatCurrency,
