@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format, addDays, set, isAfter, isBefore, getDay } from "date-fns";
+import {
+  format,
+  addDays,
+  set,
+  isAfter,
+  isBefore,
+  getDay,
+  isSameDay,
+  addMinutes,
+} from "date-fns";
 import { Calendar } from "~/components/ui/calendar";
 import { Button } from "~/components/ui/button";
 import {
@@ -33,6 +42,7 @@ import {
   isBusinessDay,
 } from "~/lib/pickUpTimeHelper";
 import { api } from "~/trpc/react";
+import { DateTime } from "luxon";
 
 export function PickupTimePicker({
   onChange,
@@ -76,10 +86,7 @@ export function PickupTimePicker({
   // Generate time slots for the selected date
   const generateTimeSlots = (selectedDate: Date) => {
     const now = getNowNZ();
-    const isToday =
-      selectedDate.getDate() === now.getDate() &&
-      selectedDate.getMonth() === now.getMonth() &&
-      selectedDate.getFullYear() === now.getFullYear();
+    const isToday = isSameDay(selectedDate, now);
 
     const dayHours = getBusinessHoursForDate(selectedDate);
 
@@ -110,16 +117,17 @@ export function PickupTimePicker({
       minutes % 10 === 0 ? minutes : minutes + (10 - (minutes % 10));
     currentTime.setMinutes(roundedMinutes, 0, 0);
 
-    const endDateTimeBeforeFifteenminutes = new Date(
-      endDateTime.getTime() - 20 * 60 * 1000,
+    const tenMinutesBeforeClosing = new Date( // time 10 minutes before closing time
+      endDateTime.getTime() - 10 * 60 * 1000,
     );
 
-    while (currentTime < endDateTimeBeforeFifteenminutes) {
+    while (currentTime <= tenMinutesBeforeClosing) {
+      // generate slots 10 minutes from now to until 10 minutes before closing time
       const diff = (currentTime.getTime() - now.getTime()) / 1000 / 60; // in minutes
       if (!isToday || diff >= 10) {
         slots.push(new Date(currentTime));
       }
-      currentTime.setMinutes(currentTime.getMinutes() + 10);
+      currentTime = addMinutes(currentTime, 10);
     }
 
     return slots;
@@ -142,13 +150,17 @@ export function PickupTimePicker({
   // Handle date selection
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
+    const nzDate = DateTime.fromJSDate(date)
+      .setZone("Pacific/Auckland", { keepLocalTime: true })
+      .startOf("day")
+      .toJSDate();
 
     setSelectedTab("custom");
 
     // Check if the selected date is a business day
-    if (!isBusinessDay(date, daysOff)) {
+    if (!isBusinessDay(nzDate, daysOff)) {
       // Find the next open date
-      const nextOpenDate = findNextOpenDate(date, daysOff);
+      const nextOpenDate = findNextOpenDate(nzDate, daysOff);
       if (!nextOpenDate) {
         return;
       }
@@ -161,16 +173,16 @@ export function PickupTimePicker({
       return;
     }
 
-    const dayHours = getBusinessHoursForDate(date);
-    const { startDateTime, endDateTime } = getStartEndHours(dayHours, date);
+    const dayHours = getBusinessHoursForDate(nzDate);
+    const { startDateTime, endDateTime } = getStartEndHours(dayHours, nzDate);
 
     // Keep the same time if possible, otherwise set to opening time
 
-    const newDate = new Date(date);
+    const newDate = new Date(nzDate);
 
     const firstTimeSlot =
       generateTimeSlots(newDate)[0] ||
-      set(date, {
+      set(nzDate, {
         hours: startDateTime.getHours() || 12,
         minutes: startDateTime.getMinutes(),
       });
@@ -195,7 +207,7 @@ export function PickupTimePicker({
     // Default to opening time
 
     onChange(
-      set(date, {
+      set(nzDate, {
         hours: startDateTime.getHours() || 12,
         minutes: startDateTime.getMinutes(),
       }),
