@@ -26,6 +26,7 @@ type paymentSectionProps = {
   setPickUpTime: (time: Date | null) => void;
   pickUpNextOpening: boolean;
   paymentIntentId: string | null;
+  daysOff: Date[];
 };
 
 const stripePromise = loadStripe(
@@ -42,6 +43,7 @@ export default function PaymentSection({
   setPickUpTime,
   pickUpNextOpening,
   paymentIntentId,
+  daysOff,
 }: paymentSectionProps) {
   const { language } = useLanguage();
   const router = useRouter();
@@ -69,6 +71,7 @@ export default function PaymentSection({
               setPickUpTime={setPickUpTime}
               pickUpNextOpening={pickUpNextOpening}
               router={router}
+              daysOff={daysOff}
             />
           </Elements>
         )}

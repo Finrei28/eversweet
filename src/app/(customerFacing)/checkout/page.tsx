@@ -12,13 +12,16 @@ import OrderSummary from "./_components/orderSummary";
 import { useLanguage } from "~/app/components/language";
 import Loader from "~/app/components/customLoading";
 import parsePhoneNumberFromString from "libphonenumber-js";
+import { api } from "~/trpc/react";
 
 export default function CheckoutPage() {
   const cart = useContext(CartContext);
+  const { data: daysOff = [], isLoading: loadingDaysOff } =
+    api.store.getDaysOff.useQuery();
   const { language } = useLanguage();
   const [clientSecret, setClientSecret] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isPaymentSectionLoading, setPaymentSectionLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [customerInfo, setCustomerInfo] = useState({
@@ -66,7 +69,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    setIsLoading(true);
+    setPaymentSectionLoading(true);
 
     fetch("/api/checkout_sessions", {
       method: "POST",
@@ -80,11 +83,11 @@ export default function CheckoutPage() {
         setClientSecret(data.clientSecret);
         setPaymentIntentId(data.paymentIntentId);
         setIsPaymentIntentInitialized(true);
-        setIsLoading(false);
+        setPaymentSectionLoading(false);
       })
       .catch(() => {
         setError("Failed to initialize payment. Please try again.");
-        setIsLoading(false);
+        setPaymentSectionLoading(false);
       });
   }, [cart?.totalPrice, isClient, debouncedCustomerInfo]);
 
@@ -107,8 +110,8 @@ export default function CheckoutPage() {
     }
   };
 
-  // Show loading state during server rendering and initial client render
-  if (!isClient) {
+  if (!isClient || loadingDaysOff) {
+    // Show loading state during server rendering and initial client render
     return <Loader />;
   }
 
@@ -145,6 +148,7 @@ export default function CheckoutPage() {
             setPickUpTime={setPickUpTime}
             setPickUpNextOpening={setPickUpNextOpening}
             pickUpNextOpening={pickUpNextOpening}
+            daysOff={daysOff}
           />
 
           {/* Customer Information */}
@@ -164,8 +168,9 @@ export default function CheckoutPage() {
             pickUpTime={pickUpTime}
             pickUpNextOpening={pickUpNextOpening}
             setPickUpTime={setPickUpTime}
-            isLoading={isLoading}
+            isLoading={isPaymentSectionLoading}
             error={error}
+            daysOff={daysOff}
           />
         </div>
       </div>

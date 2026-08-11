@@ -18,6 +18,7 @@ type orderSummaryProps = {
   setPickUpTime: React.Dispatch<React.SetStateAction<Date | null>>;
   setPickUpNextOpening: (boolean: boolean) => void;
   pickUpNextOpening: boolean;
+  daysOff: Date[];
 };
 
 export default function OrderSummary({
@@ -26,6 +27,7 @@ export default function OrderSummary({
   setPickUpTime,
   setPickUpNextOpening,
   pickUpNextOpening,
+  daysOff,
 }: orderSummaryProps) {
   const { language } = useLanguage();
 
@@ -46,6 +48,7 @@ export default function OrderSummary({
             setPickUpNextOpening={setPickUpNextOpening}
             pickUpNextOpening={pickUpNextOpening}
             numberOfItems={cart.totalItems}
+            daysOff={daysOff}
           />
 
           {pickUpTime && (

@@ -27,6 +27,7 @@ type checkoutFormProps = {
   setPickUpTime: (time: Date | null) => void;
   pickUpNextOpening: boolean;
   paymentIntentId: string | null;
+  daysOff: Date[];
 };
 
 export default function CheckoutForm({
@@ -38,6 +39,7 @@ export default function CheckoutForm({
   setPickUpTime,
   pickUpNextOpening,
   paymentIntentId,
+  daysOff,
 }: checkoutFormProps) {
   const { language } = useLanguage();
   const stripe = useStripe();
@@ -171,8 +173,8 @@ export default function CheckoutForm({
     const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
     let newPickUpTime = null;
     if (pickUpTime.getTime() < tenMinutesLater.getTime()) {
-      setPickUpTime(getNextValidTime(cart.totalItems));
-      newPickUpTime = getNextValidTime(cart.totalItems);
+      setPickUpTime(getNextValidTime(cart.totalItems, daysOff));
+      newPickUpTime = getNextValidTime(cart.totalItems, daysOff);
       const isToday =
         newPickUpTime?.getDate() === now.getDate() &&
         newPickUpTime?.getMonth() === now.getMonth() &&

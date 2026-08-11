@@ -15,7 +15,7 @@ export const getNowNZ = () =>
 export const HOURS = customBusinessHours as BusinessHoursType;
 
 // Check if a date is a business day (open)
-export const isBusinessDay = (date: Date, daysOff?: Date[]): boolean => {
+export const isBusinessDay = (date: Date, daysOff: Date[]): boolean => {
   // Check if the date is in the daysOff array
   if (daysOff?.some((day) => isSameDay(day, date))) {
     return false;
@@ -34,7 +34,7 @@ export const getBusinessHoursForDate = (date: Date) => {
 // Find the next open date
 export const findNextOpenDate = (
   startDate: Date,
-  daysOff?: Date[],
+  daysOff: Date[],
 ): Date | null => {
   let date = new Date(startDate);
   let daysChecked = 0;
@@ -80,7 +80,7 @@ export const getStartEndHours = (
   return { startDateTime, endDateTime };
 };
 
-export const getNextValidTime = (numberOfItems: number) => {
+export const getNextValidTime = (numberOfItems: number, daysOff: Date[]) => {
   const now = getNowNZ();
 
   // Round to next 5 minutes
@@ -100,16 +100,18 @@ export const getNextValidTime = (numberOfItems: number) => {
   const dayHours = getBusinessHoursForDate(nextTime);
 
   const { startDateTime } = getStartEndHours(dayHours, now);
-
   // Check if we're closed today
-  if (dayHours && dayHours.open === null) {
+  if (
+    (dayHours && dayHours.open === null) ||
+    !isBusinessDay(nextTime, daysOff)
+  ) {
     // Find the next open date
 
-    const nextOpenDate = findNextOpenDate(addDays(now, 1));
+    const nextOpenDate = findNextOpenDate(addDays(now, 1), daysOff);
     if (!nextOpenDate) return null;
     const { startDateTime } = getStartEndHours(dayHours, nextOpenDate);
     return set(nextOpenDate, {
-      hours: HOURS[getDay(nextOpenDate)]?.open || 12,
+      hours: startDateTime.getHours(),
       minutes: startDateTime.getMinutes(),
     });
   }
@@ -123,11 +125,11 @@ export const getNextValidTime = (numberOfItems: number) => {
     });
   } else if (dayHours && nextTime.getHours() >= (dayHours.close || 21)) {
     // After closing, find the next open date
-    const nextOpenDate = findNextOpenDate(addDays(now, 1));
+    const nextOpenDate = findNextOpenDate(addDays(now, 1), daysOff);
     if (!nextOpenDate) return null;
     const { startDateTime } = getStartEndHours(dayHours, nextOpenDate);
     return set(nextOpenDate, {
-      hours: HOURS[getDay(nextOpenDate)]?.open || 12,
+      hours: startDateTime.getHours(),
       minutes: startDateTime.getMinutes(),
     });
   }

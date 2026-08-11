@@ -30,7 +30,6 @@ import {
 } from "~/components/ui/tooltip";
 import { useLanguage } from "~/app/components/language";
 import { zhCN, enNZ } from "date-fns/locale";
-import { PickupTimeProps } from "~/lib/types";
 import {
   findNextOpenDate,
   getBusinessHoursForDate,
@@ -41,8 +40,16 @@ import {
   HOURS,
   isBusinessDay,
 } from "~/lib/pickUpTimeHelper";
-import { api } from "~/trpc/react";
 import { DateTime } from "luxon";
+
+type PickupTimeProps = {
+  onChange: (date: Date | null) => void;
+  value: Date | null;
+  setPickUpNextOpening: (boolean: boolean) => void;
+  pickUpNextOpening: boolean;
+  numberOfItems: number;
+  daysOff: Date[];
+};
 
 export function PickupTimePicker({
   onChange,
@@ -50,11 +57,11 @@ export function PickupTimePicker({
   setPickUpNextOpening,
   pickUpNextOpening,
   numberOfItems,
+  daysOff,
 }: PickupTimeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"asap" | "custom">("asap");
   const { language } = useLanguage();
-  const { data: daysOff = [] } = api.store.getDaysOff.useQuery();
 
   // Get the next valid time (rounded to nearest 15 minutes)
 
@@ -64,7 +71,7 @@ export function PickupTimePicker({
       const now = getNowNZ();
       const diffInMs = value.getTime() - now.getTime();
       const diffInMinutes = diffInMs / 1000 / 60;
-      const nextTime = getNextValidTime(numberOfItems);
+      const nextTime = getNextValidTime(numberOfItems, daysOff);
       if (!nextTime) return;
       if (diffInMinutes < 10) {
         onChange(nextTime);
@@ -136,14 +143,14 @@ export function PickupTimePicker({
   // Set initial value if not provided
   useEffect(() => {
     if (!value) {
-      onChange(getNextValidTime(numberOfItems));
+      onChange(getNextValidTime(numberOfItems, daysOff));
     }
   }, [value, onChange]);
 
   // Handle ASAP selection
   const handleAsapSelect = () => {
     setSelectedTab("asap");
-    onChange(getNextValidTime(numberOfItems));
+    onChange(getNextValidTime(numberOfItems, daysOff));
     setIsOpen(false);
   };
 
@@ -160,16 +167,7 @@ export function PickupTimePicker({
     // Check if the selected date is a business day
     if (!isBusinessDay(nzDate, daysOff)) {
       // Find the next open date
-      const nextOpenDate = findNextOpenDate(nzDate, daysOff);
-      if (!nextOpenDate) {
-        return;
-      }
-      onChange(
-        set(nextOpenDate, {
-          hours: HOURS[getDay(nextOpenDate)]?.open || 12,
-          minutes: 0,
-        }),
-      );
+      onChange(getNextValidTime(numberOfItems, daysOff));
       return;
     }
 
@@ -314,7 +312,7 @@ export function PickupTimePicker({
                 {language === "en" ? "Estimated time: " : "预计时间: "}
                 {value
                   ? format(
-                      getNextValidTime(numberOfItems) ?? "",
+                      getNextValidTime(numberOfItems, daysOff) ?? "",
                       "EEE, h:mm a",
                       {
                         locale: language === "en" ? enNZ : zhCN,
