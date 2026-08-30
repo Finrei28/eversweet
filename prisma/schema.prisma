@@ -275,13 +275,18 @@ model Order {
   GST                     Int
   appUserId               String?
   source                  OrderSource    @default(WEBSITE)
-  paymentIntentId         String?
+  // Unique so a retried createOrder can never produce a second order for a
+  // charge that was only made once. Postgres treats NULLs as distinct, so
+  // orders paid entirely in loyalty points are unaffected.
+  paymentIntentId         String?        @unique
   paymentMethodId         String?
   notified                Boolean        @default(false)
   appUser                 User?          @relation("UserOrders", fields: [appUserId], references: [id])
   desserts                OrderDessert[]
 
   @@index([status])
+  // Serves the repeat-order check createPaymentIntent runs before charging.
+  @@index([appUserId, createdAt])
 }
 
 model OrderDessertCustomisation {
