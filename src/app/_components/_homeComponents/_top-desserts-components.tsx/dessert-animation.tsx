@@ -44,13 +44,23 @@ interface DessertAnimationProps {
   /** Which desserts can appear. Defaults to a weighted house mix. */
   kinds?: DessertKind[];
   /**
-   * Element the desserts come to rest on (the first menu photo). Pieces steer
-   * towards it as they fall and settle on its top edge. Without it they simply
-   * land at the bottom of the overlay.
+   * Elements the desserts come to rest on, in document order (the menu
+   * photos). Pieces steer towards them as they fall and settle on their top
+   * edges. Only targets sharing a row with the first one are used, so a
+   * side-by-side grid catches desserts on every photo while a stacked one
+   * catches them on the first alone. Without any, pieces land at the bottom
+   * of the overlay.
    */
-  landingRef?: RefObject<HTMLElement>;
+  landingRefs?: RefObject<HTMLElement>[];
   /** Nudge the resting line down into the landing element, in px. */
   landingOffset?: number;
+}
+
+/** A surface pieces can come to rest on, in overlay-local coordinates. */
+interface LandingZone {
+  x0: number;
+  x1: number;
+  top: number;
 }
 
 /* ------------------------------------------------------------------ *
@@ -596,6 +606,19 @@ interface Particle {
 
   delay: number;
   landY: number;
+  /**
+   * Stable 0..1 seed used to choose the landing zone. Kept instead of a plain
+   * index so that resizing across the xl breakpoint — where the photos go from
+   * stacked (one zone) to side by side (two) — redistributes the pieces
+   * instead of stranding them all on the first photo.
+   */
+  zoneR: number;
+  /** Index derived from zoneR for the current layout. */
+  zone: number;
+  /** Where across that zone the piece lands, 0..1, so a resize can re-derive it. */
+  zoneT: number;
+  /** Per-piece wobble on the resting line so the row doesn't look ruled. */
+  landJitter: number;
   bounces: number;
   resting: boolean;
   squash: number;
@@ -615,13 +638,18 @@ export function DessertAnimation({
   density = 34,
   speed = 1,
   kinds = DEFAULT_MIX,
-  landingRef,
+  landingRefs,
   landingOffset = 0,
 }: DessertAnimationProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Kept in refs so a resize doesn't have to restart the whole animation.
+  // Held in a ref rather than a dependency: callers pass an inline array, and
+  // its changing identity would otherwise restart the animation every render.
+  const landingRefsRef = useRef(landingRefs);
+  landingRefsRef.current = landingRefs;
+
+  // Compared by value so a new-but-equal kinds array doesn't restart things.
   const kindsKey = kinds.join(",");
 
   useEffect(() => {
@@ -641,35 +669,52 @@ export function DessertAnimation({
 
     let cssW = 0;
     let cssH = 0;
-    let landLine = 0;
-    let landX0 = 0;
-    let landX1 = 0;
+    let zones: LandingZone[] = [];
 
     /* -- layout ---------------------------------------------------- */
+
+    const fallbackZone = (): LandingZone => ({
+      x0: 0,
+      x1: Math.max(1, cssW),
+      top: Math.max(1, cssH - 8),
+    });
 
     const measure = () => {
       const hostRect = host.getBoundingClientRect();
       cssW = hostRect.width;
       cssH = hostRect.height;
 
-      const target = landingRef?.current;
-      if (target) {
-        const t = target.getBoundingClientRect();
-        landLine = t.top - hostRect.top + landingOffset;
-        landX0 = t.left - hostRect.left;
-        landX1 = t.right - hostRect.left;
+      const rects = (landingRefsRef.current ?? [])
+        .map((ref) => ref?.current)
+        .filter((el): el is HTMLElement => Boolean(el))
+        .map((el) => el.getBoundingClientRect())
+        .filter((r) => r.width > 8 && r.height > 8);
+
+      const first = rects[0];
+      if (first) {
+        // Keep only the targets sharing a row with the first. Side by side
+        // (xl:grid-cols-2) that catches every photo; once the grid collapses
+        // to one column the rest sit far below, so desserts stop at the first.
+        const sameRow = rects.filter((r) => {
+          const overlap =
+            Math.min(r.bottom, first.bottom) - Math.max(r.top, first.top);
+          return overlap > 0.5 * Math.min(r.height, first.height);
+        });
+
+        zones = sameRow.map((r) => ({
+          x0: r.left - hostRect.left,
+          x1: r.right - hostRect.left,
+          top: r.top - hostRect.top + landingOffset,
+        }));
       } else {
-        landLine = cssH - 8;
-        landX0 = 0;
-        landX1 = cssW;
+        zones = [];
       }
 
-      // Guard against a landing target that hasn't laid out yet.
-      if (!Number.isFinite(landLine) || landLine <= 0) landLine = cssH - 8;
-      if (landX1 - landX0 < 40) {
-        landX0 = 0;
-        landX1 = cssW;
-      }
+      // Guard against targets that haven't laid out yet.
+      zones = zones.filter(
+        (z) => Number.isFinite(z.top) && z.top > 0 && z.x1 - z.x0 >= 40,
+      );
+      if (zones.length === 0) zones = [fallbackZone()];
 
       // Keep the backing store sharp but bounded — this overlay can be a few
       // thousand px tall, and an unbounded DPR canvas gets very expensive.
@@ -696,7 +741,27 @@ export function DessertAnimation({
 
     /* -- build particles ------------------------------------------- */
 
-    const spanX = () => Math.max(1, landX1 - landX0);
+    const zoneWidth = (z: LandingZone) => Math.max(1, z.x1 - z.x0);
+    const zoneInset = (z: LandingZone) => Math.min(24, zoneWidth(z) * 0.05);
+
+    /** Wider photos catch proportionally more, so coverage looks even. */
+    const pickZoneIndex = (r: number) => {
+      const total = zones.reduce((sum, z) => sum + zoneWidth(z), 0);
+      let t = r * total;
+      for (let i = 0; i < zones.length; i++) {
+        const z = zones[i];
+        if (!z) continue;
+        const w = zoneWidth(z);
+        if (t < w) return i;
+        t -= w;
+      }
+      return zones.length - 1;
+    };
+
+    const targetXFor = (z: LandingZone, t: number) => {
+      const inset = zoneInset(z);
+      return lerp(z.x0 + inset, z.x1 - inset, t);
+    };
 
     const makeParticle = (): Particle => {
       const kind = pickKind(kindList, rng());
@@ -729,7 +794,17 @@ export function DessertAnimation({
         }
       }
 
-      const x0 = rng() * cssW;
+      const zoneR = rng();
+      const zone = pickZoneIndex(zoneR);
+      const z = zones[zone] ?? fallbackZone();
+      const zoneT = rng();
+      const landJitter = rng() * 9 - 3;
+      const xTarget = targetXFor(z, zoneT);
+
+      // Start roughly above where it will land so the piece drops more or
+      // less straight down; with two photos side by side a full-width spawn
+      // would drag everything across the gap.
+      const x0 = clamp(xTarget + (rng() - 0.5) * 260, 4, Math.max(8, cssW - 4));
       const y0 = -20 - rng() * 220;
 
       return {
@@ -745,7 +820,7 @@ export function DessertAnimation({
         y: y0,
         x0,
         y0,
-        xTarget: landX0 + spanX() * (0.04 + rng() * 0.92),
+        xTarget,
         vy: 0,
 
         rot: rng() * Math.PI * 2,
@@ -755,7 +830,11 @@ export function DessertAnimation({
         swaySpeed: 0.7 + rng() * 0.9,
 
         delay: rng() * SPAWN_WINDOW,
-        landY: landLine - r + (rng() * 9 - 3),
+        landY: z.top - r + landJitter,
+        zoneR,
+        zone,
+        zoneT,
+        landJitter,
         bounces: 0,
         resting: false,
         squash: 1,
@@ -774,18 +853,25 @@ export function DessertAnimation({
 
     const relayout = () => {
       const prevW = cssW || 1;
-      const prevLand = landLine;
       measure();
-
       const scaleX = cssW / prevW;
-      const shift = landLine - prevLand;
 
       for (const p of particles) {
+        // Re-derived because crossing the xl breakpoint changes how many
+        // photos share the row, and the pieces should spread over whatever
+        // set is current.
+        p.zone = pickZoneIndex(p.zoneR);
+        const z = zones[p.zone] ?? fallbackZone();
+
         p.x *= scaleX;
         p.x0 *= scaleX;
-        p.xTarget = clamp(p.xTarget * scaleX, landX0 + 4, landX1 - 4);
-        p.landY += shift;
-        if (p.resting) p.y = p.landY;
+        p.xTarget = targetXFor(z, p.zoneT);
+        p.landY = z.top - p.r + p.landJitter;
+
+        if (p.resting) {
+          p.x = p.xTarget;
+          p.y = p.landY;
+        }
       }
     };
 
@@ -845,6 +931,14 @@ export function DessertAnimation({
       for (const p of particles) drawParticle(p);
     };
 
+    // The photos resize independently of the overlay (images finish decoding,
+    // the grid flips between one and two columns), so watch each of them too.
+    const observeLandingTargets = (ro: ResizeObserver) => {
+      for (const ref of landingRefsRef.current ?? []) {
+        if (ref?.current) ro.observe(ref.current);
+      }
+    };
+
     /* -- reduced motion: show the settled result, no animation ----- */
 
     if (reduceMotion) {
@@ -863,6 +957,7 @@ export function DessertAnimation({
         drawAll();
       });
       ro.observe(host);
+      observeLandingTargets(ro);
       return () => ro.disconnect();
     }
 
@@ -967,14 +1062,14 @@ export function DessertAnimation({
       if (finished) drawAll();
     });
     ro.observe(host);
-    if (landingRef?.current) ro.observe(landingRef.current);
+    observeLandingTargets(ro);
 
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [density, speed, kindsKey, landingRef, landingOffset]);
+  }, [density, speed, kindsKey, landingOffset]);
 
   return (
     <div

@@ -19,7 +19,10 @@ function HomePageContent() {
   const { language } = useLanguage();
   const searchParams = useSearchParams();
   const openingHoursRef = useRef<HTMLDivElement>(null);
-  const firstMenuPhotoRef = useRef<HTMLDivElement>(null);
+  const menuPhotoRefs = [
+    useRef<HTMLDivElement>(null),
+    useRef<HTMLDivElement>(null),
+  ];
 
   // states for notifications
 
@@ -65,7 +68,7 @@ function HomePageContent() {
           </main>
           <Separator className="my-10 bg-primary" />
           <section>
-            <MenuPhotos firstImageRef={firstMenuPhotoRef} />
+            <MenuPhotos imageRefs={menuPhotoRefs} />
           </section>
 
           <Separator className="my-10 bg-primary" />
@@ -73,9 +76,9 @@ function HomePageContent() {
             <UberEats />
           </section>
 
-          {/* Rendered last so the desserts settle on top of the menu photo. */}
+          {/* Rendered last so the desserts settle on top of the menu photos. */}
           <DessertAnimation
-            landingRef={firstMenuPhotoRef}
+            landingRefs={menuPhotoRefs}
             density={34}
             speed={0.6}
           />

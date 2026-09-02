@@ -8,11 +8,11 @@ import Link from "next/link";
 import { useLanguage } from "~/app/components/language";
 
 interface MenuProps {
-  /** Attached to the first menu photo so the falling desserts can land on it. */
-  firstImageRef?: RefObject<HTMLDivElement>;
+  /** Attached to the menu photos, in order, so falling desserts can land on them. */
+  imageRefs?: RefObject<HTMLDivElement>[];
 }
 
-export default function Menu({ firstImageRef }: MenuProps) {
+export default function Menu({ imageRefs }: MenuProps) {
   const { language } = useLanguage();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -37,7 +37,7 @@ export default function Menu({ firstImageRef }: MenuProps) {
             <div
               className="relative flex w-full items-center rounded-lg"
               key={src}
-              ref={index === 0 ? firstImageRef : undefined}
+              ref={imageRefs?.[index]}
             >
               <Image
                 src={src}
