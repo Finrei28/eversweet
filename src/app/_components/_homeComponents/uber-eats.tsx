@@ -33,10 +33,14 @@ export default function UberEats() {
         rel="noopener noreferrer"
         target="_blank"
       >
-        <Button className="bg-secondary p-6 text-xl text-white shadow-lg hover:bg-secondary/80 lg:p-7 lg:text-2xl">
+        {/*
+          Was white + black + green-500 on the pale secondary, which measured
+          1.39:1 and 1.64:1. On the deep caramel the label clears AA and the
+          lighter green still reads as the Uber Eats mark.
+        */}
+        <Button className="bg-primary p-6 text-xl font-bold text-white shadow-lg hover:bg-primary/90 lg:p-7 lg:text-2xl">
           {language === "en" ? "Order with" : "订购与"}{" "}
-          <span className="text-black">Uber</span>{" "}
-          <span className="text-green-500">Eats</span>
+          <span>Uber</span> <span className="text-green-300">Eats</span>
         </Button>
       </Link>
     </section>

@@ -368,7 +368,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                   <div className="flex flex-col gap-2">
                     <Link href={"/checkout"}>
                       <Button
-                        className="w-full bg-primary text-white hover:bg-primary/90 hover:text-primary"
+                        className="w-full bg-primary text-white hover:bg-primary/90"
                         onClick={() => setIsCartOpen(false)}
                       >
                         {language === "en" ? "Checkout" : "买单"}
@@ -421,9 +421,13 @@ export function NavbarLink(
     <Link
       {...props}
       className={cn(
-        "p-3 text-base hover:text-secondary md:p-4 md:text-lg lg:text-xl",
+        // Hover used to fade the label to the pale secondary, which all but
+        // erased it. Underline keeps the affordance without losing contrast.
+        "p-3 text-base hover:underline md:p-4 md:text-lg lg:text-xl",
+        // The current-page pill was caramel on pale peach (3.51:1); inverting
+        // it reads more clearly as "you are here" and measures 4.86:1.
         pathName === props.href &&
-          "rounded-full bg-secondary md:hover:text-primary",
+          "rounded-full bg-primary text-primary-foreground hover:no-underline",
       )}
     ></Link>
   );

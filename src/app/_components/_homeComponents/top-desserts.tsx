@@ -69,7 +69,7 @@ export function TopDesserts() {
                 dragFree: false,
                 containScroll: "keepSnaps",
               }}
-              className="w-full border-l-2 border-r-2 border-dashed border-primary"
+              className="w-full border-l-2 border-r-2 border-dashed border-primary-soft"
               setApi={undefined}
             >
               <CarouselContent className="-ml-4">
@@ -130,7 +130,7 @@ export function TopDesserts() {
               skipSnaps: false,
               containScroll: "trimSnaps",
             }}
-            className="w-full border-l-2 border-r-2 border-dashed border-primary"
+            className="w-full border-l-2 border-r-2 border-dashed border-primary-soft"
             setApi={setCarouselApi}
           >
             <CarouselContent className="-ml-4">

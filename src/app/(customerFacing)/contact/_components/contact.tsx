@@ -33,7 +33,7 @@ export default function ContactComponent() {
             className="object-cover"
           />
         </div> */}
-        <div className="absolute inset-0 bg-gradient-to-r from-secondary to-primary" />
+        <div className="absolute inset-0 bg-gradient-to-r from-secondary to-primary-soft" />
 
         <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
           <motion.h1
@@ -56,7 +56,7 @@ export default function ContactComponent() {
           </motion.p>
           <Link
             href={"/?scrollTo=opening-hours"}
-            className="text-blue-500 underline hover:text-gray-700"
+            className="text-primary underline hover:text-primary/80"
           >
             <motion.p
               className="mt-4 max-w-md text-xl"
