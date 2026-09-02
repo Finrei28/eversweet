@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import Image from "next/image";
 import { Button } from "~/components/ui/button";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "~/app/components/language";
 
-export default function Menu() {
+interface MenuProps {
+  /** Attached to the first menu photo so the falling desserts can land on it. */
+  firstImageRef?: RefObject<HTMLDivElement>;
+}
+
+export default function Menu({ firstImageRef }: MenuProps) {
   const { language } = useLanguage();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -27,21 +32,24 @@ export default function Menu() {
       </h2>
 
       <div className="grid h-auto w-full grid-cols-1 gap-6 overflow-hidden rounded-lg py-5 xl:grid-cols-2">
-        {["/Eversweet_new_menu1.jpg", "/Eversweet_new_menu2.jpg"].map((src) => (
-          <div
-            className="relative flex w-full items-center rounded-lg"
-            key={src}
-          >
-            <Image
-              src={src}
-              alt={src}
-              width={1000} // Adjust width dynamically
-              height={1000} // Adjust height dynamically
-              className="h-auto w-full rounded-lg object-contain transition-transform duration-300 lg:hover:scale-y-105 lg:hover:cursor-pointer lg:hover:shadow-lg"
-              onClick={() => setSelectedImage(src)}
-            />
-          </div>
-        ))}
+        {["/Eversweet_new_menu1.jpg", "/Eversweet_new_menu2.jpg"].map(
+          (src, index) => (
+            <div
+              className="relative flex w-full items-center rounded-lg"
+              key={src}
+              ref={index === 0 ? firstImageRef : undefined}
+            >
+              <Image
+                src={src}
+                alt={src}
+                width={1000} // Adjust width dynamically
+                height={1000} // Adjust height dynamically
+                className="h-auto w-full rounded-lg object-contain transition-transform duration-300 lg:hover:scale-y-105 lg:hover:cursor-pointer lg:hover:shadow-lg"
+                onClick={() => setSelectedImage(src)}
+              />
+            </div>
+          ),
+        )}
       </div>
 
       <Link href={"/menu"} className="mt-2">

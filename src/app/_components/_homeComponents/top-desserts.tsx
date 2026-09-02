@@ -17,10 +17,6 @@ import CustomisationDialog from "../../(customerFacing)/menu/_components/customi
 import { formatCurrency } from "~/lib/formatters";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useLanguage } from "../../components/language";
-import {
-  DessertAnimation,
-  DessertType,
-} from "./_top-desserts-components.tsx/dessert-animation";
 import { dessertOnClient, Ingredients } from "~/lib/types";
 
 export function TopDesserts() {
@@ -32,9 +28,6 @@ export function TopDesserts() {
     useState<dessertOnClient | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { language } = useLanguage();
-  const [dessertAnimation, setDessertAnimation] = useState<DessertType | null>(
-    null,
-  );
 
   // Set up autoplay
   useEffect(() => {
@@ -54,17 +47,6 @@ export function TopDesserts() {
   const handleButtonClick = () => {
     setIsPaused(true);
   };
-
-  const getRandomDessert = (): DessertType => {
-    const desserts: DessertType[] = ["sago", "mochi", "boba", "taro", "mango"];
-    const randomIndex = Math.floor(Math.random() * desserts.length);
-    return desserts[randomIndex] as DessertType;
-  };
-
-  useEffect(() => {
-    const animationType = getRandomDessert();
-    setDessertAnimation(animationType);
-  }, []);
 
   const handleCardClick = (dessert: dessertOnClient) => {
     setSelectedDessert(dessert);
@@ -132,9 +114,6 @@ export function TopDesserts() {
       <h1 className="flex flex-col items-center justify-center text-2xl font-extrabold text-primary sm:text-4xl">
         {language === "en" ? "OUR MOST POPULAR DESSERTS" : "畅销品"}
       </h1>
-      {dessertAnimation && (
-        <DessertAnimation type={dessertAnimation} density={10} speed={1.2} />
-      )}
 
       <div className="mx-auto w-full max-w-7xl px-4">
         <div

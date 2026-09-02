@@ -13,11 +13,13 @@ import { useSearchParams } from "next/navigation";
 import Loader from "../components/customLoading";
 import NotificationModal from "./_homeComponents/notification";
 import { getNowNZ } from "~/lib/pickUpTimeHelper";
+import { DessertAnimation } from "./_homeComponents/_top-desserts-components.tsx/dessert-animation";
 
 function HomePageContent() {
   const { language } = useLanguage();
   const searchParams = useSearchParams();
   const openingHoursRef = useRef<HTMLDivElement>(null);
+  const firstMenuPhotoRef = useRef<HTMLDivElement>(null);
 
   // states for notifications
 
@@ -50,7 +52,7 @@ function HomePageContent() {
   return (
     <>
       <div className="flex min-h-screen flex-col lg:mt-0">
-        <div className="bg-gradient-to-b from-background to-primary">
+        <div className="relative bg-gradient-to-b from-background to-primary">
           <main className="flex flex-grow flex-col items-center justify-center pb-10 pt-5 text-white">
             <div className="container flex flex-col items-center justify-center gap-12 py-16 text-center">
               <TopDesserts />
@@ -63,13 +65,20 @@ function HomePageContent() {
           </main>
           <Separator className="my-10 bg-primary" />
           <section>
-            <MenuPhotos />
+            <MenuPhotos firstImageRef={firstMenuPhotoRef} />
           </section>
 
           <Separator className="my-10 bg-primary" />
           <section className="mb-10">
             <UberEats />
           </section>
+
+          {/* Rendered last so the desserts settle on top of the menu photo. */}
+          <DessertAnimation
+            landingRef={firstMenuPhotoRef}
+            density={34}
+            speed={0.6}
+          />
         </div>
 
         <section ref={openingHoursRef} id="opening-hours" className="my-10">
