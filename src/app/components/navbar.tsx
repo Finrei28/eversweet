@@ -204,7 +204,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         <Button
           ref={buttonRef}
           onClick={() => setIsOpen(!isOpen)}
-          className={`${pathName.startsWith("/admin") ? "mr-4 mt-14" : "fixed"} right-8 top-8 z-10 p-2 md:p-4`}
+          className={`${pathName.startsWith("/admin") ? "mr-4 mt-14" : "fixed"} right-8 top-8 z-30 p-2 md:p-4`}
           aria-label={isOpen ? "Close menu" : "Open menu"}
         >
           {isOpen ? <X size={30} /> : <Menu size={30} />}

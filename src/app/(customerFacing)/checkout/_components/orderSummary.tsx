@@ -192,7 +192,9 @@ export default function OrderSummary({
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>{language === "en" ? "GST included" : "包含消费税"}</span>
-              <span>{formatCurrency((cart.totalPrice * 0.15) / 100 || 0)}</span>
+              <span>
+                {formatCurrency((cart.totalPrice * 3) / 23 / 100 || 0)}
+              </span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-bold">
