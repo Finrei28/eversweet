@@ -84,8 +84,8 @@ export function TopDesserts() {
               opts={{
                 align: "center",
                 loop: true,
-                dragFree: false,
-                containScroll: "keepSnaps",
+                skipSnaps: false,
+                containScroll: "trimSnaps",
               }}
               className="w-full border-l-2 border-r-2 border-dashed border-primary"
               setApi={undefined}
@@ -93,18 +93,25 @@ export function TopDesserts() {
               <CarouselContent className="-ml-4">
                 {Array.from({ length: 5 }).map((_, index) => (
                   <CarouselItem
-                    className="basis-1/2 pl-4 md:basis-1/4 lg:basis-1/4"
+                    className="basis-1/2 overflow-visible pl-4 md:basis-1/4 lg:basis-1/4"
                     key={index}
                   >
-                    <Card className="min-h-[270px] w-full select-none overflow-hidden border-2 border-secondary lg:min-h-[350px]">
-                      <CardContent className="p-0">
-                        <Skeleton className="min-h-[200px] w-full bg-secondary lg:min-h-[290px]" />
-                        <div className="mt-2 flex flex-col items-center justify-center gap-2 lg:mt-3">
-                          <Skeleton className="h-4 w-10/12 rounded-xl bg-secondary lg:h-6" />
-                          <Skeleton className="h-4 w-4/12 rounded-xl bg-secondary lg:hidden lg:h-6" />
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <div className="h-full overflow-hidden">
+                      <Card className="h-full select-none overflow-hidden border-2 border-secondary">
+                        <CardContent className="flex h-full flex-col p-0">
+                          <div className="relative aspect-square w-full shrink-0">
+                            <Skeleton className="h-full w-full rounded-none bg-secondary" />
+                          </div>
+                          <div className="flex flex-1 flex-col items-center justify-between gap-2 bg-white p-2">
+                            <div className="flex min-h-[6rem] w-full flex-col items-center justify-center gap-2 md:min-h-[4.5rem]">
+                              <Skeleton className="h-4 w-10/12 rounded-xl bg-secondary lg:h-6" />
+                              <Skeleton className="h-4 w-6/12 rounded-xl bg-secondary lg:h-6" />
+                            </div>
+                            <Skeleton className="h-4 w-4/12 rounded-xl bg-secondary lg:h-6" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </CarouselItem>
                 ))}
               </CarouselContent>
