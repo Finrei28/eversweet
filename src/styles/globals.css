@@ -11,12 +11,20 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
     /*
-     * Deep caramel taken from the logo's own hue, darkened until it carries
-     * text: 4.58:1 on the cream background, 4.86:1 on white. This token is
-     * text ink and button fill, so it has to clear WCAG AA on both.
+     * The logo's caramel, darkened until it carries text: 4.60:1 on the cream
+     * background, 4.88:1 behind white. Lightness is pinned here — at this hue
+     * nothing lighter than ~42% clears AA — so the warmth comes from
+     * saturation, which costs nothing against contrast.
      */
-    --primary: 26 45% 42%;
+    --primary: 24 55% 42%;
     --primary-foreground: 0 0% 100%;
+    /*
+     * Near-identical to the logo (#c47e4f) at 3.07:1, which only clears the
+     * 3:1 LARGE-text bar. Valid on display headings of 24px+, or 18.66px+ bold,
+     * and nowhere else — card titles are 18px semibold and must stay on
+     * --primary. Exposed as text-primary-display.
+     */
+    --primary-display: 24 50% 54%;
     /*
      * The previous --primary. Still the right colour, but only as a surface:
      * gradients, dividers, decorative rims. Never put text on it.

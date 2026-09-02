@@ -220,7 +220,7 @@ export default function MenuCards() {
         >
           <div className="flex items-center justify-center gap-3">
             <Sparkles className="h-6 w-6 text-primary md:h-8 md:w-8" />
-            <h1 className="font-serif text-4xl font-bold text-primary md:text-5xl lg:text-6xl">
+            <h1 className="font-serif text-4xl font-bold text-primary-display md:text-5xl lg:text-6xl">
               {language === "en" ? "Our Menu" : "我们的菜单"}
             </h1>
             <Sparkles className="h-6 w-6 text-primary md:h-8 md:w-8" />
@@ -281,7 +281,7 @@ export default function MenuCards() {
           >
             <div className="mb-6 flex items-center">
               <div className="h-px flex-grow bg-primary/20"></div>
-              <h2 className="mx-4 text-2xl font-bold text-primary underline md:text-3xl">
+              <h2 className="mx-4 text-2xl font-bold text-primary-display underline md:text-3xl">
                 {language === "en" ? category.name : category.chineseName}
               </h2>
               <div className="h-px flex-grow bg-primary/20"></div>

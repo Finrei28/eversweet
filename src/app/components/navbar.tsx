@@ -256,7 +256,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
             className="relative mx-4 max-h-[90vh] w-full max-w-md overflow-auto rounded-lg bg-white p-6 shadow-xl"
           >
             <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-4">
-              <h2 className="text-2xl font-bold text-primary">
+              <h2 className="text-2xl font-bold text-primary-display">
                 {language === "en" ? "Your Cart" : "您的购物车"}
               </h2>
               <Button

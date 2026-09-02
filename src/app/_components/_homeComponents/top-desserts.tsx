@@ -57,7 +57,7 @@ export function TopDesserts() {
   if (isLoading) {
     return (
       <>
-        <h1 className="text-2xl font-extrabold text-primary sm:text-4xl">
+        <h1 className="text-2xl font-extrabold text-primary-display sm:text-4xl">
           {language === "en" ? "OUR MOST POPULAR DESSERTS" : "畅销品"}
         </h1>
         <div className="mx-auto w-full max-w-7xl px-4">
@@ -111,7 +111,7 @@ export function TopDesserts() {
 
   return (
     <>
-      <h1 className="flex flex-col items-center justify-center text-2xl font-extrabold text-primary sm:text-4xl">
+      <h1 className="flex flex-col items-center justify-center text-2xl font-extrabold text-primary-display sm:text-4xl">
         {language === "en" ? "OUR MOST POPULAR DESSERTS" : "畅销品"}
       </h1>
 

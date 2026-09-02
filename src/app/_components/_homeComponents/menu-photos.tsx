@@ -27,7 +27,7 @@ export default function Menu({ imageRefs }: MenuProps) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
-      <h2 className="mb-4 text-3xl font-bold text-primary">
+      <h2 className="mb-4 text-3xl font-bold text-primary-display">
         {language === "en" ? "Our menu" : "我们的菜单"}
       </h2>
 

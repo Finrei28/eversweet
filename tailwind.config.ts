@@ -53,6 +53,8 @@ export default {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
           soft: "hsl(var(--primary-soft))",
+          // Large display headings only — see the note in globals.css.
+          display: "hsl(var(--primary-display))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
