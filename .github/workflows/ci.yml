@@ -14,6 +14,11 @@ jobs:
       # No live connection is made for `prisma generate`.
       DATABASE_URL: "postgresql://user:password@localhost:5432/db"
       DIRECT_URL: "postgresql://user:password@localhost:5432/db"
+      # next.config.js imports src/env.js at load time, so `next lint`
+      # (which runs with NODE_ENV=production) would otherwise fail on
+      # the missing production-only AUTH_SECRET. This is the project's
+      # own documented escape hatch for CI/CD (see src/env.js).
+      SKIP_ENV_VALIDATION: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
