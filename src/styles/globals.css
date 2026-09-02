@@ -16,7 +16,8 @@
      * nothing lighter than ~42% clears AA — so the warmth comes from
      * saturation, which costs nothing against contrast.
      */
-    --primary: 24 55% 42%;
+    --primary: 28, 66%, 70%;
+    --primary-dark: 24 55% 42%;
     --primary-foreground: 0 0% 100%;
     /*
      * Near-identical to the logo (#c47e4f) at 3.07:1, which only clears the

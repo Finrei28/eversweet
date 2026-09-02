@@ -6,7 +6,7 @@ import HomePage from "../_components/homePageContent";
 export const metadata: Metadata = {
   title: "Eversweet - Home",
   description:
-    "Eversweet offers chinese desserts and drinks, including boba, mochi desserts, Sago desserts and more.",
+    "Eversweet offers chinese desserts and drinks, including Boba, Mochi desserts, Sago desserts, Coconut Jelly and more.",
 };
 
 export default function Home() {

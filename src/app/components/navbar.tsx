@@ -13,6 +13,17 @@ import { useLanguage } from "./language";
 import { Globe } from "lucide-react";
 import ScrollToTopButton from "../(customerFacing)/menu/_components/toTop";
 
+// Stands in for the cart setter when the provider is missing, so the fallback
+// does not mint a new function on every render.
+const noop = () => undefined;
+
+// How far down the page the header trades its full height for the compact bar.
+const CONDENSE_AT = 24;
+// The expanded header, stated once so the spacer that holds its place in the
+// flow cannot drift out of step with it. Desktop is the 60px row of links
+// inside the old py-10; mobile is the logo at its natural 96px plus its pt-4.
+const EXPANDED_HEIGHT = "h-28 xl:h-[8.75rem]";
+
 export function Navbar({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -20,12 +31,41 @@ export function Navbar({ children }: { children: React.ReactNode }) {
   const cartRef = useRef<HTMLDivElement>(null);
   const cart = useContext(CartContext);
   const [cartQuantity, setCartQuantity] = useState<number | null>(null);
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  // Shared, so the menu page can open this same modal from its pinned bar.
+  // Taken straight off the context rather than wrapped, so it keeps the stable
+  // identity of the underlying setter and the effects below can depend on it.
+  const isCartOpen = cart?.isCartOpen ?? false;
+  const setIsCartOpen = cart?.setIsCartOpen ?? noop;
   const pathName = usePathname();
   const { language, toggleLanguage } = useLanguage();
   const [globeOpen, setGlobeOpen] = useState(false);
   const globeRef = useRef<HTMLDivElement>(null);
   const globeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // The header follows the reader on the home page only. The menu page already
+  // pins its own category bar to the top and a second one would sit on it, and
+  // the remaining customer pages are short enough not to need it.
+  const followsScroll = pathName === "/";
+  const [isCondensed, setIsCondensed] = useState(false);
+
+  useEffect(() => {
+    if (!followsScroll) {
+      setIsCondensed(false);
+      return;
+    }
+
+    const onScroll = () => {
+      const condensed = window.scrollY > CONDENSE_AT;
+      setIsCondensed((previous) =>
+        previous === condensed ? previous : condensed,
+      );
+    };
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [followsScroll]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
@@ -78,7 +118,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         passive: false,
       } as any);
     };
-  }, [isOpen, isCartOpen, globeOpen]);
+  }, [isOpen, isCartOpen, globeOpen, setIsCartOpen]);
 
   useEffect(() => {
     if (isCartOpen) {
@@ -102,113 +142,161 @@ export function Navbar({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* Desktop Navbar */}
-      <nav className="hidden items-center justify-center py-10 text-primary xl:flex">
-        <div className="relative mx-auto flex w-full max-w-7xl items-center px-4">
-          {/* Logo */}
+      {followsScroll && (
+        /* Holds the header's place now that it has left the flow, so the page
+           below never shifts as the bar condenses. */
+        <div aria-hidden className={EXPANDED_HEIGHT} />
+      )}
 
-          <div className="absolute lg:h-28 xl:left-4 xl:h-32">
-            <Link href={pathName.startsWith("/admin") ? `${pathName}` : "/"}>
-              <Image
-                src={process.env.NEXT_PUBLIC_LOGO_URL as string}
-                alt="logo"
-                width={150}
-                height={150}
-                className="h-full w-full rounded-full"
-                priority
-              />
-            </Link>
-          </div>
-
-          {/* Navigation links centered */}
-          <div className="flex flex-1 items-center justify-center gap-8">
-            {children}
-          </div>
-
-          {/* Shopping cart */}
-          {cartQuantity !== null &&
-            cartQuantity > 0 &&
-            pathName !== "/checkout" &&
-            !pathName.startsWith("/admin") && (
-              <div className="absolute right-4 hidden 2xl:flex">
-                <ShoppingCart
-                  size={"2rem"}
-                  className="hover:cursor-pointer"
-                  onClick={() => setIsCartOpen(true)}
-                />
-                <span className="absolute -right-2 -top-2 rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white">
-                  {cartQuantity}
-                </span>
-              </div>
-            )}
-        </div>
-
-        {/* Language switcher */}
-        <div className="absolute right-20 flex items-center gap-1">
-          <Button
-            variant={"ghost"}
-            onClick={() => setGlobeOpen(!globeOpen)}
-            ref={globeButtonRef}
-          >
-            <Globe className="hover:cursor-pointer" />
-          </Button>
+      <div className={cn(followsScroll && "fixed inset-x-0 top-0 z-40")}>
+        {followsScroll && (
+          /* The surface is its own layer rather than a class on the header:
+             backdrop-filter on an ancestor would become the containing block
+             for the fixed hamburger nested below it. */
           <div
-            ref={globeRef}
+            aria-hidden
             className={cn(
-              "absolute right-5 z-50 mt-40 hidden rounded-xl bg-white text-lg font-bold text-primary shadow-lg xl:block",
-              "transform flex-col items-center transition-all duration-500 ease-in-out first:pt-0 last:pb-0",
-              globeOpen
-                ? "translate-y-0 opacity-100"
-                : "pointer-events-none -translate-y-4 opacity-0",
+              "pointer-events-none absolute inset-0 border-b",
+              "transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out",
+              isCondensed
+                ? "border-primary-soft/40 bg-background/85 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)] backdrop-blur-md"
+                : "border-transparent",
             )}
-          >
-            <div className="flex flex-col items-center gap-2 p-4">
-              <Button
-                onClick={toggleLanguage}
-                disabled={language === "en"}
-                variant={"ghost"}
-                className={`${language === "en" && "bg-primary text-white"} w-full`}
-              >
-                <span>English</span>
-              </Button>
+          />
+        )}
 
-              <Button
-                onClick={toggleLanguage}
-                disabled={language === "zh"}
-                variant={"ghost"}
-                className={`${language === "zh" && "bg-primary text-white"} w-full`}
-              >
-                <span>中文</span>
-              </Button>
+        {/* Desktop Navbar */}
+        <nav
+          className={cn(
+            "relative hidden items-center justify-center text-primary xl:flex",
+            followsScroll
+              ? cn(
+                  "transition-[height] duration-300 ease-out",
+                  isCondensed ? "h-20" : "h-[8.75rem]",
+                )
+              : "py-10",
+          )}
+        >
+          <div className="relative mx-auto flex w-full max-w-7xl items-center px-4">
+            {/* Logo */}
+
+            <div
+              className={cn(
+                "absolute transition-[height] duration-300 ease-out xl:left-4",
+                followsScroll && isCondensed ? "h-14" : "lg:h-28 xl:h-32",
+              )}
+            >
+              <Link href={pathName.startsWith("/admin") ? `${pathName}` : "/"}>
+                <Image
+                  src={process.env.NEXT_PUBLIC_LOGO_URL as string}
+                  alt="logo"
+                  width={150}
+                  height={150}
+                  className="h-full w-full rounded-full"
+                  priority
+                />
+              </Link>
+            </div>
+
+            {/* Navigation links centered */}
+            <div className="flex flex-1 items-center justify-center gap-8">
+              {children}
+            </div>
+
+            {/* Shopping cart */}
+            {cartQuantity !== null &&
+              cartQuantity > 0 &&
+              pathName !== "/checkout" &&
+              !pathName.startsWith("/admin") && (
+                <div className="absolute right-4 hidden 2xl:flex">
+                  <Button
+                    onClick={() => setIsCartOpen(true)}
+                    className="h-10 w-12"
+                  >
+                    <ShoppingCart
+                      size={"2rem"}
+                      className="hover:cursor-pointer"
+                    />
+                    <span className="absolute -right-2 -top-2 rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white">
+                      {cartQuantity}
+                    </span>
+                  </Button>
+                </div>
+              )}
+          </div>
+
+          {/* Language switcher */}
+          <div className="absolute right-20 flex items-center gap-1">
+            <Button
+              variant={"ghost"}
+              onClick={() => setGlobeOpen(!globeOpen)}
+              ref={globeButtonRef}
+            >
+              <Globe className="hover:cursor-pointer" />
+            </Button>
+            <div
+              ref={globeRef}
+              className={cn(
+                "absolute right-5 z-50 mt-40 hidden rounded-xl bg-white text-lg font-bold text-primary shadow-lg xl:block",
+                "transform flex-col items-center transition-all duration-500 ease-in-out first:pt-0 last:pb-0",
+                globeOpen
+                  ? "translate-y-0 opacity-100"
+                  : "pointer-events-none -translate-y-4 opacity-0",
+              )}
+            >
+              <div className="flex flex-col items-center gap-2 p-4">
+                <Button
+                  onClick={toggleLanguage}
+                  disabled={language === "en"}
+                  variant={"ghost"}
+                  className={`${language === "en" && "bg-primary text-white"} w-full`}
+                >
+                  <span>English</span>
+                </Button>
+
+                <Button
+                  onClick={toggleLanguage}
+                  disabled={language === "zh"}
+                  variant={"ghost"}
+                  className={`${language === "zh" && "bg-primary text-white"} w-full`}
+                >
+                  <span>中文</span>
+                </Button>
+              </div>
             </div>
           </div>
+        </nav>
+
+        {/* Mobile navbar */}
+        <div className="relative flex w-full justify-between px-4 text-primary xl:hidden">
+          <Link
+            href={pathName.startsWith("/admin") ? `${pathName}` : "/"}
+            className={cn(
+              "pt-4 transition-[height] duration-300 ease-out",
+              // Condensed stays at 72px so the fixed hamburger, which sits 32px
+              // down and is 36px tall, still lands inside the bar.
+              followsScroll && (isCondensed ? "h-[4.5rem]" : "h-28"),
+            )}
+          >
+            <Image
+              src={process.env.NEXT_PUBLIC_LOGO_URL as string}
+              alt="logo"
+              width={150}
+              height={150}
+              className="h-full w-full rounded-full"
+              priority
+            />
+          </Link>
+
+          <Button
+            ref={buttonRef}
+            onClick={() => setIsOpen(!isOpen)}
+            className={`${pathName.startsWith("/admin") ? "mr-4 mt-14" : "fixed"} right-8 top-8 z-30 p-2 md:p-4`}
+            aria-label={isOpen ? "Close menu" : "Open menu"}
+          >
+            {isOpen ? <X size={30} /> : <Menu size={30} />}
+          </Button>
         </div>
-      </nav>
-
-      {/* Mobile navbar */}
-      <div className="flex w-full justify-between px-4 text-primary xl:hidden">
-        <Link
-          href={pathName.startsWith("/admin") ? `${pathName}` : "/"}
-          className="pt-4"
-        >
-          <Image
-            src={process.env.NEXT_PUBLIC_LOGO_URL as string}
-            alt="logo"
-            width={150}
-            height={150}
-            className="h-full w-full rounded-full"
-            priority
-          />
-        </Link>
-
-        <Button
-          ref={buttonRef}
-          onClick={() => setIsOpen(!isOpen)}
-          className={`${pathName.startsWith("/admin") ? "mr-4 mt-14" : "fixed"} right-8 top-8 z-30 p-2 md:p-4`}
-          aria-label={isOpen ? "Close menu" : "Open menu"}
-        >
-          {isOpen ? <X size={30} /> : <Menu size={30} />}
-        </Button>
       </div>
       <ScrollToTopButton />
       {cartQuantity !== null &&

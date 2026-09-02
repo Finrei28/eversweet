@@ -10,8 +10,16 @@ import {
 } from "~/components/ui/card";
 import Image from "next/image";
 import { Button } from "~/components/ui/button";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { Loader2, Soup } from "lucide-react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+} from "react";
+import { Loader2, ShoppingCart, Soup } from "lucide-react";
+import { CartContext } from "~/app/components/cartContext";
 import CustomisationDialog from "./customisation";
 import { useLanguage } from "~/app/components/language";
 import { Sparkles } from "lucide-react";
@@ -25,11 +33,23 @@ const SCROLL_TO_GAP = 16;
 // A heading counts as "current" once it passes this far under the nav.
 const SPY_GAP = 24;
 
+// Geometry for the cart button the bar grows once it pins. It starts where the
+// header cart was and comes to rest in the scroll-to-top button's column, so
+// these have to match the navbar: max-w-7xl there is the same 1280px as
+// max-w-screen-xl here, the header cart is right-4 inside it at 2rem wide, and
+// the scroll-to-top button is right-6.
+const CONTENT_CAP = 1280;
+const HEADER_CART_INSET = 16;
+const HEADER_CART_SIZE = 32;
+const BAR_CART_WIDTH = 52;
+const BAR_CART_RIGHT = 24;
+
 export default function MenuCards() {
   const { data: productCategory, isLoading: isProductLoading } =
     api.dessert.getProductsForMenuByCategory.useQuery();
 
   const { language } = useLanguage();
+  const cart = useContext(CartContext);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDessert, setSelectedDessert] =
@@ -70,6 +90,28 @@ export default function MenuCards() {
   // highlight through every section on the way. Freeze it until the page settles.
   const suppressSpyRef = useRef(false);
   const spySettleRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Matches the rest of the site, which only offers a cart once there is one.
+  const cartQuantity = cart?.totalItems ?? 0;
+  const showBarCart = isNavStuck && cartQuantity > 0;
+
+  // Anchored on its left edge so the width grows rightward, and offset back to
+  // the header cart to start from. Measured in the bar's own coordinates, not
+  // the viewport's, so the button rides the bar down when it unpins instead of
+  // staying stuck to the top of the screen on its own. bleed already carries
+  // where the viewport edges fall relative to the bar, for the full-bleed
+  // panel, so this costs no extra layout read.
+  const barCart = useMemo(() => {
+    const viewportLeft = bleed?.left ?? 0;
+    const viewportWidth = bleed?.width ?? 0;
+    const left = viewportLeft + viewportWidth - BAR_CART_RIGHT - BAR_CART_WIDTH;
+    const headerCartLeft =
+      viewportLeft +
+      (viewportWidth + CONTENT_CAP) / 2 -
+      HEADER_CART_INSET -
+      HEADER_CART_SIZE;
+    return { left, travel: Math.max(0, left - headerCartLeft) };
+  }, [bleed?.left, bleed?.width]);
 
   // Filter out categories with no desserts
   const categoriesWithDesserts = useMemo(
@@ -222,7 +264,7 @@ export default function MenuCards() {
 
   // Bring the active pill into view inside the strip. Done by hand rather than
   // with scrollIntoView, which would also yank the page vertically.
-  useEffect(() => {
+  const centreActivePill = useCallback(() => {
     const container = scrollContainerRef.current;
     const button = activeCategory
       ? categoryButtonRefs.current[activeCategory]
@@ -237,6 +279,10 @@ export default function MenuCards() {
     if (Math.abs(target - container.scrollLeft) < 4) return;
     container.scrollTo({ left: target, behavior: "smooth" });
   }, [activeCategory]);
+
+  useEffect(() => {
+    centreActivePill();
+  }, [centreActivePill]);
 
   const scrollToCategory = (categoryId: string) => {
     if (dragDistance > 10) {
@@ -361,7 +407,7 @@ export default function MenuCards() {
   return (
     <div className="relative">
       {/* Hero section */}
-      <div className="relative mb-12 overflow-hidden rounded-xl bg-gradient-to-r from-primary/10 to-secondary/20 py-12 text-center">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-primary/10 to-secondary/20 py-8 text-center">
         {/* <div className="absolute inset-0 z-0 opacity-10">
           <div className="absolute inset-0 bg-[url('/pattern-bg.png')] bg-repeat opacity-20"></div>
         </div> */}
@@ -480,6 +526,7 @@ export default function MenuCards() {
                   );
                 })}
               </div>
+
               <div className="mt-2 hidden h-1 w-full overflow-hidden rounded-full bg-muted md:block">
                 {/* No CSS transition: this is recomputed every scroll frame,
                     and easing it would only make it trail the page. */}
@@ -489,6 +536,46 @@ export default function MenuCards() {
                 />
               </div>
             </div>
+
+            {/* 2xl and up only: that is exactly where the floating View Cart
+                button is hidden and the header cart has scrolled out of reach,
+                so the pinned bar is the only cart left. Below it the floating
+                button is already on screen.
+
+                Positioned against the bar rather than the pill strip so it can
+                come to rest in the scroll-to-top button's column, clear of the
+                max-width content the pills live in — but still inside the bar,
+                so it travels down with it when the bar unpins instead of
+                breaking away and sliding off on its own. It arrives from where
+                the header cart was, left to right, growing from nothing as it
+                goes, which reads as the cart moving into the bar rather than a
+                button blinking into place. */}
+            <motion.button
+              type="button"
+              tabIndex={showBarCart ? undefined : -1}
+              aria-hidden={!showBarCart}
+              onClick={() => cart?.setIsCartOpen(true)}
+              aria-label={
+                language === "en"
+                  ? `View cart, ${cartQuantity} ${cartQuantity === 1 ? "item" : "items"}`
+                  : `查看购物车，${cartQuantity} 件商品`
+              }
+              initial={false}
+              style={{
+                left: barCart.left,
+                pointerEvents: showBarCart ? "auto" : "none",
+              }}
+              animate={{
+                x: showBarCart ? 0 : -barCart.travel,
+                width: showBarCart ? BAR_CART_WIDTH : 0,
+                opacity: showBarCart ? 1 : 0,
+              }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="absolute top-3 hidden h-9 items-center justify-center gap-1.5 overflow-hidden rounded-xl bg-primary px-0 text-sm font-semibold text-primary-foreground shadow transition-colors hover:bg-primary-display focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring 2xl:flex"
+            >
+              <ShoppingCart className="h-4 w-4 shrink-0" />
+              <span className="shrink-0">{cartQuantity}</span>
+            </motion.button>
           </div>
         </>
       )}
@@ -625,11 +712,11 @@ export default function MenuCards() {
                                 {/* Old price */}
                                 <span className="relative text-sm text-primary-foreground">
                                   {formatCurrency(dessert.priceInCents / 100)}
-                                  <span className="pointer-events-none absolute left-0 top-1/2 h-[1.5px] w-full rotate-[-8deg] bg-primary-foreground" />
+                                  <span className="pointer-events-none absolute left-0 top-1/2 h-[1.5px] w-full rotate-[-8deg] bg-red-500" />
                                 </span>
 
                                 {/* New price */}
-                                <span className="rounded-md bg-secondary px-1.5 py-0.5 text-base font-semibold text-secondary-foreground md:px-2">
+                                <span className="rounded-md text-base font-semibold text-red-600">
                                   {formatCurrency(priceInCentsAfterPromo / 100)}
                                 </span>
                               </>

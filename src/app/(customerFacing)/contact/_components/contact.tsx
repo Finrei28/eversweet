@@ -56,7 +56,7 @@ export default function ContactComponent() {
           </motion.p>
           <Link
             href={"/?scrollTo=opening-hours"}
-            className="text-primary underline hover:text-primary/80"
+            className="text-primary-dark underline hover:text-primary/80"
           >
             <motion.p
               className="mt-4 max-w-md text-xl"
