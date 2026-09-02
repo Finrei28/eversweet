@@ -171,7 +171,7 @@ export function TopDesserts() {
                     key={dessert.id}
                     className="basis-1/2 overflow-visible pl-4 md:basis-1/4 lg:basis-1/4"
                   >
-                    <div className="overflow-hidden">
+                    <div className="h-full overflow-hidden">
                       <Card
                         className="h-full select-none overflow-hidden border-2 border-secondary transition-transform duration-300 md:hover:scale-105 md:hover:cursor-pointer"
                         onClick={() => handleCardClick(dessert)}
