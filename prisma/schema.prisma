@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -315,6 +316,9 @@ model OrderDessert {
   customisations          OrderDessertCustomisation[]
 
   @@unique([orderId, dessertId, id])
+  // Serves the GROUP BY dessertId aggregate behind getMostPopularProducts.
+  // The composite unique above leads with orderId, so it cannot serve it.
+  @@index([dessertId])
 }
 
 model Feedback {

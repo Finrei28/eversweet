@@ -346,7 +346,7 @@ export function EditProduct({
                                   </p>
                                   <div className="relative h-[200px] w-[200px] overflow-hidden rounded-md border">
                                     <Image
-                                      src={imagePreview || "/placeholder.svg"}
+                                      src={imagePreview || "/ImageFiller.png"}
                                       alt="Product preview"
                                       fill
                                       className="object-cover"

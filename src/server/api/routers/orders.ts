@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { Status } from "@prisma/client";
 import { z } from "zod";
 import { createOrderSchema } from "~/app/components/schemas";
@@ -11,6 +12,11 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { getNowNZ } from "~/lib/pickUpTimeHelper";
+import {
+  CartPricingError,
+  gstInCentsFromInclusiveTotal,
+  priceCart,
+} from "~/server/pricing";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -19,6 +25,31 @@ export const orderRouter = createTRPCRouter({
     .input(z.object({ orderData: createOrderSchema }))
     .mutation(async ({ ctx, input }) => {
       const { orderData } = input;
+
+      // Price the order from the database rather than trusting the amounts the
+      // browser sent. Availability is not enforced here: payment has already
+      // succeeded by this point, so an item selling out in the meantime must
+      // not stop the order being recorded.
+      let pricing;
+      try {
+        pricing = await priceCart(
+          ctx.db,
+          orderData.desserts.map((item) => ({
+            dessertId: item.dessert.id,
+            quantity: item.dessert.quantity,
+            customisations: item.customisations.map((customisation) => ({
+              id: customisation.id,
+              quantity: customisation.quantity,
+            })),
+          })),
+          { requireAvailable: false },
+        );
+      } catch (error) {
+        if (error instanceof CartPricingError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+        }
+        throw error;
+      }
 
       const pickUpNZDate = formatInTimeZone(
         new Date(orderData.pickUpTime),
@@ -52,14 +83,17 @@ export const orderRouter = createTRPCRouter({
           customerEmail: orderData.customerEmail,
           customerPhoneNumber: orderData.customerPhoneNumber,
           source: "WEBSITE",
-          priceInCents: orderData.totalPriceInCents,
-          GST: (orderData.totalPriceInCents * 3) / 23, // GST in cents
+          priceInCents: pricing.totalInCents,
+          // main independently arrived at the same 3/23 formula. Kept here on
+          // the server-priced total rather than the client's number, and
+          // rounded because GST is an Int column.
+          GST: gstInCentsFromInclusiveTotal(pricing.totalInCents),
           pickUpTime: orderData.pickUpTime,
           dineIn: false,
           status: "PENDING",
           paymentIntentId: orderData.paymentIntentId,
           desserts: {
-            create: orderData.desserts.map((dessertItem) => ({
+            create: orderData.desserts.map((dessertItem, index) => ({
               dessert: {
                 connect: {
                   id: dessertItem.dessert.id, // Ensure dessert exists before connecting
@@ -67,9 +101,11 @@ export const orderRouter = createTRPCRouter({
               },
 
               quantity: dessertItem.dessert.quantity,
-              priceInCents: dessertItem.priceInCents, // get price from order item
-              discountedAmountInCents: dessertItem.discountedAmountInCents,
-              promoId: dessertItem.promoId,
+              // Server-priced, in the same order as the input lines.
+              priceInCents: pricing.lines[index]!.unitPriceInCents,
+              discountedAmountInCents:
+                pricing.lines[index]!.discountedAmountInCents,
+              promoId: pricing.lines[index]!.promoId,
               customisations: {
                 create: dessertItem.customisations.map(
                   (customisationsItem) => ({
@@ -174,6 +210,7 @@ export const orderRouter = createTRPCRouter({
 
   getAllCurrentOrders: protectedProcedure.query(async ({ ctx }) => {
     return await ctx.db.order.findMany({
+      relationLoadStrategy: "join",
       where: {
         status: { in: ["PENDING", "READY"] },
         pickUpTime: {
@@ -212,37 +249,53 @@ export const orderRouter = createTRPCRouter({
     });
   }),
 
-  getAllPastOrders: protectedProcedure.query(async ({ ctx }) => {
-    return await ctx.db.order.findMany({
-      where: {
-        OR: [
-          { completedAt: { lt: new Date(Date.now() - 12 * 60 * 60 * 1000) } }, // Only include orders that have been completed more than 12 hours ago
-          { pickedUpAt: { not: null } },
-        ],
-      },
-      orderBy: [
-        {
-          completedAt: "asc", // Then sort by createdAt
+  getAllPastOrders: protectedProcedure
+    .input(
+      z
+        .object({
+          // The table filters, sorts and paginates on the client, so this is
+          // the size of the window it works over - not a page size.
+          limit: z.number().int().positive().max(2000).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      return await ctx.db.order.findMany({
+        relationLoadStrategy: "join",
+        // Bounded: this used to fetch every order ever placed, with two levels
+        // of nested includes, on every visit to the page.
+        take: input?.limit ?? 500,
+        where: {
+          OR: [
+            { completedAt: { lt: new Date(Date.now() - 12 * 60 * 60 * 1000) } }, // Only include orders that have been completed more than 12 hours ago
+            { pickedUpAt: { not: null } },
+          ],
         },
-      ],
-      include: {
-        desserts: {
-          include: {
-            dessert: {
-              select: {
-                id: true,
-                name: true,
-                chineseName: true,
+        orderBy: [
+          {
+            // Newest first, so `take` keeps the most recent orders rather than
+            // the oldest ones.
+            completedAt: "desc",
+          },
+        ],
+        include: {
+          desserts: {
+            include: {
+              dessert: {
+                select: {
+                  id: true,
+                  name: true,
+                  chineseName: true,
+                },
               },
-            },
-            customisations: {
-              include: { customisation: true },
+              customisations: {
+                include: { customisation: true },
+              },
             },
           },
         },
-      },
-    });
-  }),
+      });
+    }),
 
   changeStatus: protectedProcedure
     .input(z.object({ id: z.string(), status: z.string() }))

@@ -53,12 +53,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     return [];
   });
 
-  const { data: hasPriceChanged } = api.dessert.hasCartPriceChanged.useQuery({
-    cartItems: cart.map((item) => ({
-      dessertId: item.dessert.id,
-      priceInCentsAfterPromo: item.priceInCents - item.discountedAmountInCents,
-    })),
-  });
+  const { data: priceCheck } = api.dessert.hasCartPriceChanged.useQuery(
+    {
+      cartItems: cart.map((item) => ({
+        dessertId: item.dessert.id,
+        priceInCentsAfterPromo:
+          item.priceInCents - item.discountedAmountInCents,
+      })),
+    },
+    {
+      // An empty cart sent a `WHERE 1=0` query to the database on every single
+      // page load - a guaranteed-empty result there was nothing to compare.
+      enabled: cart.length > 0,
+    },
+  );
 
   const prevCartRef = useRef(cart);
 
@@ -71,24 +79,36 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [cart]);
 
+  const clearStoredCart = () => {
+    localStorage.removeItem("cart");
+    localStorage.removeItem("cartTimestamp");
+    setCart([]);
+  };
+
+  // Drop the cart when the server reports its prices are stale.
+  //
+  // This never actually ran before: it lived in the effect below, which has an
+  // empty dependency array, so it was evaluated once at mount while the query
+  // was still `undefined`. It also tested the whole tRPC response object rather
+  // than the boolean inside it, so simply adding the dependency would have
+  // cleared every cart the moment the query resolved.
+  useEffect(() => {
+    if (priceCheck?.hasPriceChanged) {
+      clearStoredCart();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceCheck?.hasPriceChanged]);
+
+  // Separately, drop a cart that has been sitting in localStorage for 12 hours.
   useEffect(() => {
     const timestamp = localStorage.getItem("cartTimestamp");
-    if (hasPriceChanged) {
-      localStorage.removeItem("cart");
-      localStorage.removeItem("cartTimestamp");
-      setCart([]);
-    }
-    if (timestamp) {
-      const lastModified = parseInt(timestamp, 10);
-      const now = Date.now();
-      if (now - lastModified > 12 * 60 * 60 * 1000) {
-        // Clear cart if older than 12 hours
+    if (!timestamp) return;
 
-        localStorage.removeItem("cart");
-        localStorage.removeItem("cartTimestamp");
-        setCart([]);
-      }
+    const lastModified = parseInt(timestamp, 10);
+    if (Date.now() - lastModified > 12 * 60 * 60 * 1000) {
+      clearStoredCart();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const areListsEqual = (list1: customisations, list2: customisations) => {

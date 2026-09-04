@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { TopDesserts } from "./_homeComponents/top-desserts";
+import {
+  TopDesserts,
+  TopDessertsSkeleton,
+} from "./_homeComponents/top-desserts";
 import { Button } from "~/components/ui/button";
 import { useLanguage } from "../components/language";
 import { Separator } from "~/components/ui/separator";
@@ -15,9 +18,32 @@ import NotificationModal from "./_homeComponents/notification";
 import { getNowNZ } from "~/lib/pickUpTimeHelper";
 import { DessertAnimation } from "./_homeComponents/_top-desserts-components.tsx/dessert-animation";
 
+/**
+ * `useSearchParams()` makes the closest Suspense boundary bail out of the
+ * static render. It used to sit in HomePageContent, so the entire page fell
+ * back and the served HTML contained nothing but the navbar. Isolated here, it
+ * is the only thing that bails and the rest of the page prerenders.
+ */
+function ScrollToOpeningHours({
+  targetRef,
+}: {
+  targetRef: React.RefObject<HTMLDivElement>;
+}) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("scrollTo") === "opening-hours") {
+      setTimeout(() => {
+        targetRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 300); // slight delay to ensure DOM is ready
+    }
+  }, [searchParams, targetRef]);
+
+  return null;
+}
+
 function HomePageContent() {
   const { language } = useLanguage();
-  const searchParams = useSearchParams();
   const openingHoursRef = useRef<HTMLDivElement>(null);
   const menuPhotoRefs = [
     useRef<HTMLDivElement>(null),
@@ -33,14 +59,6 @@ function HomePageContent() {
   // */
   // }
 
-  useEffect(() => {
-    if (searchParams.get("scrollTo") === "opening-hours") {
-      setTimeout(() => {
-        openingHoursRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 300); // slight delay to ensure DOM is ready
-    }
-  }, [searchParams]);
-
   // useeffect for notifications
 
   // useEffect(() => {
@@ -54,11 +72,16 @@ function HomePageContent() {
 
   return (
     <>
+      <Suspense fallback={null}>
+        <ScrollToOpeningHours targetRef={openingHoursRef} />
+      </Suspense>
       <div className="flex min-h-screen flex-col lg:mt-0">
         <div className="relative bg-gradient-to-b from-background to-primary-soft">
           <main className="flex flex-grow flex-col items-center justify-center pb-10 pt-5 text-white">
             <div className="container flex flex-col items-center justify-center gap-12 py-16 text-center">
-              <TopDesserts />
+              <Suspense fallback={<TopDessertsSkeleton />}>
+                <TopDesserts />
+              </Suspense>
             </div>
             <Link href={"/menu"}>
               <Button className="p-7 text-2xl shadow-lg lg:p-8 lg:text-3xl">
