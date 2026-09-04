@@ -26,7 +26,9 @@
     "@auth/core": "0.41.3",
     "next-auth": {
       "@auth/core": "0.41.3"
-    }
+    },
+    "postcss": "^8.5.28",
+    "prismjs": "^1.30.0"
   },
   "dependencies": {
     "@auth/core": "0.41.3",
@@ -81,7 +83,7 @@
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
-    "react-email": "^3.0.7",
+    "react-email": "^6.9.3",
     "react-hook-form": "^7.54.2",
     "react-phone-input-2": "^2.15.1",
     "resend": "^4.1.2",
