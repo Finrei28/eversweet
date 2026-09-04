@@ -58,3 +58,6 @@ README.md
 
 #  Old pick up time
 /src/app/(customerFacing)/checkout/_components/dateTimePicker.tsx
+
+# claude
+.claude/
