@@ -10,12 +10,7 @@
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    /*
-     * The logo's caramel, darkened until it carries text: 4.60:1 on the cream
-     * background, 4.88:1 behind white. Lightness is pinned here — at this hue
-     * nothing lighter than ~42% clears AA — so the warmth comes from
-     * saturation, which costs nothing against contrast.
-     */
+
     --primary: 28, 66%, 70%;
     --primary-dark: 24 55% 42%;
     --primary-foreground: 0 0% 100%;
@@ -26,11 +21,7 @@
      * --primary. Exposed as text-primary-display.
      */
     --primary-display: 24 50% 54%;
-    /*
-     * The previous --primary. Still the right colour, but only as a surface:
-     * gradients, dividers, decorative rims. Never put text on it.
-     */
-    --primary-soft: 28 66% 70%;
+
     --secondary: 30.65, 83%, 83.25%;
     --secondary-foreground: 0 0% 9%;
     --muted: 0 0% 96.1%;
