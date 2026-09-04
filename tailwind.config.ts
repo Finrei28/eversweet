@@ -24,6 +24,14 @@ export default {
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", ...fontFamily.sans],
+        // Latin-only face, so the CJK fallbacks carry the Chinese headings.
+        display: [
+          "var(--font-display)",
+          "PingFang SC",
+          "Hiragino Sans GB",
+          "Microsoft YaHei",
+          ...fontFamily.sans,
+        ],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -44,6 +52,10 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          dark: "hsl(var(--primary-dark))",
+          soft: "hsl(var(--primary-soft))",
+          // Large display headings only — see the note in globals.css.
+          display: "hsl(var(--primary-display))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",

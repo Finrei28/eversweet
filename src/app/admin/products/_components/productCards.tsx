@@ -64,7 +64,7 @@ export function ProductCards() {
           <div key={category.id}>
             <div className="mb-6 flex items-center">
               <div className="h-px flex-grow bg-primary/20"></div>
-              <h2 className="mx-4 text-2xl font-bold text-primary underline md:text-3xl">
+              <h2 className="mx-4 text-2xl font-bold text-primary-display underline md:text-3xl">
                 {language === "en" ? category.name : category.chineseName}
               </h2>
               <div className="h-px flex-grow bg-primary/20"></div>

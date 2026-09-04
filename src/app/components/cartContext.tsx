@@ -36,6 +36,10 @@ export type CartContextType = {
   totalPrice: number;
   totalItems: number;
   updateItemFromCart: (id: string, item: CartItem) => void;
+  // The cart modal itself lives in the navbar, but the menu page opens it from
+  // its own pinned category bar, so whether it is open belongs out here.
+  isCartOpen: boolean;
+  setIsCartOpen: (open: boolean) => void;
 };
 
 export const CartContext = createContext<CartContextType | null>(null);
@@ -347,6 +351,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
 
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
   return (
     <CartContext.Provider
       value={{
@@ -359,6 +365,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         totalPrice,
         totalItems,
         updateItemFromCart,
+        isCartOpen,
+        setIsCartOpen,
       }}
     >
       {children}

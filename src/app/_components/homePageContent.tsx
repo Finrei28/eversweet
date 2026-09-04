@@ -16,6 +16,7 @@ import { useSearchParams } from "next/navigation";
 import Loader from "../components/customLoading";
 import NotificationModal from "./_homeComponents/notification";
 import { getNowNZ } from "~/lib/pickUpTimeHelper";
+import { DessertAnimation } from "./_homeComponents/_top-desserts-components.tsx/dessert-animation";
 
 /**
  * `useSearchParams()` makes the closest Suspense boundary bail out of the
@@ -44,6 +45,10 @@ function ScrollToOpeningHours({
 function HomePageContent() {
   const { language } = useLanguage();
   const openingHoursRef = useRef<HTMLDivElement>(null);
+  const menuPhotoRefs = [
+    useRef<HTMLDivElement>(null),
+    useRef<HTMLDivElement>(null),
+  ];
 
   // states for notifications
 
@@ -71,7 +76,7 @@ function HomePageContent() {
         <ScrollToOpeningHours targetRef={openingHoursRef} />
       </Suspense>
       <div className="flex min-h-screen flex-col lg:mt-0">
-        <div className="bg-gradient-to-b from-background to-primary">
+        <div className="relative bg-gradient-to-b from-background to-primary-soft">
           <main className="flex flex-grow flex-col items-center justify-center pb-10 pt-5 text-white">
             <div className="container flex flex-col items-center justify-center gap-12 py-16 text-center">
               <Suspense fallback={<TopDessertsSkeleton />}>
@@ -84,15 +89,22 @@ function HomePageContent() {
               </Button>
             </Link>
           </main>
-          <Separator className="my-10 bg-primary" />
+          <Separator className="my-10 bg-primary-soft" />
           <section>
-            <MenuPhotos />
+            <MenuPhotos imageRefs={menuPhotoRefs} />
           </section>
 
-          <Separator className="my-10 bg-primary" />
+          <Separator className="my-10 bg-primary-soft" />
           <section className="mb-10">
             <UberEats />
           </section>
+
+          {/* Rendered last so the desserts settle on top of the menu photos. */}
+          <DessertAnimation
+            landingRefs={menuPhotoRefs}
+            density={34}
+            speed={0.6}
+          />
         </div>
 
         <section ref={openingHoursRef} id="opening-hours" className="my-10">

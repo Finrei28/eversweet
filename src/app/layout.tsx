@@ -1,8 +1,18 @@
 import "~/styles/globals.css";
 
 import { GeistSans } from "geist/font/sans";
+import { Baloo_2 } from "next/font/google";
 import type { Metadata } from "next";
 import type React from "react";
+
+// Rounded display face for headings — the wordmark in the logo is rounded, and
+// a monospace stack read as a terminal rather than a dessert shop.
+const displayFont = Baloo_2({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-display",
+  display: "swap",
+});
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { cn } from "~/lib/utils";
@@ -51,8 +61,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable}`}>
-      <body className={cn("overflow-x-hidden bg-background font-mono")}>
+    <html
+      lang="en"
+      className={`${GeistSans.variable} ${displayFont.variable}`}
+    >
+      <body className={cn("overflow-x-hidden bg-background font-sans")}>
         <TRPCReactProvider>
           <main>{children}</main>
           <Analytics />

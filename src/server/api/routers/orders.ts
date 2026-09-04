@@ -84,9 +84,9 @@ export const orderRouter = createTRPCRouter({
           customerPhoneNumber: orderData.customerPhoneNumber,
           source: "WEBSITE",
           priceInCents: pricing.totalInCents,
-          // NZ prices are GST-inclusive, so the tax is already inside the
-          // total: total x 3/23. The old `x 0.15` treated the total as
-          // GST-exclusive and overstated the tax by ~15% on every order.
+          // main independently arrived at the same 3/23 formula. Kept here on
+          // the server-priced total rather than the client's number, and
+          // rounded because GST is an Int column.
           GST: gstInCentsFromInclusiveTotal(pricing.totalInCents),
           pickUpTime: orderData.pickUpTime,
           dineIn: false,

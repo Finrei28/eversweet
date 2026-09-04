@@ -9,6 +9,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        // Hover darkens rather than lightening: it used to swap to the pale
+        // secondary while the label stayed white, which wiped out the contrast
+        // exactly when the user was pointing at the button.
         default:
           "bg-primary text-primary-foreground shadow hover:bg-secondary rounded-xl",
         destructive:
