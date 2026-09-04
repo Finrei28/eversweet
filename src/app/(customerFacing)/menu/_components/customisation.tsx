@@ -418,7 +418,7 @@ export default function CustomisationDialog({
         </DialogHeader>
 
         <Separator className="lg:my-2" />
-
+        {/* Included Customisations */}
         <div className="max-h-[40vh] overflow-y-auto px-1 py-2">
           {includedCustomisations.length > 0 && (
             <div className="mb-4">
@@ -490,7 +490,7 @@ export default function CustomisationDialog({
               </div>
             </div>
           )}
-
+          {/* Additional Customisations */}
           {additionalCustomisations.length > 0 && (
             <div>
               <h3 className="mb-2 font-medium text-primary">
