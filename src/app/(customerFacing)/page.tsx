@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Eversweet - Home",
   description:
     "Eversweet offers chinese desserts and drinks, including Boba, Mochi desserts, Sago desserts, Coconut Jelly and more.",
+  alternates: { canonical: "/" },
 };
 
 /**

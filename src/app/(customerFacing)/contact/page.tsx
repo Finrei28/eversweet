@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Eversweet - Contact",
   description:
     "Call us during our business hours or send us an email for any inquries or orders.",
+  alternates: { canonical: "/contact" },
 };
 
 export default function ContactPage() {

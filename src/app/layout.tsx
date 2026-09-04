@@ -21,6 +21,10 @@ import StructuredData from "./_components/structured-data";
 import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
+  // Canonical host for the site. Every relative URL in page metadata
+  // (openGraph, twitter, alternates.canonical) resolves against this, which is
+  // what keeps the www / non-www split from producing two sets of URLs.
+  metadataBase: new URL("https://www.eversweet.co.nz"),
   title: "Eversweet",
   description:
     'Eversweet offers chinese desserts and drinks, including "boba" tea, mochi desserts, Sago desserts and more.',
@@ -34,7 +38,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_NZ",
-    url: "https://eversweet.co.nz",
+    url: "https://www.eversweet.co.nz",
     siteName: "Eversweet",
     title: "Eversweet - Chinese Desserts",
     description:

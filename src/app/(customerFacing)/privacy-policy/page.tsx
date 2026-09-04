@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Privacy Policy | Eversweet",
   description:
     "Learn how Eversweet collects, uses, and protects your personal information.",
+  alternates: { canonical: "/privacy-policy" },
 };
 
 export default function PrivacyPolicyPage() {

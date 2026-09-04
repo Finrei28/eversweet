@@ -4,7 +4,7 @@ const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "Eversweet",
-  url: "https://eversweet.co.nz",
+  url: "https://www.eversweet.co.nz",
   logo: "https://res.cloudinary.com/dlqjgl6ju/image/upload/v1743833655/eversweetTransLogo_qz1kmg.png",
   contactPoint: {
     "@type": "ContactPoint",
