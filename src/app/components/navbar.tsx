@@ -159,7 +159,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
               "pointer-events-none absolute inset-0 border-b",
               "transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out",
               isCondensed
-                ? "border-primary-soft/40 bg-background/85 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)] backdrop-blur-md"
+                ? "border-primary/40 bg-background/85 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)] backdrop-blur-md"
                 : "border-transparent",
             )}
           />

@@ -76,7 +76,7 @@ function HomePageContent() {
         <ScrollToOpeningHours targetRef={openingHoursRef} />
       </Suspense>
       <div className="flex min-h-screen flex-col lg:mt-0">
-        <div className="relative bg-gradient-to-b from-background to-primary-soft">
+        <div className="relative bg-gradient-to-b from-background to-primary">
           <main className="flex flex-grow flex-col items-center justify-center pb-10 pt-5 text-white">
             <div className="container flex flex-col items-center justify-center gap-12 py-16 text-center">
               <Suspense fallback={<TopDessertsSkeleton />}>
@@ -89,12 +89,12 @@ function HomePageContent() {
               </Button>
             </Link>
           </main>
-          <Separator className="my-10 bg-primary-soft" />
+          <Separator className="my-10 bg-primary" />
           <section>
             <MenuPhotos imageRefs={menuPhotoRefs} />
           </section>
 
-          <Separator className="my-10 bg-primary-soft" />
+          <Separator className="my-10 bg-primary" />
           <section className="mb-10">
             <UberEats />
           </section>
