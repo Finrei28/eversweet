@@ -25,14 +25,6 @@ export default function ContactComponent() {
     <div className="min-h-screen bg-gradient-to-b from-background to-white">
       {/* Hero section with background image */}
       <div className="relative h-64 w-full overflow-hidden bg-background sm:h-80">
-        {/* <div className="absolute inset-0 z-0 opacity-20">
-          <Image
-            src="/placeholder.svg?height=800&width=1600"
-            alt="Chinese desserts pattern"
-            fill
-            className="object-cover"
-          />
-        </div> */}
         <div className="absolute inset-0 bg-gradient-to-r from-secondary to-primary-soft" />
 
         <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
@@ -203,18 +195,6 @@ export default function ContactComponent() {
 
           {/* Dessert-themed footer */}
           <div className="mt-16 flex flex-wrap justify-center gap-4">
-            {/* <div className="flex flex-col items-center">
-              <div className="h-20 w-20 rounded-full bg-red-100 p-4">
-                <Image
-                  src="/placeholder.svg?height=60&width=60"
-                  alt="Boba tea"
-                  width={60}
-                  height={60}
-                  className="h-full w-full object-contain"
-                />
-              </div>
-              <p className="mt-2 text-sm font-medium text-gray-600">Boba Tea</p>
-            </div> */}
             <div className="flex flex-col items-center">
               <div className="relative h-28 w-28 rounded-full bg-green-100 p-4">
                 <Image
@@ -257,18 +237,6 @@ export default function ContactComponent() {
                 Sago Bowl
               </p>
             </div>
-            {/* <div className="flex flex-col items-center">
-              <div className="h-20 w-20 rounded-full bg-pink-100 p-4">
-                <Image
-                  src="/placeholder.svg?height=60&width=60"
-                  alt="Taro"
-                  width={60}
-                  height={60}
-                  className="h-full w-full object-contain"
-                />
-              </div>
-              <p className="mt-2 text-sm font-medium text-gray-600">Taro</p>
-            </div> */}
           </div>
         </div>
       </MaxWidthWapper>

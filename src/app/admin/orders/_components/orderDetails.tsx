@@ -73,7 +73,7 @@ export default function CustomerDetails({
                 <div className="relative h-16 w-16 flex-shrink-0 self-start overflow-hidden rounded-md border border-gray-200">
                   {dessert.dessert.imagePath && (
                     <Image
-                      src={dessert.dessert.imagePath || "/placeholder.svg"}
+                      src={dessert.dessert.imagePath || "/ImageFiller.png"}
                       alt={dessert.dessert.name}
                       fill
                       className="object-cover"
