@@ -71,22 +71,39 @@ export default function CheckoutPage() {
 
     setPaymentSectionLoading(true);
 
+    // Send what is in the cart, not what it costs - the server prices it.
     fetch("/api/checkout_sessions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ totalPriceInCents: cart?.totalPrice }),
+      body: JSON.stringify({
+        items:
+          cart?.cart?.map((item) => ({
+            dessertId: item.dessert.id,
+            quantity: item.quantity,
+            customisations: item.customisations.map((customisation) => ({
+              id: customisation.id,
+              quantity: customisation.quantity,
+            })),
+          })) ?? [],
+      }),
     })
-      .then((res) => res.json())
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error ?? "Failed to initialize");
+        return data;
+      })
       .then((data) => {
         setClientSecret(data.clientSecret);
         setPaymentIntentId(data.paymentIntentId);
         setIsPaymentIntentInitialized(true);
         setPaymentSectionLoading(false);
       })
-      .catch(() => {
-        setError("Failed to initialize payment. Please try again.");
+      .catch((err: Error) => {
+        setError(
+          err.message || "Failed to initialize payment. Please try again.",
+        );
         setPaymentSectionLoading(false);
       });
   }, [cart?.totalPrice, isClient, debouncedCustomerInfo]);

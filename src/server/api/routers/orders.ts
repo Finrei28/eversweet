@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { Status } from "@prisma/client";
 import { z } from "zod";
 import { createOrderSchema } from "~/app/components/schemas";
@@ -11,6 +12,11 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { getNowNZ } from "~/lib/pickUpTimeHelper";
+import {
+  CartPricingError,
+  gstInCentsFromInclusiveTotal,
+  priceCart,
+} from "~/server/pricing";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -19,6 +25,31 @@ export const orderRouter = createTRPCRouter({
     .input(z.object({ orderData: createOrderSchema }))
     .mutation(async ({ ctx, input }) => {
       const { orderData } = input;
+
+      // Price the order from the database rather than trusting the amounts the
+      // browser sent. Availability is not enforced here: payment has already
+      // succeeded by this point, so an item selling out in the meantime must
+      // not stop the order being recorded.
+      let pricing;
+      try {
+        pricing = await priceCart(
+          ctx.db,
+          orderData.desserts.map((item) => ({
+            dessertId: item.dessert.id,
+            quantity: item.dessert.quantity,
+            customisations: item.customisations.map((customisation) => ({
+              id: customisation.id,
+              quantity: customisation.quantity,
+            })),
+          })),
+          { requireAvailable: false },
+        );
+      } catch (error) {
+        if (error instanceof CartPricingError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+        }
+        throw error;
+      }
 
       const pickUpNZDate = formatInTimeZone(
         new Date(orderData.pickUpTime),
@@ -52,14 +83,17 @@ export const orderRouter = createTRPCRouter({
           customerEmail: orderData.customerEmail,
           customerPhoneNumber: orderData.customerPhoneNumber,
           source: "WEBSITE",
-          priceInCents: orderData.totalPriceInCents,
-          GST: orderData.totalPriceInCents * 0.15, // GST in cents
+          priceInCents: pricing.totalInCents,
+          // NZ prices are GST-inclusive, so the tax is already inside the
+          // total: total x 3/23. The old `x 0.15` treated the total as
+          // GST-exclusive and overstated the tax by ~15% on every order.
+          GST: gstInCentsFromInclusiveTotal(pricing.totalInCents),
           pickUpTime: orderData.pickUpTime,
           dineIn: false,
           status: "PENDING",
           paymentIntentId: orderData.paymentIntentId,
           desserts: {
-            create: orderData.desserts.map((dessertItem) => ({
+            create: orderData.desserts.map((dessertItem, index) => ({
               dessert: {
                 connect: {
                   id: dessertItem.dessert.id, // Ensure dessert exists before connecting
@@ -67,9 +101,11 @@ export const orderRouter = createTRPCRouter({
               },
 
               quantity: dessertItem.dessert.quantity,
-              priceInCents: dessertItem.priceInCents, // get price from order item
-              discountedAmountInCents: dessertItem.discountedAmountInCents,
-              promoId: dessertItem.promoId,
+              // Server-priced, in the same order as the input lines.
+              priceInCents: pricing.lines[index]!.unitPriceInCents,
+              discountedAmountInCents:
+                pricing.lines[index]!.discountedAmountInCents,
+              promoId: pricing.lines[index]!.promoId,
               customisations: {
                 create: dessertItem.customisations.map(
                   (customisationsItem) => ({

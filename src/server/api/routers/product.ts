@@ -13,6 +13,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { activePromoOnly, promoDiscountInCents } from "~/server/pricing";
 
 /**
  * Everything the customer-facing menu renders is cached under this tag, and
@@ -141,15 +142,21 @@ export const productRouter = createTRPCRouter({
   //getMostPopularProducts
   getMostPopularProducts: publicProcedure.query(async () => {
     const desserts = await getMostPopularProductsCached();
-    return desserts.map(revivePromoDates);
+    // Gated here rather than inside the cached reader so a promo starting or
+    // ending takes effect immediately, not after the revalidate window.
+    const now = new Date();
+    return desserts.map((d) => activePromoOnly(revivePromoDates(d), now));
   }),
 
   //get products for menu display
   getProductsForMenuByCategory: publicProcedure.query(async () => {
     const menu = await getProductsForMenuByCategoryCached();
+    const now = new Date();
     return menu.map((category) => ({
       ...category,
-      desserts: category.desserts.map(revivePromoDates),
+      desserts: category.desserts.map((d) =>
+        activePromoOnly(revivePromoDates(d), now),
+      ),
     }));
   }),
 
@@ -437,15 +444,12 @@ export const productRouter = createTRPCRouter({
         select: { id: true, priceInCents: true, promo: true },
       });
 
+      const now = new Date();
       const dbPriceMap = new Map(
-        desserts.map((d) => {
-          const discountedAmountInCents = d.promo
-            ? d.promo.type === "FIXED_AMOUNT"
-              ? d.promo.value
-              : Math.floor(d.priceInCents * (d.promo.value / 100))
-            : 0;
-          return [d.id, d.priceInCents - discountedAmountInCents];
-        }),
+        desserts.map((d) => [
+          d.id,
+          d.priceInCents - promoDiscountInCents(d.priceInCents, d.promo, now),
+        ]),
       );
 
       const mismatches = input.cartItems.filter((item) => {
