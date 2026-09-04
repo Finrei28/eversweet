@@ -8,6 +8,7 @@ import Loader from "~/app/components/customLoading";
 export const metadata: Metadata = {
   title: "Eversweet - Menu",
   description: "Take a look at our various collection of desserts and drinks",
+  alternates: { canonical: "/menu" },
 };
 
 /**
