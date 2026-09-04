@@ -41,7 +41,7 @@ export function TopDessertsSkeleton() {
               skipSnaps: false,
               containScroll: "trimSnaps",
             }}
-            className="w-full border-l-2 border-r-2 border-dashed border-primary-soft"
+            className="w-full border-l-2 border-r-2 border-dashed border-primary"
             setApi={undefined}
           >
             <CarouselContent className="-ml-4">
@@ -146,7 +146,7 @@ export function TopDesserts() {
               skipSnaps: false,
               containScroll: "trimSnaps",
             }}
-            className="w-full border-l-2 border-r-2 border-dashed border-primary-soft"
+            className="w-full border-l-2 border-r-2 border-dashed border-primary"
             setApi={setCarouselApi}
           >
             <CarouselContent className="-ml-4">

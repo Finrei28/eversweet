@@ -447,7 +447,7 @@ export default function MenuCards() {
                 "pointer-events-none absolute inset-y-0 left-0 right-0 border-b",
                 "transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out",
                 isNavStuck
-                  ? "border-primary-soft/40 bg-background/85 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)] backdrop-blur-md"
+                  ? "border-primary/40 bg-background/85 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)] backdrop-blur-md"
                   : "border-transparent",
               )}
             />
