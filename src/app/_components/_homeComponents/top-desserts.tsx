@@ -23,9 +23,73 @@ import {
 } from "./_top-desserts-components.tsx/dessert-animation";
 import { dessertOnClient, Ingredients } from "~/lib/types";
 
+/**
+ * Fallback for the Suspense boundary around <TopDesserts />. It used to be an
+ * `isLoading` branch inside the component itself, which meant the server always
+ * rendered the skeleton while the client rendered the real carousel.
+ */
+export function TopDessertsSkeleton() {
+  const { language } = useLanguage();
+
+  return (
+    <>
+      <h1 className="text-2xl font-extrabold text-primary sm:text-4xl">
+        {language === "en" ? "OUR MOST POPULAR DESSERTS" : "畅销品"}
+      </h1>
+      <div className="mx-auto w-full max-w-7xl px-4">
+        <div className="relative">
+          <Carousel
+            opts={{
+              align: "center",
+              loop: true,
+              dragFree: false,
+              containScroll: "keepSnaps",
+            }}
+            className="w-full border-l-2 border-r-2 border-dashed border-primary"
+            setApi={undefined}
+          >
+            <CarouselContent className="-ml-4">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <CarouselItem
+                  className="basis-1/2 pl-4 md:basis-1/4 lg:basis-1/4"
+                  key={index}
+                >
+                  <Card className="min-h-[270px] w-full select-none overflow-hidden border-2 border-secondary lg:min-h-[350px]">
+                    <CardContent className="p-0">
+                      <Skeleton className="min-h-[200px] w-full bg-secondary lg:min-h-[290px]" />
+                      <div className="mt-2 flex flex-col items-center justify-center gap-2 lg:mt-3">
+                        <Skeleton className="h-4 w-10/12 rounded-xl bg-secondary lg:h-6" />
+                        <Skeleton className="h-4 w-4/12 rounded-xl bg-secondary lg:hidden lg:h-6" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <div className="absolute left-0 top-0 h-full">
+              <CarouselPrevious
+                className="relative left-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-14 md:translate-y-0 md:rounded-none"
+                disabled
+              />
+            </div>
+            <div className="absolute right-0 top-0 h-full">
+              <CarouselNext
+                className="relative right-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-14 md:translate-y-0 md:rounded-none"
+                disabled
+              />
+            </div>
+          </Carousel>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function TopDesserts() {
-  const { data: topDesserts, isLoading } =
-    api.dessert.getMostPopularProducts.useQuery();
+  // Prefetched on the server in app/(customerFacing)/page.tsx; suspending here
+  // lets the server render the real carousel into the HTML instead of a
+  // skeleton the client would immediately replace.
+  const [topDesserts] = api.dessert.getMostPopularProducts.useSuspenseQuery();
   const [isPaused, setIsPaused] = useState(false);
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const [selectedDessert, setSelectedDessert] =
@@ -71,61 +135,6 @@ export function TopDesserts() {
     setIsDialogOpen(true);
     setIsPaused(true); // Pause carousel when dialog opens
   };
-
-  if (isLoading) {
-    return (
-      <>
-        <h1 className="text-2xl font-extrabold text-primary sm:text-4xl">
-          {language === "en" ? "OUR MOST POPULAR DESSERTS" : "畅销品"}
-        </h1>
-        <div className="mx-auto w-full max-w-7xl px-4">
-          <div className="relative">
-            <Carousel
-              opts={{
-                align: "center",
-                loop: true,
-                dragFree: false,
-                containScroll: "keepSnaps",
-              }}
-              className="w-full border-l-2 border-r-2 border-dashed border-primary"
-              setApi={undefined}
-            >
-              <CarouselContent className="-ml-4">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <CarouselItem
-                    className="basis-1/2 pl-4 md:basis-1/4 lg:basis-1/4"
-                    key={index}
-                  >
-                    <Card className="min-h-[270px] w-full select-none overflow-hidden border-2 border-secondary lg:min-h-[350px]">
-                      <CardContent className="p-0">
-                        <Skeleton className="min-h-[200px] w-full bg-secondary lg:min-h-[290px]" />
-                        <div className="mt-2 flex flex-col items-center justify-center gap-2 lg:mt-3">
-                          <Skeleton className="h-4 w-10/12 rounded-xl bg-secondary lg:h-6" />
-                          <Skeleton className="h-4 w-4/12 rounded-xl bg-secondary lg:hidden lg:h-6" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <div className="absolute left-0 top-0 h-full">
-                <CarouselPrevious
-                  className="relative left-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-14 md:translate-y-0 md:rounded-none"
-                  disabled
-                />
-              </div>
-              <div className="absolute right-0 top-0 h-full">
-                <CarouselNext
-                  className="relative right-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-14 md:translate-y-0 md:rounded-none"
-                  disabled
-                />
-              </div>
-            </Carousel>
-          </div>
-        </div>
-      </>
-    );
-  }
 
   return (
     <>

@@ -1,11 +1,14 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { revalidateTag } from "next/cache";
+
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { MENU_CACHE_TAG } from "./product";
 
 export const productCustomisationRouter = createTRPCRouter({
   create: protectedProcedure
@@ -37,7 +40,7 @@ export const productCustomisationRouter = createTRPCRouter({
         });
       }
 
-      return await ctx.db.ingredient.create({
+      const created = await ctx.db.ingredient.create({
         data: {
           name: input.name,
           chineseName: input.chineseName,
@@ -49,6 +52,11 @@ export const productCustomisationRouter = createTRPCRouter({
           },
         },
       });
+
+      // Ingredients are embedded in the cached menu payload.
+      revalidateTag(MENU_CACHE_TAG);
+
+      return created;
     }),
 
   dessertCustomisations: publicProcedure.query(async ({ ctx }) => {
@@ -94,7 +102,11 @@ export const productCustomisationRouter = createTRPCRouter({
         }),
       );
 
-      return await ctx.db.$transaction(updatePromises);
+      const updated = await ctx.db.$transaction(updatePromises);
+
+      revalidateTag(MENU_CACHE_TAG);
+
+      return updated;
     }),
 
   update: protectedProcedure
@@ -155,6 +167,8 @@ export const productCustomisationRouter = createTRPCRouter({
           },
         },
       });
+      revalidateTag(MENU_CACHE_TAG);
+
       return {
         ...updatedCustomisations,
         categories: updatedCustomisations.categories.map((c) => c.category),

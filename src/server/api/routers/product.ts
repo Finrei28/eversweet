@@ -5,25 +5,39 @@ import {
   updateProductSchema,
 } from "~/app/components/schemas";
 
+import { unstable_cache, revalidateTag } from "next/cache";
+
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { db } from "~/server/db";
 
-export const productRouter = createTRPCRouter({
-  //getMostPopularProducts
-  getMostPopularProducts: publicProcedure.query(async ({ ctx }) => {
-    // return await ctx.db.dessert.findMany({
-    //   where: {
-    //     isAvailableForPurchase: true,
-    //     imagePublicId: {
-    //       not: "products/products/c639c3892b6fe366cbff9ddb29b7b65d8e551086",
-    //     },
-    //   },
-    // });
+/**
+ * Everything the customer-facing menu renders is cached under this tag, and
+ * every product mutation drops it. The menu changes a handful of times a month
+ * but is read on every page load, and each uncached read costs a ~160ms round
+ * trip to the database.
+ */
+export const MENU_CACHE_TAG = "menu";
 
-    const popularDesserts = await ctx.db.orderDessert.groupBy({
+const MENU_CACHE_SECONDS = 300;
+
+/**
+ * Cached readers.
+ *
+ * These live outside the router so `unstable_cache` wraps them exactly once at
+ * module load rather than on every request. They use the `db` singleton
+ * directly for the same reason - `ctx.db` is that same instance.
+ *
+ * `relationLoadStrategy: "join"` collapses each `include`/nested `select` into
+ * a single SQL join. Without it Prisma issues one query per relation, and
+ * against a remote database every one of those is a fresh ~160ms round trip.
+ */
+const getMostPopularProductsCached = unstable_cache(
+  async () => {
+    const popularDesserts = await db.orderDessert.groupBy({
       by: ["dessertId"],
       _sum: {
         quantity: true, // Sum up the quantity of each dessert
@@ -36,7 +50,8 @@ export const productRouter = createTRPCRouter({
       take: 10, // Get the top 10
     });
     // Fetch the actual dessert details
-    const rawDesserts = await ctx.db.dessert.findMany({
+    const rawDesserts = await db.dessert.findMany({
+      relationLoadStrategy: "join",
       where: {
         id: { in: popularDesserts.map((d) => d.dessertId) }, // Get desserts with matching IDs
       },
@@ -52,16 +67,46 @@ export const productRouter = createTRPCRouter({
         promo: true,
       },
     });
-    const desserts = rawDesserts.map((dessert) => ({
+    return rawDesserts.map((dessert) => ({
       ...dessert,
       ingredients: dessert.ingredients.map((i) => i.ingredient),
     }));
-    return desserts;
-  }),
+  },
+  ["most-popular-products"],
+  { revalidate: MENU_CACHE_SECONDS, tags: [MENU_CACHE_TAG] },
+);
 
-  //get products for menu display
-  getProductsForMenuByCategory: publicProcedure.query(async ({ ctx }) => {
-    const rawProducts = await ctx.db.category.findMany({
+/**
+ * `unstable_cache` round-trips its payload through the Next.js data cache,
+ * which does not preserve `Date` instances. The menu payload carries
+ * `promo.startsAt` / `promo.endsAt`, and `dessertOnClient` types those as real
+ * `Date`s, so rebuild them on the way out. `new Date(x)` is a no-op clone when
+ * `x` is already a Date, so this is correct cached or not.
+ */
+const revivePromoDates = <
+  T extends {
+    promo: { startsAt: Date | null; endsAt: Date | null } | null;
+  },
+>(
+  dessert: T,
+): T =>
+  dessert.promo
+    ? {
+        ...dessert,
+        promo: {
+          ...dessert.promo,
+          startsAt: dessert.promo.startsAt
+            ? new Date(dessert.promo.startsAt)
+            : null,
+          endsAt: dessert.promo.endsAt ? new Date(dessert.promo.endsAt) : null,
+        },
+      }
+    : dessert;
+
+const getProductsForMenuByCategoryCached = unstable_cache(
+  async () => {
+    const rawProducts = await db.category.findMany({
+      relationLoadStrategy: "join",
       orderBy: { sortOrder: "asc" },
       include: {
         desserts: {
@@ -80,18 +125,37 @@ export const productRouter = createTRPCRouter({
         },
       },
     });
-    const menu = rawProducts.map((category) => ({
+    return rawProducts.map((category) => ({
       ...category,
       desserts: category.desserts.map((dessert) => ({
         ...dessert,
         ingredients: dessert.ingredients.map((i) => i.ingredient),
       })),
     }));
-    return menu;
+  },
+  ["products-for-menu-by-category"],
+  { revalidate: MENU_CACHE_SECONDS, tags: [MENU_CACHE_TAG] },
+);
+
+export const productRouter = createTRPCRouter({
+  //getMostPopularProducts
+  getMostPopularProducts: publicProcedure.query(async () => {
+    const desserts = await getMostPopularProductsCached();
+    return desserts.map(revivePromoDates);
+  }),
+
+  //get products for menu display
+  getProductsForMenuByCategory: publicProcedure.query(async () => {
+    const menu = await getProductsForMenuByCategoryCached();
+    return menu.map((category) => ({
+      ...category,
+      desserts: category.desserts.map(revivePromoDates),
+    }));
   }),
 
   getProductsForAdminByCategory: publicProcedure.query(async ({ ctx }) => {
     const rawProducts = await ctx.db.category.findMany({
+      relationLoadStrategy: "join",
       orderBy: { sortOrder: "asc" },
       include: {
         desserts: {
@@ -175,11 +239,16 @@ export const productRouter = createTRPCRouter({
         },
       });
 
+      // The customer-facing menu is cached; a product change must drop it now
+      // rather than waiting out the revalidate window.
+      revalidateTag(MENU_CACHE_TAG);
+
       return { name: product.name, chineseName: product.chineseName };
     }),
 
   getProducts: protectedProcedure.query(async ({ ctx }) => {
     const rawDesserts = await ctx.db.dessert.findMany({
+      relationLoadStrategy: "join",
       orderBy: {
         createdAt: "asc",
       },
@@ -270,6 +339,10 @@ export const productRouter = createTRPCRouter({
           },
         },
       });
+
+      // The customer-facing menu is cached; a product change must drop it now
+      // rather than waiting out the revalidate window.
+      revalidateTag(MENU_CACHE_TAG);
 
       return { name: product.name, chineseName: product.chineseName };
     }),

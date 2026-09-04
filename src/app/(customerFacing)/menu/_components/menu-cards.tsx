@@ -11,7 +11,7 @@ import {
 import Image from "next/image";
 import { Button } from "~/components/ui/button";
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Soup } from "lucide-react";
+import { Soup } from "lucide-react";
 import CustomisationDialog from "./customisation";
 import { useLanguage } from "~/app/components/language";
 import { Sparkles } from "lucide-react";
@@ -20,8 +20,13 @@ import { formatCurrency } from "~/lib/formatters";
 import { dessertOnClient } from "~/lib/types";
 
 export default function MenuCards() {
-  const { data: productCategory, isLoading: isProductLoading } =
-    api.dessert.getProductsForMenuByCategory.useQuery();
+  // useSuspenseQuery, not useQuery: the page prefetches this on the server, and
+  // suspending lets the server render the finished menu into the HTML. With
+  // useQuery the server rendered the spinner below while the client rendered
+  // the menu, which is a hydration mismatch - React threw the server markup
+  // away and re-rendered the whole page.
+  const [productCategory] =
+    api.dessert.getProductsForMenuByCategory.useSuspenseQuery();
 
   const { language } = useLanguage();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -166,21 +171,6 @@ export default function MenuCards() {
     setIsDialogOpen(true);
     setSelectedDessert(dessert);
   };
-
-  if (isProductLoading) {
-    return (
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-lg font-medium text-primary">
-            {language === "en"
-              ? "Loading our delicious menu..."
-              : "正在加载我们美味的菜单..."}
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   if (!productCategory || productCategory.length === 0) {
     return (

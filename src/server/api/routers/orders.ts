@@ -174,6 +174,7 @@ export const orderRouter = createTRPCRouter({
 
   getAllCurrentOrders: protectedProcedure.query(async ({ ctx }) => {
     return await ctx.db.order.findMany({
+      relationLoadStrategy: "join",
       where: {
         status: { in: ["PENDING", "READY"] },
         pickUpTime: {
@@ -212,37 +213,53 @@ export const orderRouter = createTRPCRouter({
     });
   }),
 
-  getAllPastOrders: protectedProcedure.query(async ({ ctx }) => {
-    return await ctx.db.order.findMany({
-      where: {
-        OR: [
-          { completedAt: { lt: new Date(Date.now() - 12 * 60 * 60 * 1000) } }, // Only include orders that have been completed more than 12 hours ago
-          { pickedUpAt: { not: null } },
-        ],
-      },
-      orderBy: [
-        {
-          completedAt: "asc", // Then sort by createdAt
+  getAllPastOrders: protectedProcedure
+    .input(
+      z
+        .object({
+          // The table filters, sorts and paginates on the client, so this is
+          // the size of the window it works over - not a page size.
+          limit: z.number().int().positive().max(2000).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      return await ctx.db.order.findMany({
+        relationLoadStrategy: "join",
+        // Bounded: this used to fetch every order ever placed, with two levels
+        // of nested includes, on every visit to the page.
+        take: input?.limit ?? 500,
+        where: {
+          OR: [
+            { completedAt: { lt: new Date(Date.now() - 12 * 60 * 60 * 1000) } }, // Only include orders that have been completed more than 12 hours ago
+            { pickedUpAt: { not: null } },
+          ],
         },
-      ],
-      include: {
-        desserts: {
-          include: {
-            dessert: {
-              select: {
-                id: true,
-                name: true,
-                chineseName: true,
+        orderBy: [
+          {
+            // Newest first, so `take` keeps the most recent orders rather than
+            // the oldest ones.
+            completedAt: "desc",
+          },
+        ],
+        include: {
+          desserts: {
+            include: {
+              dessert: {
+                select: {
+                  id: true,
+                  name: true,
+                  chineseName: true,
+                },
               },
-            },
-            customisations: {
-              include: { customisation: true },
+              customisations: {
+                include: { customisation: true },
+              },
             },
           },
         },
-      },
-    });
-  }),
+      });
+    }),
 
   changeStatus: protectedProcedure
     .input(z.object({ id: z.string(), status: z.string() }))
