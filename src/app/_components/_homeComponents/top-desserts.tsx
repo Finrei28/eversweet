@@ -17,10 +17,6 @@ import CustomisationDialog from "../../(customerFacing)/menu/_components/customi
 import { formatCurrency } from "~/lib/formatters";
 import { Skeleton } from "~/components/ui/skeleton";
 import { useLanguage } from "../../components/language";
-import {
-  DessertAnimation,
-  DessertType,
-} from "./_top-desserts-components.tsx/dessert-animation";
 import { dessertOnClient, Ingredients } from "~/lib/types";
 
 export function TopDesserts() {
@@ -32,9 +28,6 @@ export function TopDesserts() {
     useState<dessertOnClient | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { language } = useLanguage();
-  const [dessertAnimation, setDessertAnimation] = useState<DessertType | null>(
-    null,
-  );
 
   // Set up autoplay
   useEffect(() => {
@@ -55,17 +48,6 @@ export function TopDesserts() {
     setIsPaused(true);
   };
 
-  const getRandomDessert = (): DessertType => {
-    const desserts: DessertType[] = ["sago", "mochi", "boba", "taro", "mango"];
-    const randomIndex = Math.floor(Math.random() * desserts.length);
-    return desserts[randomIndex] as DessertType;
-  };
-
-  useEffect(() => {
-    const animationType = getRandomDessert();
-    setDessertAnimation(animationType);
-  }, []);
-
   const handleCardClick = (dessert: dessertOnClient) => {
     setSelectedDessert(dessert);
     setIsDialogOpen(true);
@@ -75,7 +57,7 @@ export function TopDesserts() {
   if (isLoading) {
     return (
       <>
-        <h1 className="text-2xl font-extrabold text-primary sm:text-4xl">
+        <h1 className="text-2xl font-extrabold text-primary-display sm:text-4xl">
           {language === "en" ? "OUR MOST POPULAR DESSERTS" : "畅销品"}
         </h1>
         <div className="mx-auto w-full max-w-7xl px-4">
@@ -87,7 +69,7 @@ export function TopDesserts() {
                 skipSnaps: false,
                 containScroll: "trimSnaps",
               }}
-              className="w-full border-l-2 border-r-2 border-dashed border-primary"
+              className="w-full border-l-2 border-r-2 border-dashed border-primary-soft"
               setApi={undefined}
             >
               <CarouselContent className="-ml-4">
@@ -136,12 +118,9 @@ export function TopDesserts() {
 
   return (
     <>
-      <h1 className="flex flex-col items-center justify-center text-2xl font-extrabold text-primary sm:text-4xl">
-        {language === "en" ? "OUR MOST POPULAR DESSERTS" : "畅销品"}
+      <h1 className="flex flex-col items-center justify-center text-2xl font-extrabold text-primary-display sm:text-4xl">
+        {language === "en" ? "POPULAR CHOICES" : "畅销品"}
       </h1>
-      {dessertAnimation && (
-        <DessertAnimation type={dessertAnimation} density={10} speed={1.2} />
-      )}
 
       <div className="mx-auto w-full max-w-7xl px-4">
         <div
@@ -158,7 +137,7 @@ export function TopDesserts() {
               skipSnaps: false,
               containScroll: "trimSnaps",
             }}
-            className="w-full border-l-2 border-r-2 border-dashed border-primary"
+            className="w-full border-l-2 border-r-2 border-dashed border-primary-soft"
             setApi={setCarouselApi}
           >
             <CarouselContent className="-ml-4">

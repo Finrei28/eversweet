@@ -612,7 +612,8 @@ export default function EmailOrderConfirmation({
                   <Text>
                     {formatCurrency(
                       ((order.priceInCents - order.discountedAmountInCents) *
-                        0.15) /
+                        3) /
+                        23 /
                         100,
                     )}
                   </Text>

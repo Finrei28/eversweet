@@ -53,7 +53,7 @@ export const orderRouter = createTRPCRouter({
           customerPhoneNumber: orderData.customerPhoneNumber,
           source: "WEBSITE",
           priceInCents: orderData.totalPriceInCents,
-          GST: orderData.totalPriceInCents * 0.15, // GST in cents
+          GST: (orderData.totalPriceInCents * 3) / 23, // GST in cents
           pickUpTime: orderData.pickUpTime,
           dineIn: false,
           status: "PENDING",

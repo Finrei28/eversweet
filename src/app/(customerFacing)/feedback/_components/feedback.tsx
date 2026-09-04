@@ -100,7 +100,7 @@ export default function FeedbackComponent() {
     <div className="min-h-screen bg-gradient-to-b from-background to-white">
       {/* Hero section with background image */}
       <div className="relative h-64 w-full overflow-hidden bg-background sm:h-80">
-        <div className="absolute inset-0 bg-gradient-to-r from-secondary to-primary" />
+        <div className="absolute inset-0 bg-gradient-to-r from-secondary to-primary-soft" />
 
         <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
           <motion.h1

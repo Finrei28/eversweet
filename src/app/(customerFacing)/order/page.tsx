@@ -303,7 +303,7 @@ function OrderDetails() {
               <div className="flex justify-between">
                 <span>{language === "en" ? "GST included" : "包含消费税"}</span>
                 <span>
-                  {formatCurrency((order.priceInCents * 0.15) / 100 || 0)}
+                  {formatCurrency((order.priceInCents * 3) / 23 / 100 || 0)}
                 </span>
               </div>
               <div className="flex justify-between font-bold">
