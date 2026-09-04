@@ -298,7 +298,10 @@ export function Navbar({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
       </div>
-      <ScrollToTopButton />
+      {pathName !== "/checkout" && !pathName.startsWith("/admin") && (
+        <ScrollToTopButton />
+      )}
+
       {cartQuantity !== null &&
         cartQuantity > 0 &&
         pathName !== "/checkout" &&

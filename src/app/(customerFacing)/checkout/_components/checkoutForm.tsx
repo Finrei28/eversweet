@@ -315,17 +315,6 @@ export default function CheckoutForm({
           </Button>
         </div>
       </form>
-      {/*  
-      <NotificationModal
-        open={holidayNotificationShown}
-        onClose={() => setHolidayNotificationShown(false)}
-        title={language === "en" ? "Announcement" : "通知"}
-      >
-        {language === "en"
-          ? "Merry Christmas and Happy New Year from Eversweet! We will be closed on December 25th to January 16th and will be back on January 17th. Wishing you all a joyful holiday season!"
-          : "Eversweet祝您圣诞快乐，新年快乐！我们将在12月25日至1月16日放假，将于1月17日正常营业。祝您节日愉快！"}
-      </NotificationModal>
-      */}
     </>
   );
 }
