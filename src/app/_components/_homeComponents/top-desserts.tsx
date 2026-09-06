@@ -30,7 +30,7 @@ export function TopDessertsSkeleton() {
   return (
     <>
       <h1 className="text-2xl font-extrabold text-primary-display sm:text-4xl">
-        {language === "en" ? "OUR MOST POPULAR DESSERTS" : "畅销品"}
+        {language === "en" ? "POPULAR CHOICES" : "畅销品"}
       </h1>
       <div className="mx-auto w-full max-w-7xl px-4">
         <div className="relative">
