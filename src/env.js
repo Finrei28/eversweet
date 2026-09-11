@@ -15,6 +15,15 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    /**
+     * The order-management backend the website announces new orders to.
+     * Optional: without them the announcement is skipped and that server's
+     * cron picks the order up instead, so a preview deploy missing the secret
+     * still takes orders. Never NEXT_PUBLIC_ — the secret authenticates us to
+     * an endpoint that reaches the kitchen screen.
+     */
+    ADMIN_SERVER_URL: z.string().url().optional(),
+    INTERNAL_SERVICE_SECRET: z.string().min(1).optional(),
   },
 
   /**
@@ -34,6 +43,8 @@ export const env = createEnv({
     AUTH_SECRET: process.env.AUTH_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
+    ADMIN_SERVER_URL: process.env.ADMIN_SERVER_URL,
+    INTERNAL_SERVICE_SECRET: process.env.INTERNAL_SERVICE_SECRET,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
