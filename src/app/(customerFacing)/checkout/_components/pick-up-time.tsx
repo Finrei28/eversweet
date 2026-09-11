@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   format,
   addDays,
@@ -36,11 +36,16 @@ import {
   getNextValidTime,
   getNowNZ,
   getStartEndHours,
+  getTimeSlots,
   getTodayNZ,
   HOURS,
   isBusinessDay,
+  isTooSoon,
+  isWithinTradingWindow,
 } from "~/lib/pickUpTimeHelper";
+import { quoteMinutes } from "~/lib/prepTimes";
 import { DateTime } from "luxon";
+import { api } from "~/trpc/react";
 
 type PickupTimeProps = {
   onChange: (date: Date | null) => void;
@@ -62,6 +67,10 @@ export function PickupTimePicker({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"asap" | "custom">("asap");
   const { language } = useLanguage();
+  // Shared with the kitchen, so the slot offered here and the moment staff are
+  // told to start it come from the same row. React Query de-dupes this with
+  // the checkout form's own copy.
+  const { data: prepTimes } = api.store.getPrepTimes.useQuery();
 
   // Get the next valid time (rounded to nearest 15 minutes)
 
@@ -69,11 +78,12 @@ export function PickupTimePicker({
     const interval = setInterval(() => {
       if (!value) return;
       const now = getNowNZ();
-      const diffInMs = value.getTime() - now.getTime();
-      const diffInMinutes = diffInMs / 1000 / 60;
-      const nextTime = getNextValidTime(numberOfItems, daysOff);
+      const nextTime = getNextValidTime(numberOfItems, daysOff, prepTimes);
       if (!nextTime) return;
-      if (diffInMinutes < 10) {
+      // Was a fixed ten minutes, which is only the right threshold for a small
+      // order — a six item order needs fifteen, and was left sitting on a time
+      // the kitchen could not meet until it fell inside ten.
+      if (isTooSoon(value, numberOfItems, prepTimes, now)) {
         onChange(nextTime);
       }
       if (!pickUpNextOpening) {
@@ -88,69 +98,64 @@ export function PickupTimePicker({
     }, 5000); // check every 5 seconds
 
     return () => clearInterval(interval);
-  }, [value, onChange, pickUpNextOpening, setPickUpNextOpening]);
+  }, [
+    value,
+    onChange,
+    pickUpNextOpening,
+    setPickUpNextOpening,
+    numberOfItems,
+    daysOff,
+    prepTimes,
+  ]);
 
-  // Generate time slots for the selected date
-  const generateTimeSlots = (selectedDate: Date) => {
-    const now = getNowNZ();
-    const isToday = isSameDay(selectedDate, now);
+  /**
+   * The cart changed size, so the soonest we can have it ready moved with it.
+   *
+   * Nothing used to react to this: the time was worked out once and then only
+   * revisited when it fell inside a fixed ten minute window. Adding a fourth
+   * dessert pushes the quote from ten minutes to fifteen, and the time on
+   * screen stayed where it was.
+   *
+   * Keyed on the quote rather than the raw count, so going from two items to
+   * three — which does not change what we can promise — moves nothing.
+   */
+  const lastQuoteRef = useRef<number | null>(null);
 
-    const dayHours = getBusinessHoursForDate(selectedDate);
+  useEffect(() => {
+    const quote = quoteMinutes(numberOfItems, prepTimes);
+    const previousQuote = lastQuoteRef.current;
+    lastQuoteRef.current = quote;
 
-    if (!dayHours || dayHours.open === null || dayHours.close === null) {
-      return [];
+    // First run only records where we started.
+    if (previousQuote === null || previousQuote === quote || !value) return;
+
+    // ASAP means as soon as possible, so it follows the quote in both
+    // directions. A time the customer chose for themselves is only moved when
+    // it has become sooner than we can actually make the order.
+    if (selectedTab !== "asap" && !isTooSoon(value, numberOfItems, prepTimes)) {
+      return;
     }
 
-    const { startDateTime, endDateTime } = getStartEndHours(
-      dayHours,
-      selectedDate,
-    );
+    const nextTime = getNextValidTime(numberOfItems, daysOff, prepTimes);
+    if (nextTime) onChange(nextTime);
+  }, [numberOfItems, prepTimes, value, selectedTab, daysOff, onChange]);
 
-    if (isToday && now >= endDateTime) {
-      return [];
-    }
-
-    const slots = [];
-    let currentTime = new Date(startDateTime);
-
-    // Start from max of now or business start time
-    if (isToday && currentTime < now) {
-      currentTime = new Date(Math.max(currentTime.getTime(), now.getTime()));
-    }
-
-    // Round currentTime to next 10-minute interval
-    const minutes = currentTime.getMinutes();
-    const roundedMinutes =
-      minutes % 10 === 0 ? minutes : minutes + (10 - (minutes % 10));
-    currentTime.setMinutes(roundedMinutes, 0, 0);
-
-    const tenMinutesBeforeClosing = new Date( // time 10 minutes before closing time
-      endDateTime.getTime() - 10 * 60 * 1000,
-    );
-
-    while (currentTime <= tenMinutesBeforeClosing) {
-      // generate slots 10 minutes from now to until 10 minutes before closing time
-      const diff = (currentTime.getTime() - now.getTime()) / 1000 / 60; // in minutes
-      if (!isToday || diff >= 10) {
-        slots.push(new Date(currentTime));
-      }
-      currentTime = addMinutes(currentTime, 10);
-    }
-
-    return slots;
-  };
+  // Lives in pickUpTimeHelper so it can be tested directly, and so the slots
+  // offered here respect the same preparation times the kitchen works to.
+  const generateTimeSlots = (selectedDate: Date) =>
+    getTimeSlots(selectedDate, { numberOfItems, prepTimes });
 
   // Set initial value if not provided
   useEffect(() => {
     if (!value) {
-      onChange(getNextValidTime(numberOfItems, daysOff));
+      onChange(getNextValidTime(numberOfItems, daysOff, prepTimes));
     }
   }, [value, onChange]);
 
   // Handle ASAP selection
   const handleAsapSelect = () => {
     setSelectedTab("asap");
-    onChange(getNextValidTime(numberOfItems, daysOff));
+    onChange(getNextValidTime(numberOfItems, daysOff, prepTimes));
     setIsOpen(false);
   };
 
@@ -167,49 +172,45 @@ export function PickupTimePicker({
     // Check if the selected date is a business day
     if (!isBusinessDay(nzDate, daysOff)) {
       // Find the next open date
-      onChange(getNextValidTime(numberOfItems, daysOff));
+      onChange(getNextValidTime(numberOfItems, daysOff, prepTimes));
       return;
     }
 
     const dayHours = getBusinessHoursForDate(nzDate);
-    const { startDateTime, endDateTime } = getStartEndHours(dayHours, nzDate);
+    const { startDateTime } = getStartEndHours(dayHours, nzDate);
 
-    // Keep the same time if possible, otherwise set to opening time
+    // The earliest slot still orderable on that day. On today this already
+    // accounts for how long the order takes to make.
+    const firstTimeSlot = generateTimeSlots(nzDate)[0];
 
-    const newDate = new Date(nzDate);
-
-    const firstTimeSlot =
-      generateTimeSlots(newDate)[0] ||
-      set(nzDate, {
-        hours: startDateTime.getHours() || 12,
-        minutes: startDateTime.getMinutes(),
-      });
-
-    newDate.setHours(firstTimeSlot.getHours(), firstTimeSlot.getMinutes());
-    // console.log(newDate.getMinutes() < endDateTime.getMinutes());
-    // Validate the time is within business hours
-    if (
-      dayHours?.open !== null &&
-      dayHours?.close !== null &&
-      newDate.getHours() >= dayHours?.open &&
-      newDate.getHours() < dayHours?.close && // making sure time is within business hours
-      newDate.getMinutes() >= startDateTime.getMinutes() &&
-      newDate.getMinutes() - 10 < endDateTime.getMinutes() // making sure time is 10 minutes before closing time
-    ) {
-      onChange(newDate);
+    if (firstTimeSlot && isWithinTradingWindow(firstTimeSlot, dayHours)) {
+      onChange(firstTimeSlot);
       return;
     }
-    // &&
-    //     newDate.getMinutes() < endDateTime.getMinutes()
 
-    // Default to opening time
-
+    // Nothing left today — offer opening time on the day they picked so the
+    // calendar still moves, rather than leaving the old time in place.
     onChange(
       set(nzDate, {
         hours: startDateTime.getHours() || 12,
         minutes: startDateTime.getMinutes(),
       }),
     );
+  };
+
+  /**
+   * Switching from ASAP to "Pick up later".
+   *
+   * Seeds with the same slot ASAP would give, so the time on screen does not
+   * jump when the customer only meant to open the calendar. It used to run the
+   * date-select path against today, whose broken hours check sent almost every
+   * slot back to the opening time — 12:30, hours in the past.
+   */
+  const handlePickLaterSelect = () => {
+    setSelectedTab("custom");
+
+    const nextValid = getNextValidTime(numberOfItems, daysOff, prepTimes);
+    if (nextValid) onChange(nextValid);
   };
 
   // Handle time selection
@@ -292,10 +293,7 @@ export function PickupTimePicker({
               <TabsTrigger value="asap" onClick={handleAsapSelect}>
                 {language === "en" ? "ASAP" : "尽快"}
               </TabsTrigger>
-              <TabsTrigger
-                value="custom"
-                onClick={() => handleDateSelect(getTodayNZ())}
-              >
+              <TabsTrigger value="custom" onClick={handlePickLaterSelect}>
                 {language === "en" ? "Pick up later" : "稍后取货"}
               </TabsTrigger>
             </TabsList>
@@ -312,7 +310,7 @@ export function PickupTimePicker({
                 {language === "en" ? "Estimated time: " : "预计时间: "}
                 {value
                   ? format(
-                      getNextValidTime(numberOfItems, daysOff) ?? "",
+                      getNextValidTime(numberOfItems, daysOff, prepTimes) ?? "",
                       "EEE, h:mm a",
                       {
                         locale: language === "en" ? enNZ : zhCN,

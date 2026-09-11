@@ -16,7 +16,7 @@ import { api } from "~/trpc/react";
 import { toast } from "~/hooks/use-toast";
 import { format } from "date-fns";
 import parsePhoneNumberFromString from "libphonenumber-js";
-import { getNextValidTime, getNowNZ } from "~/lib/pickUpTimeHelper";
+import { getNextValidTime, getNowNZ, isTooSoon } from "~/lib/pickUpTimeHelper";
 
 type checkoutFormProps = {
   totalPriceInCents: number;
@@ -49,6 +49,8 @@ export default function CheckoutForm({
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [warned, setWarned] = useState(false);
   const utils = api.useUtils();
+  // The shop's configured preparation times, shared with the kitchen.
+  const { data: prepTimes } = api.store.getPrepTimes.useQuery();
   const createOrder = api.order.createNewOrder.useMutation({
     onSuccess: async () => {
       await utils.order.invalidate();
@@ -170,11 +172,17 @@ export default function CheckoutForm({
       return;
     }
     const now = getNowNZ();
-    const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
-    let newPickUpTime = null;
-    if (pickUpTime.getTime() < tenMinutesLater.getTime()) {
-      setPickUpTime(getNextValidTime(cart.totalItems, daysOff));
-      newPickUpTime = getNextValidTime(cart.totalItems, daysOff);
+
+    // The last gate before payment. It compared against a fixed ten minutes,
+    // which let a large order through on a slot the kitchen needed fifteen or
+    // twenty minutes for.
+    if (isTooSoon(pickUpTime, cart.totalItems, prepTimes, now)) {
+      const newPickUpTime = getNextValidTime(
+        cart.totalItems,
+        daysOff,
+        prepTimes,
+      );
+      setPickUpTime(newPickUpTime);
       const isToday =
         newPickUpTime?.getDate() === now.getDate() &&
         newPickUpTime?.getMonth() === now.getMonth() &&
@@ -188,7 +196,7 @@ export default function CheckoutForm({
               : "您的取货时间已更改！",
           description: `${
             language === "en" ? "Your pick up time is" : "您的取货时间是"
-          } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
+          } ${format(newPickUpTime, "dd/MM/yyyy h:mm a")}`,
           variant: "destructive",
         });
         setWarned(true);
