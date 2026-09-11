@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { db } from "~/server/db";
+import { DEFAULT_PREP_TIMES, type PrepTimes } from "~/lib/prepTimes";
 
 /**
  * Read on every customer-facing page load, changes a few times a year.
@@ -28,7 +29,40 @@ const getDaysOffCached = unstable_cache(
   { revalidate: 300, tags: ["days-off"] },
 );
 
+/**
+ * One row, read on every checkout, changed rarely. Cached like the days off,
+ * and falling back to the defaults rather than throwing: an unreadable
+ * settings row must not stop a customer being offered a pick-up time.
+ */
+const getPrepTimesCached = unstable_cache(
+  async (): Promise<PrepTimes> => {
+    const row = await db.prepTimeSetting.findFirst();
+
+    if (!row) return DEFAULT_PREP_TIMES;
+
+    return {
+      singleItem: row.singleItem,
+      upToThree: row.upToThree,
+      upToSix: row.upToSix,
+      moreThanSix: row.moreThanSix,
+      kitchenSlack: row.kitchenSlack,
+      quoteFloor: row.quoteFloor,
+    };
+  },
+  ["prep-times"],
+  { revalidate: 300, tags: ["prep-times"] },
+);
+
 export const storeRouter = createTRPCRouter({
+  getPrepTimes: publicProcedure.query(async (): Promise<PrepTimes> => {
+    try {
+      return await getPrepTimesCached();
+    } catch (error) {
+      console.error("Could not read preparation times:", error);
+      return DEFAULT_PREP_TIMES;
+    }
+  }),
+
   getDaysOff: publicProcedure.query(async () => {
     const today = DateTime.now()
       .setZone("Pacific/Auckland")

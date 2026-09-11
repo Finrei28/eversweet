@@ -12,6 +12,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { getNowNZ } from "~/lib/pickUpTimeHelper";
+import { announceOrder } from "~/server/notifyAdmin";
 import {
   CartPricingError,
   gstInCentsFromInclusiveTotal,
@@ -173,12 +174,37 @@ export const orderRouter = createTRPCRouter({
         },
       });
 
-      await resend.emails.send({
-        from: '"Eversweet" <eversweet@eversweet.co.nz>',
-        to: orderData.customerEmail,
-        subject: "Order Confirmation",
-        react: EmailOrderConfirmation({ order: newOrder }),
-      });
+      // Past this point the order is committed and the card has been charged.
+      // Neither of these may fail the mutation: the customer would be shown an
+      // error for an order that exists, is paid for, and will be made. They
+      // run together so the confirmation screen waits on the slower of the
+      // two, not the sum of both.
+      const [, confirmationEmail] = await Promise.allSettled([
+        // Puts the order on the kitchen screen now, rather than leaving it for
+        // the order server's cron to find within the next couple of minutes.
+        announceOrder(newOrder.id),
+        resend.emails.send({
+          from: '"Eversweet" <eversweet@eversweet.co.nz>',
+          to: orderData.customerEmail,
+          subject: "Order Confirmation",
+          react: EmailOrderConfirmation({ order: newOrder }),
+        }),
+      ]);
+
+      // Resend reports a refused send in the response rather than by throwing,
+      // so both shapes have to be checked to notice a missing email.
+      if (confirmationEmail.status === "rejected") {
+        console.error(
+          `Order ${newOrder.id}: confirmation email failed.`,
+          confirmationEmail.reason,
+        );
+      } else if (confirmationEmail.value.error) {
+        console.error(
+          `Order ${newOrder.id}: confirmation email was refused.`,
+          confirmationEmail.value.error,
+        );
+      }
+
       return;
     }),
 
