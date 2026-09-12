@@ -11,7 +11,12 @@ export default async function PastOrdersPage() {
     return notFound();
   }
 
-  void api.order.getAllCurrentOrders.prefetch();
+  // Awaited rather than `void`-ed so the Suspense boundary below does not suspend on
+  // the server. A pending dehydrated promise makes React stream the boundary's content
+  // in after the shell, and streamed-in content gets `useId` tree ids that do not match
+  // the ones hydration computes - which broke every Radix id inside the table. See the
+  // long note in src/app/admin/past-orders/page.tsx.
+  await api.order.getAllCurrentOrders.prefetch();
 
   return (
     <HydrateClient>

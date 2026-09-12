@@ -468,6 +468,8 @@ export const productRouter = createTRPCRouter({
       select: {
         id: true,
         name: true,
+        // The offers admin labels its category pickers in both languages.
+        chineseName: true,
       },
     });
   }),

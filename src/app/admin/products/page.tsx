@@ -12,11 +12,26 @@ export default async function ProductsPage() {
     return notFound();
   }
 
-  void api.dessert.getProducts.prefetch();
-  void api.dessert.getCategories.prefetch();
-  void api.productCustomisation.dessertCustomisations.prefetch();
-  void api.dessert.getProductsForMenuByCategory.prefetch();
-  void api.dessert.getIngredients.prefetch();
+  /**
+   * Awaited rather than `void`-ed, and in parallel.
+   *
+   * A pending dehydrated promise makes the Suspense boundary suspend on the server, so
+   * its content streams in after the shell - and streamed-in content gets `useId` tree
+   * ids that do not match the ones hydration computes, which broke every Radix id
+   * inside. See the long note in src/app/admin/past-orders/page.tsx.
+   *
+   * Promise.all rather than separate awaits: these are independent queries and each is
+   * a round trip to a remote database, so awaiting them in sequence would stack the
+   * latency into the shell.
+   */
+  await Promise.all([
+    api.dessert.getProducts.prefetch(),
+    api.dessert.getCategories.prefetch(),
+    api.productCustomisation.dessertCustomisations.prefetch(),
+    api.dessert.getProductsForMenuByCategory.prefetch(),
+    api.dessert.getIngredients.prefetch(),
+  ]);
+
   return (
     <HydrateClient>
       <MaxWidthWapper>

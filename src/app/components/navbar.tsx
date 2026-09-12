@@ -199,7 +199,24 @@ export function Navbar({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Navigation links centered */}
-            <div className="flex flex-1 items-center justify-center gap-8">
+            <div
+              className={cn(
+                "flex flex-1 items-center justify-center",
+                /**
+                 * The logo is absolutely positioned, so this row centres across the
+                 * whole container without knowing the logo is there. Five links left
+                 * enough slack for that to go unnoticed; the admin nav has seven, and
+                 * the first one ran underneath the logo.
+                 *
+                 * Reserving the logo's width (pl-64 = 256px, its measured width at
+                 * xl:h-32) and tightening the gap fits all seven inside the container,
+                 * which is capped at max-w-7xl and so never gets roomier on a wider
+                 * screen. Admin only - the customer nav has fewer links and should stay
+                 * centred on the full width.
+                 */
+                pathName.startsWith("/admin") ? "gap-4 pl-64" : "gap-8",
+              )}
+            >
               {children}
             </div>
 
