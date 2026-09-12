@@ -265,9 +265,22 @@ reserves the logo's width (`pl-64`) and tightens the gap. Check any new link at 
 
 ## Sharp edges
 
-- **`Offer.discountAmount` is whole percent, 0–100** (an `Int` since the 2026-09-12 migration;
-  it was previously a `Decimal` fraction where `0.2` meant 20%). `itemPriceInCents` overrides
-  it when both are set.
+- **An offer carries exactly one price: `itemPriceInCents` or `discountAmount`, never both
+  and never neither.** `discountAmount` is whole percent 1–100 (an `Int` since the
+  2026-09-12 migration; it was previously a `Decimal` fraction where `0.2` meant 20%).
+  `itemPriceInCents` is cents and **0 is legal, meaning free** — both giveaway offers are
+  stored that way, so null-check it, never truth-check it. A fixed price must also come in
+  *under* the list price of what it covers; for a category-scoped offer that means under the
+  **cheapest** item in the category, which is the only shape in production.
+- **Those rules live in three places and only two of them are the database.** The first two
+  are CHECK constraints (`20260914000000_offer_pricing_rules`) *and* `createOfferSchema`;
+  the price ceiling cannot be a constraint at all, because it compares against another
+  table and PostgreSQL CHECK forbids subqueries — it is `assertUnderListPrice` in the offers
+  router, mirrored in `offerDialog.tsx` so the admin is told before submitting. Prisma
+  cannot express a CHECK, so the constraints are invisible to it: `migrate diff` reports no
+  drift and will not drop them, but `prisma db push` never creates them, which means **no
+  test database has them**. Suites prove the application layer; the constraints are defence
+  against a writer that bypasses it.
 - **`Offer.renewsWeekly` makes `limit` an allowance per week rather than per run.** The order
   server's `renewWeeklyOffers` cron clears `used` every Monday for exactly those offers. It
   used to be an `updateMany` with no WHERE clause, which reset every redemption row in the

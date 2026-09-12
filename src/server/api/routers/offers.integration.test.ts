@@ -46,29 +46,42 @@ const offerInput = (overrides: Partial<OfferInput> = {}): OfferInput => ({
   audience: "MEMBERS",
   dessertId: null,
   categoryId: null,
+  // Exactly one price is now required, so the fixture carries a discount and the tests
+  // that care about a fixed price swap it for one.
   itemPriceInCents: null,
-  discountAmount: null,
+  discountAmount: 50,
   limit: 1,
   renewsWeekly: false,
   requirements: [],
   ...overrides,
 });
 
+/**
+ * Two desserts at different prices, because the price ceiling is the *cheapest* item an
+ * offer covers. With one dessert the category branch and the dessert branch would agree
+ * on every input and the rule would look correct while being wrong.
+ */
 const seedMenu = async () => {
   const category = await db.category.create({
     data: { name: "Mochi bowls", chineseName: "麻糬碗" },
   });
-  const dessert = await db.dessert.create({
-    data: {
-      name: "Mango sago",
-      chineseName: "芒果西米露",
-      priceInCents: 1200,
-      imagePath: "/desserts/mango-sago.jpg",
-      imagePublicId: "products/mango-sago",
-      categoryId: category.id,
-    },
-  });
-  return { category, dessert };
+
+  const makeDessert = (name: string, chineseName: string, priceInCents: number) =>
+    db.dessert.create({
+      data: {
+        name,
+        chineseName,
+        priceInCents,
+        imagePath: `/desserts/${name}.jpg`,
+        imagePublicId: `products/${name}`,
+        categoryId: category.id,
+      },
+    });
+
+  const dessert = await makeDessert("Mango sago", "芒果西米露", 1200);
+  const cheaper = await makeDessert("Taro balls", "芋圆", 900);
+
+  return { category, dessert, cheaper };
 };
 
 let customers = 0;
@@ -333,6 +346,128 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
 
     await caller.offer.setArchived({ id: created.id, archived: false });
     await expect(snapshot()).resolves.toEqual(seeded);
+  });
+
+  it("refuses an offer that sets both a fixed price and a discount", async () => {
+    const caller = adminCaller();
+
+    // Both set used to be accepted and the discount silently ignored, so a row could
+    // read "50% off" while every customer was charged the fixed price.
+    await expect(
+      caller.offer.createOffer({
+        offer: offerInput({ itemPriceInCents: 500, discountAmount: 20 }),
+      }),
+    ).rejects.toThrow(/not both/);
+  });
+
+  it("refuses an offer that sets neither a fixed price nor a discount", async () => {
+    const caller = adminCaller();
+
+    await expect(
+      caller.offer.createOffer({
+        offer: offerInput({ itemPriceInCents: null, discountAmount: null }),
+      }),
+    ).rejects.toThrow(/needs one of them/);
+  });
+
+  it("refuses a discount outside 1-100", async () => {
+    const caller = adminCaller();
+
+    for (const discountAmount of [0, 101]) {
+      await expect(
+        caller.offer.createOffer({ offer: offerInput({ discountAmount }) }),
+      ).rejects.toThrow();
+    }
+  });
+
+  it("holds a fixed price under the cheapest item in the category", async () => {
+    const { category, cheaper } = await seedMenu();
+    const caller = adminCaller();
+
+    // 950 is under Mango sago at 1200 but not under Taro balls at 900, and the offer
+    // covers both. Taking the ceiling from the wrong dessert would let this through.
+    await expect(
+      caller.offer.createOffer({
+        offer: offerInput({
+          categoryId: category.id,
+          itemPriceInCents: 950,
+          discountAmount: null,
+        }),
+      }),
+    ).rejects.toThrow(new RegExp(cheaper.name));
+
+    await expect(
+      caller.offer.createOffer({
+        offer: offerInput({
+          categoryId: category.id,
+          itemPriceInCents: 899,
+          discountAmount: null,
+        }),
+      }),
+    ).resolves.toMatchObject({ name: "Free mochi bowl" });
+  });
+
+  it("refuses a fixed price equal to the list price, and allows free", async () => {
+    const { dessert } = await seedMenu();
+    const caller = adminCaller();
+
+    // Equal is not an offer.
+    await expect(
+      caller.offer.createOffer({
+        offer: offerInput({
+          dessertId: dessert.id,
+          itemPriceInCents: dessert.priceInCents,
+          discountAmount: null,
+        }),
+      }),
+    ).rejects.toThrow(/under what the item normally costs/);
+
+    // Zero is how both of the shop's giveaway offers are stored, so it has to stay
+    // legal - a "positive integer" rule would have made them unsaveable.
+    await expect(
+      caller.offer.createOffer({
+        offer: offerInput({
+          name: "Free bowl",
+          dessertId: dessert.id,
+          itemPriceInCents: 0,
+          discountAmount: null,
+        }),
+      }),
+    ).resolves.toMatchObject({ name: "Free bowl" });
+  });
+
+  it("holds the price ceiling on edit as well as on create", async () => {
+    const { category } = await seedMenu();
+    const caller = adminCaller();
+
+    const created = await caller.offer.createOffer({
+      offer: offerInput({
+        categoryId: category.id,
+        itemPriceInCents: 500,
+        discountAmount: null,
+      }),
+    });
+
+    await expect(
+      caller.offer.updateOffer({
+        offer: {
+          ...offerInput({
+            categoryId: category.id,
+            itemPriceInCents: 5000,
+            discountAmount: null,
+          }),
+          id: created.id,
+        },
+      }),
+    ).rejects.toThrow(/under what the item normally costs/);
+
+    // The transaction rolled back, so the stored price is untouched.
+    await expect(
+      db.offer.findUnique({
+        where: { id: created.id },
+        select: { itemPriceInCents: true },
+      }),
+    ).resolves.toEqual({ itemPriceInCents: 500 });
   });
 
   it("refuses to close a run that has not ended", async () => {

@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+import {
+  DISCOUNT_MAX_PERCENT,
+  DISCOUNT_MIN_PERCENT,
+  hasExactlyOnePrice,
+} from "~/lib/offerPricing";
+
 const fileSchema = z.instanceof(File, { message: "File is required" });
 export const imageSchema = fileSchema.refine(
   (file) => file.size === 0 || file.type.startsWith("image/"),
@@ -96,7 +102,11 @@ export const offerRequirementSchema = z
     "Pick either a dessert or a category, not both",
   );
 
-export const createOfferSchema = z.object({
+/**
+ * Split from the refinement below because `superRefine` returns a ZodEffects, which has
+ * no `.extend()` - the update schema has to branch off the plain object.
+ */
+const offerFields = z.object({
   name: z.string().trim().min(1),
   description: z.string().trim().optional(),
   image: z.string().min(1).nullable().default(null),
@@ -106,23 +116,24 @@ export const createOfferSchema = z.object({
   audience: z.enum(["MEMBERS", "EVERYONE", "NEW_USERS"]),
   dessertId: z.string().min(1).nullable().default(null),
   categoryId: z.string().min(1).nullable().default(null),
+  /**
+   * Cents, and **0 is legal**: it is how a free item is expressed, and both of the
+   * shop's giveaway offers are stored that way. The rule that it must come in under the
+   * item's list price is enforced in the router - it compares against another table, so
+   * neither zod nor a CHECK constraint can see it here.
+   */
   itemPriceInCents: z.coerce
     .number()
     .int()
     .nonnegative()
     .nullable()
     .default(null),
-  /**
-   * Whole percent, 0-100. No refinement tying this to itemPriceInCents: any rule
-   * stricter than what the column already holds would make an offer that is running
-   * right now fail to load into its own edit form. The precedence
-   * (itemPriceInCents wins) is helper text, not validation.
-   */
+  /** Whole percent. 0 is not a discount and 100 is the whole thing. */
   discountAmount: z.coerce
     .number()
     .int()
-    .min(0)
-    .max(100)
+    .min(DISCOUNT_MIN_PERCENT)
+    .max(DISCOUNT_MAX_PERCENT)
     .nullable()
     .default(null),
   limit: z.coerce.number().int().positive().default(1),
@@ -137,9 +148,39 @@ export const createOfferSchema = z.object({
   requirements: z.array(offerRequirementSchema).default([]),
 });
 
-export const updateOfferSchema = createOfferSchema.extend({
-  id: z.string().min(1),
-});
+/**
+ * Exactly one way to price an offer.
+ *
+ * Both set used to be accepted and the discount silently ignored, so a row could read
+ * "50% off" while every customer was charged the fixed price. Neither set was accepted
+ * too, giving an offer that discounts nothing.
+ *
+ * The issue is attached to both fields so whichever one the admin is looking at carries
+ * the message. Safe to enforce here despite the usual worry that a rule stricter than
+ * the column stops a running offer loading into its own edit form: all three live offers
+ * were audited against it first and all three already comply.
+ */
+const refineOfferPricing = (
+  offer: { itemPriceInCents: number | null; discountAmount: number | null },
+  ctx: z.RefinementCtx,
+) => {
+  if (hasExactlyOnePrice(offer)) return;
+
+  const message =
+    offer.itemPriceInCents === null
+      ? "Set a fixed price or a discount - an offer needs one of them."
+      : "Set a fixed price or a discount, not both.";
+
+  for (const path of ["itemPriceInCents", "discountAmount"] as const) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+  }
+};
+
+export const createOfferSchema = offerFields.superRefine(refineOfferPricing);
+
+export const updateOfferSchema = offerFields
+  .extend({ id: z.string().min(1) })
+  .superRefine(refineOfferPricing);
 
 /**
  * Assigning or editing a monthly winner's prize.

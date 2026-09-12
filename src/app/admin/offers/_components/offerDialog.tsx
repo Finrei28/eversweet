@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { type z } from "zod";
 
@@ -35,6 +35,8 @@ import {
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { toast } from "~/hooks/use-toast";
+import { formatCurrency } from "~/lib/formatters";
+import { cheapestDessert } from "~/lib/offerPricing";
 import { api } from "~/trpc/react";
 import { type OfferRow } from "../columns";
 import RequirementsField from "./requirementsField";
@@ -119,6 +121,27 @@ export default function OfferDialog({
     defaultValues: toFormValues(offer),
   });
 
+  const dessertId = form.watch("dessertId");
+  const categoryId = form.watch("categoryId");
+
+  /**
+   * The cheapest item this offer covers - the ceiling a fixed price has to come in
+   * under. Mirrors `assertUnderListPrice` in the router, which is the one that decides;
+   * this exists so the admin is told while typing rather than after a failed save.
+   *
+   * zod cannot hold this rule: it is a fact about another table. The dialog can, because
+   * it already has every dessert with its price and category for the pickers above.
+   */
+  const priceCeiling = useMemo(() => {
+    const covered = dessertId
+      ? desserts.filter((dessert) => dessert.id === dessertId)
+      : categoryId
+        ? desserts.filter((dessert) => dessert.category.id === categoryId)
+        : [];
+
+    return cheapestDessert(covered);
+  }, [desserts, dessertId, categoryId]);
+
   const onError = (mutationError: { message: string }) => {
     setLoading(false);
     setError(mutationError.message);
@@ -196,6 +219,23 @@ export default function OfferDialog({
   };
 
   const handleSubmit = (data: OfferForm) => {
+    // Checked before `setLoading`, so a rejected submit does not leave the dialog
+    // looking busy. The server repeats this check - the menu can change under an open
+    // dialog, and a stale price here must not be the only thing standing in the way.
+    if (
+      data.itemPriceInCents !== null &&
+      priceCeiling !== null &&
+      data.itemPriceInCents >= priceCeiling.priceInCents
+    ) {
+      form.setError("itemPriceInCents", {
+        message:
+          language === "en"
+            ? `Has to be under ${formatCurrency(priceCeiling.priceInCents / 100)} - what ${priceCeiling.name} normally costs.`
+            : `必须低于 ${formatCurrency(priceCeiling.priceInCents / 100)}（${priceCeiling.chineseName} 的原价）。`,
+      });
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -445,16 +485,18 @@ export default function OfferDialog({
               />
             </div>
 
-            {/* Not a validation rule: a stricter check than the column itself would stop
-                an offer that is running right now from loading into its own form. */}
-            {form.watch("itemPriceInCents") !== null &&
-              form.watch("discountAmount") !== null && (
-                <p className="text-sm text-muted-foreground">
-                  {language === "en"
-                    ? "A fixed price overrides the discount — the discount will be ignored."
-                    : "设置固定价格后将忽略折扣。"}
-                </p>
-              )}
+            {/* Was "a fixed price overrides the discount". Setting both is now refused
+                outright, so the standing advice is the ceiling instead - the one rule
+                the admin cannot work out from the form alone. */}
+            <p className="text-sm text-muted-foreground">
+              {language === "en"
+                ? "Set one or the other, not both."
+                : "两者只能设置其一。"}
+              {priceCeiling !== null &&
+                (language === "en"
+                  ? ` A fixed price has to be under ${formatCurrency(priceCeiling.priceInCents / 100)}, what ${priceCeiling.name} normally costs.`
+                  : ` 固定价格必须低于 ${formatCurrency(priceCeiling.priceInCents / 100)}，即 ${priceCeiling.chineseName} 的原价。`)}
+            </p>
 
             <FormField
               control={form.control}
