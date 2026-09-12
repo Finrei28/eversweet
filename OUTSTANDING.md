@@ -9,17 +9,32 @@ two repos share one database.
 
 ---
 
-## 1. Offer field semantics are documented by code, not by spec
+## 1. Nothing enforces the `itemPriceInCents` / `discountAmount` invariant
 
-`itemPriceInCents` takes precedence over `discountAmount` — true in
-`eversweet_app/backend/src/controllers/cart.controller.ts`, but written down nowhere as a
-rule. The admin form exposes both with a non-blocking hint rather than a validation rule,
-deliberately: any rule stricter than the column itself would stop an offer that is
-*running right now* from loading into its own edit form, and that failure only shows up
-against production data.
+The precedence rule is no longer undocumented, which is what this item used to say. The
+order server has since extracted `eversweet_app/backend/src/lib/offerPricing.ts`, whose
+`offerUnitPriceInCents` states the rule in a comment and whose tests pin it — "lets a
+fixed price win over a discount", "treats a fixed price of zero as free, not as absent".
+`eversweet_app/frontend/lib/offerHelpers.ts` mirrors it, clamp and dessert fallback
+included, so the app quotes what the server charges. Checked for drift: the two agree.
 
-If the precedence is ever formalised, tighten the schema with a migration in the house
-style rather than enforcing it only in the UI.
+What is missing is enforcement. Three rows the system accepts and nothing rejects:
+
+- **Both set.** `discountAmount` is silently ignored. The admin form says so in a hint but
+  does not block the save, so a row can read "50% off" while every customer is charged the
+  fixed price.
+- **`discountAmount` outside 0-100.** The column is a plain `Int?`; only the website's zod
+  schema keeps it in range. Both consumers clamp defensively — the backend comment says a
+  bad row "must not be able to mint money again" — which puts the invariant in two clients
+  rather than in the column that actually holds it.
+- **Neither set.** A valid row that discounts nothing: `offerUnitPriceInCents` falls
+  through to list price, so the app advertises an offer worth zero.
+
+The fix is a CHECK constraint in a migration, house style — not a stricter zod schema. A
+rule applied only in the UI would stop an offer that is *running right now* from loading
+into its own edit form, and that failure only shows up against production data. A
+constraint carries the mirror-image hazard, rejecting an UPDATE to an existing bad row, so
+audit the live `Offer` rows before writing one.
 
 ---
 
