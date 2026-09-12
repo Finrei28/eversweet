@@ -2,6 +2,8 @@ import "server-only";
 
 import type { PrismaClient } from "@prisma/client";
 
+import { isWithinActiveWindow } from "~/lib/activeWindow";
+
 /**
  * The single source of truth for what a cart costs.
  *
@@ -25,15 +27,16 @@ export type PromoLike = {
  * A null `startsAt` means "no start bound" and a null `endsAt` means "runs
  * until switched off", which is how the admin UI leaves them when a promo is
  * open-ended.
+ *
+ * Offers carry the same three fields and mean the same thing by them, so the
+ * predicate itself lives in `~/lib/activeWindow` and this is a delegation. Keep
+ * it that way: two copies would be free to disagree, and this one is in the
+ * payment path.
  */
 export const isPromoActive = (
   promo: PromoLike | null | undefined,
   now: Date = new Date(),
-): boolean =>
-  !!promo &&
-  promo.isActive &&
-  (promo.startsAt === null || promo.startsAt <= now) &&
-  (promo.endsAt === null || promo.endsAt >= now);
+): boolean => isWithinActiveWindow(promo, now);
 
 /**
  * Discount for a single unit, in cents. Returns 0 for a promo that is not

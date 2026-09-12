@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+
+import Loader from "~/app/components/customLoading";
 import { auth } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
-import DashBoardCards from "./_components/dashboardCard";
-import { Suspense } from "react";
-import Loader from "../components/customLoading";
+import { DataTable } from "./data-table";
 
-// localhost:3000/api/auth/signin for sign in page
-export default async function AdminDashboard() {
+export default async function OffersPage() {
   const session = await auth();
   if (!session?.user) {
     return notFound();
@@ -14,6 +14,9 @@ export default async function AdminDashboard() {
 
   /**
    * Awaited rather than `void`-ed, and in parallel.
+   *
+   * getOffers is called bare on both sides so its input default applies identically -
+   * prefetch and useSuspenseQuery must agree exactly or the cache key misses.
    *
    * A pending dehydrated promise makes the Suspense boundary suspend on the server, so
    * its content streams in after the shell - and streamed-in content gets `useId` tree
@@ -25,17 +28,18 @@ export default async function AdminDashboard() {
    * latency into the shell.
    */
   await Promise.all([
-    api.order.getCurrentOrders.prefetch(),
-    api.order.getCompletedOrders.prefetch(),
-    api.order.getSalesToday.prefetch(),
-    api.order.getTotalSales.prefetch(),
+    api.offer.getOffers.prefetch(),
+    api.dessert.getProducts.prefetch(),
+    api.dessert.getCategories.prefetch(),
   ]);
 
   return (
     <HydrateClient>
-      <Suspense fallback={<Loader text="Loading Dashboard" />}>
-        <DashBoardCards />
-      </Suspense>
+      <div className="container mx-auto py-10">
+        <Suspense fallback={<Loader text="Loading offers..." />}>
+          <DataTable />
+        </Suspense>
+      </div>
     </HydrateClient>
   );
 }
