@@ -27,22 +27,78 @@ Not yet run against a database:
 | `offer.createOffer` / `offer.updateOffer` | the dialog was opened and cancelled, never saved |
 | `winner.upsertReward` | would mint a real prize code against a real winner |
 
-Worth proving before trusting in production, ideally on a scratch database:
+### The harness is built — what is left is the two tests
 
-1. **Requirements are patched, not replaced** — edit an offer and confirm its
-   `OfferRequirement` row ids are unchanged. That diff logic in `updateOffer` is the whole
-   reason the order server can rely on those ids, and a regression would be silent.
-2. **Reward guards** — a winner whose `userId` is null refuses assignment; a reward with
-   `redeemedAt` set refuses edits; the code does not change on edit.
+The scratch database exists and the plumbing is proven: a spike drove the real
+`offer.updateOffer` through a tRPC caller against it and confirmed the requirement row
+kept its id. That spike was removed; what it needed is committed.
 
-## 2. `renewsWeekly` is invisible to the customer
+**Already in place**
 
-The admin can now flag an offer as renewing weekly, and `renewWeeklyOffers` resets exactly
-those offers every Monday. Nothing tells the *customer* that: the app shows a greyed
-"Redeem" button once the allowance is spent, with no copy saying it comes back on Monday —
-`eversweet_app/frontend/_components/offerCard.tsx`.
+- `eversweet_web_test` on the local PG16 cluster (`C:\pg16test`, 127.0.0.1:5432), schema
+  pushed, 31 tables. A *separate* database from the order server's `eversweet_test`:
+  both suites truncate, so sharing one would have them clearing each other's rows.
+- `TEST_DATABASE_URL` in `.env` (gitignored — set it by hand on another machine).
+- `vitest.config.mts` reads it with `loadEnv` at **config** time and swaps it into
+  `DATABASE_URL`/`DIRECT_URL`, plus `fileParallelism: false`.
+- `src/test/db.ts` — `describeIfDb`, and `resetDatabase` refusing any database whose name
+  lacks "test". `src/test/db.test.ts` proves the refusal still bites.
 
-## 3. Offer field semantics are documented by code, not by spec
+**Read this before writing the tests — four things that will otherwise cost an hour**
+
+1. **`DATABASE_URL` in this repo is production Supabase.** Doing the swap in
+   `src/test/setup.ts` looks natural and is wrong: setup runs before `.env` is reliably
+   readable, so the override silently no-ops and the first `resetDatabase()` truncates the
+   live database. That is `RECOVERY.md` all over again. It is decided in `vitest.config.mts`
+   for that reason — leave it there. Assert `DATABASE_URL` contains `eversweet_web_test`
+   in any new suite as a third check.
+2. **Do not import `~/server/api/root`.** It reaches the order router, which imports an
+   email template whose JSX will not compile under the Next `tsconfig`. Build a caller from
+   just what is under test:
+   ```ts
+   const createCaller = createCallerFactory(
+     createTRPCRouter({ offer: offerRouter, winner: winnerRouter }),
+   );
+   ```
+3. **Mock two modules** or the file will not even load:
+   ```ts
+   vi.mock("server-only", () => ({}));               // throws outside an RSC
+   vi.mock("~/server/auth", () => ({ auth: vi.fn(async () => null) }));
+   ```
+   `trpc.ts` imports `auth`, which drags in next-auth → `next/server`, unresolvable under
+   Vitest. A hand-built context never calls it, so the stub is free.
+4. **The context is just an object.** `protectedProcedure` only checks `ctx.session.user`
+   exists, so this is a signed-in admin:
+   ```ts
+   createCaller({ db, session: { user: { id: "admin-test" }, expires: "2099-01-01" },
+                  headers: new Headers() } as never)
+   ```
+   `WinnerReward.assignedByAdminId` has no foreign key, so that id needs no `User` row.
+   `LoyaltyWinner.userId` **does** — create a real user for the happy path.
+
+   Minor: `timingMiddleware` adds a 100–500ms artificial delay whenever `isDev`, and Vitest
+   sets `NODE_ENV=test`, so every call pays it. Tolerable for a handful of tests; pass
+   `isDev: false` to `initTRPC.create()` if it ever grates.
+
+**The tests to write** (`src/server/api/routers/offers.integration.test.ts` and
+`winners.integration.test.ts`, both `describeIfDb` with `resetDatabase()` in `beforeEach`):
+
+1. **Requirements are patched, not replaced** — create an offer with two requirements, edit
+   it through `offer.updateOffer` changing a quantity and dropping one, and assert the
+   surviving row keeps its original id. This is the whole point of the diff logic, the order
+   server joins on those ids, and a regression would be silent. *(Proven by the spike for
+   the single-requirement case; the two-requirement and removal cases are still unwritten.)*
+2. **`createOffer` round-trips** — requirements created with it come back through
+   `offerSelect`, and `renewsWeekly` persists.
+3. **Reward guards** — `winner.upsertReward` refuses a winner whose `userId` is null
+   ("account has been closed"); refuses a reward with `redeemedAt` set; and on a plain edit
+   changes the title while leaving `code` and `assignedByAdminId` untouched.
+4. **Only Close run touches redemptions** — seed an `OfferRedemption` with
+   `used: 1, status: "REDEEMED"`, then edit, deactivate, reactivate, archive and restore.
+   The row must be untouched after every one. This is the guarantee the run lifecycle rests
+   on, and the order server now depends on it.
+
+## 2. Offer field semantics are documented by code, not by spec
 
 `itemPriceInCents` takes precedence over `discountAmount` — true in
 `eversweet_app/backend/src/controllers/cart.controller.ts`, but written down nowhere as a
@@ -73,6 +129,15 @@ half-deployed.
   every time. Applied with `migrate deploy`; exactly one offer flagged.
 
 **Order server and mobile app (`eversweet_app`)** — verified 2026-09-12
+
+- A spent weekly perk no longer reads as gone for good: `offerCard.tsx` says "Back again
+  each Monday" once the allowance is used, driven by `renewsWeekly` now travelling in the
+  `showOffers` payload. ("each Monday" rather than "on Monday" — the reset runs Monday
+  00:00 NZ, so on a Monday the latter reads as today when it means next week.)
+- Every `Offer` and `OfferRedemption` read given an explicit `select`, the same guard this
+  repo applies to its own queries, so a client generated either side of an unapplied
+  migration cannot ask for a column the database lacks. `showOffers` now asserts its exact
+  response shape, since a hand-written select can drop a field the app needs by one line.
 
 - Schema mirrored **and committed**, so the deployed client no longer declares the dropped
   `renewsAt` column. That mismatch had been breaking the offers screen and offer

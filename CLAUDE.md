@@ -37,6 +37,39 @@ on missing env. A test that imports a `server-only` module needs
 CI (`.github/workflows/ci.yml`) runs lint, typecheck and tests on Node 22 with dummy
 `DATABASE_URL`/`DIRECT_URL` and `SKIP_ENV_VALIDATION=1`; no database is contacted.
 
+### Integration tests need a database, and `DATABASE_URL` is production
+
+Unit suites need none. Anything exercising a tRPC router does, and the trap here is that
+`DATABASE_URL` in `.env` is **production Supabase** — `resetDatabase()` truncates every
+table, so getting this wrong is `RECOVERY.md` again from a different direction.
+
+The database is `eversweet_web_test` on the standalone PG16 cluster at `C:\pg16test`,
+which the order server's repo also uses — a **separate database** from its
+`eversweet_test`, because both suites truncate. It is not a Windows service, so after a
+reboot:
+
+```bash
+"C:/pg16test/pgsql/bin/pg_ctl.exe" -D "C:/pg16test/data"   -l "C:/pg16test/server.log" -o "-p 5432 -c listen_addresses=127.0.0.1" start
+```
+
+`vitest.config.mts` reads `TEST_DATABASE_URL` with `loadEnv` at **config** time and swaps
+it into `DATABASE_URL`/`DIRECT_URL`. Do not move that into `src/test/setup.ts`: setup runs
+before `.env` is reliably readable, so the override silently no-ops and leaves the client
+pointed at production. `src/test/db.ts` refuses to truncate a database whose name has no
+"test" in it, as an independent second guard, and `src/test/db.test.ts` proves it still
+refuses.
+
+Rebuild the database after a schema change with `prisma db push` — from a scratch
+directory whose `.env` holds only the test URL, never from the repo root, where
+`db push` would target production.
+
+Testing a router: build a caller from just the routers under test rather than importing
+`~/server/api/root`, which reaches the order router and an email template whose JSX will
+not compile under the Next `tsconfig`. Mock `server-only` and `~/server/auth` (the latter
+drags in next-auth → `next/server`). `protectedProcedure` only checks `ctx.session.user`
+exists, so the context is a plain object. Worked example and the remaining work:
+`OUTSTANDING.md` §1.
+
 ### Running the app
 
 Prefer the Browser pane over a bare `npm run dev` — `.claude/launch.json` defines an
