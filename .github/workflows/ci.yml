@@ -37,3 +37,8 @@ jobs:
 
       - name: Type check
         run: npm run typecheck
+
+      # The integration suites skip here: they are wrapped in `describeIfDb` and
+      # TEST_DATABASE_URL is unset, so no database is contacted. The unit suites run.
+      - name: Test
+        run: npm test

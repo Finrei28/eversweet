@@ -35,7 +35,51 @@ on missing env. A test that imports a `server-only` module needs
 `vi.mock("server-only", () => ({}))` at the top — see `src/server/notifyAdmin.test.ts`.
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck and tests on Node 22 with dummy
-`DATABASE_URL`/`DIRECT_URL` and `SKIP_ENV_VALIDATION=1`; no database is contacted.
+`DATABASE_URL`/`DIRECT_URL` and `SKIP_ENV_VALIDATION=1`; no database is contacted. The
+integration suites below skip there for want of `TEST_DATABASE_URL`, so CI covers the
+unit tests only - the router suites run locally or nowhere.
+
+### Integration tests need a database, and `DATABASE_URL` is production
+
+Unit suites need none. Anything exercising a tRPC router does, and the trap here is that
+`DATABASE_URL` in `.env` is **production Supabase** — `resetDatabase()` truncates every
+table, so getting this wrong is `RECOVERY.md` again from a different direction.
+
+The database is `eversweet_web_test` on the standalone PG16 cluster at `C:\pg16test`,
+which the order server's repo also uses — a **separate database** from its
+`eversweet_test`, because both suites truncate. It is not a Windows service, so after a
+reboot:
+
+```bash
+"C:/pg16test/pgsql/bin/pg_ctl.exe" -D "C:/pg16test/data"   -l "C:/pg16test/server.log" -o "-p 5432 -c listen_addresses=127.0.0.1" start
+```
+
+`vitest.config.mts` reads `TEST_DATABASE_URL` with `loadEnv` at **config** time and swaps
+it into `DATABASE_URL`/`DIRECT_URL`. Do not move that into `src/test/setup.ts`: setup runs
+before `.env` is reliably readable, so the override silently no-ops and leaves the client
+pointed at production. `src/test/db.ts` refuses to truncate a database whose name has no
+"test" in it, as an independent second guard, and `src/test/db.test.ts` proves it still
+refuses.
+
+Rebuild the database after a schema change with `prisma db push` — from a scratch
+directory whose `.env` holds only the test URL, never from the repo root, where
+`db push` would target production.
+
+Testing a router: build a caller from just the routers under test rather than importing
+`~/server/api/root`, which reaches the order router and an email template whose JSX will
+not compile under the Next `tsconfig`. Mock `server-only` and `~/server/auth` (the latter
+drags in next-auth → `next/server`). `protectedProcedure` only checks `ctx.session.user`
+exists, so the context is a plain object. `src/test/caller.ts` does all of that once;
+`src/server/api/routers/offers.integration.test.ts` is the worked example.
+
+Suites that need the database are wrapped in `describeIfDb` (or `itIfDb` for a lone
+case), so a machine without `TEST_DATABASE_URL` skips them rather than failing. Keep new
+ones wrapped: an unguarded case there fails `npm test` for everyone who has not set the
+database up.
+
+`timingMiddleware` sleeps 100-500ms per call whenever `isDev`, and Vitest sets
+`NODE_ENV=test`, so every procedure call in a router suite pays it. A case making five or
+six calls needs a raised timeout - `describeIfDb("...", { timeout: 30_000 }, ...)`.
 
 ### Running the app
 
@@ -221,9 +265,22 @@ reserves the logo's width (`pl-64`) and tightens the gap. Check any new link at 
 
 ## Sharp edges
 
-- **`Offer.discountAmount` is whole percent, 0–100** (an `Int` since the 2026-09-12 migration;
-  it was previously a `Decimal` fraction where `0.2` meant 20%). `itemPriceInCents` overrides
-  it when both are set.
+- **An offer carries exactly one price: `itemPriceInCents` or `discountAmount`, never both
+  and never neither.** `discountAmount` is whole percent 1–100 (an `Int` since the
+  2026-09-12 migration; it was previously a `Decimal` fraction where `0.2` meant 20%).
+  `itemPriceInCents` is cents and **0 is legal, meaning free** — both giveaway offers are
+  stored that way, so null-check it, never truth-check it. A fixed price must also come in
+  *under* the list price of what it covers; for a category-scoped offer that means under the
+  **cheapest** item in the category, which is the only shape in production.
+- **Those rules live in three places and only two of them are the database.** The first two
+  are CHECK constraints (`20260914000000_offer_pricing_rules`) *and* `createOfferSchema`;
+  the price ceiling cannot be a constraint at all, because it compares against another
+  table and PostgreSQL CHECK forbids subqueries — it is `assertUnderListPrice` in the offers
+  router, mirrored in `offerDialog.tsx` so the admin is told before submitting. Prisma
+  cannot express a CHECK, so the constraints are invisible to it: `migrate diff` reports no
+  drift and will not drop them, but `prisma db push` never creates them, which means **no
+  test database has them**. Suites prove the application layer; the constraints are defence
+  against a writer that bypasses it.
 - **`Offer.renewsWeekly` makes `limit` an allowance per week rather than per run.** The order
   server's `renewWeeklyOffers` cron clears `used` every Monday for exactly those offers. It
   used to be an `updateMany` with no WHERE clause, which reset every redemption row in the

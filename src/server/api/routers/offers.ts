@@ -1,8 +1,11 @@
+import { type Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { createOfferSchema, updateOfferSchema } from "~/app/components/schemas";
+import { formatCurrency } from "~/lib/formatters";
 import { canActivate, hasEnded } from "~/lib/offers";
+import { cheapestDessert, isUnderListPrice } from "~/lib/offerPricing";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 
 /**
@@ -23,6 +26,63 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
  * which means a delete either throws or eats sales history depending on unrelated
  * state. Archiving is the supported way to retire an offer.
  */
+
+/**
+ * A fixed offer price has to come in under what the thing normally costs - equal is not
+ * an offer and above it is a surcharge.
+ *
+ * This rule cannot live where the other two do. `hasExactlyOnePrice` and the 1-100 range
+ * read one row, so a CHECK constraint holds them; this one compares against
+ * `Dessert.priceInCents` in another table, and a PostgreSQL CHECK cannot contain a
+ * subquery. So it is enforced here, and mirrored in the dialog so the admin is told
+ * before they submit rather than after.
+ *
+ * It is also the one rule that can come untrue on its own: drop a dessert's price below
+ * an offer's fixed price and a row that was valid when written is no longer. Nothing
+ * re-checks existing offers, and this deliberately does not either - it would mean an
+ * unrelated price edit could refuse to save because of an old offer.
+ */
+const assertUnderListPrice = async (
+  db: Prisma.TransactionClient,
+  data: {
+    itemPriceInCents: number | null;
+    dessertId: string | null;
+    categoryId: string | null;
+  },
+) => {
+  if (data.itemPriceInCents === null) return;
+
+  // Scope first. `where: undefined` would match the entire menu and take the ceiling
+  // from the cheapest dessert in the shop, which is not what either branch means.
+  const where = data.dessertId
+    ? { id: data.dessertId }
+    : data.categoryId
+      ? { categoryId: data.categoryId }
+      : null;
+
+  // An offer that names neither has nothing to undercut, so there is no rule to break.
+  if (where === null) return;
+
+  const desserts = await db.dessert.findMany({
+    where,
+    select: { name: true, priceInCents: true },
+  });
+
+  const cheapest = cheapestDessert(desserts);
+
+  if (
+    cheapest !== null &&
+    !isUnderListPrice(data.itemPriceInCents, cheapest.priceInCents)
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        `A fixed price has to be under what the item normally costs. ` +
+        `${cheapest.name} is ${formatCurrency(cheapest.priceInCents / 100)}` +
+        `, so this offer has to be less than that.`,
+    });
+  }
+};
 
 const offerSelect = {
   id: true,
@@ -95,6 +155,8 @@ export const offerRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const data = input.offer;
 
+      await assertUnderListPrice(ctx.db, data);
+
       // No redemption reset: a brand new offer has none.
       const offer = await ctx.db.offer.create({
         data: {
@@ -157,6 +219,8 @@ export const offerRouter = createTRPCRouter({
               "This offer's run has ended. Close the run first - that clears redemptions so customers can earn it again.",
           });
         }
+
+        await assertUnderListPrice(tx, data);
 
         /**
          * Requirements are patched, not replaced.

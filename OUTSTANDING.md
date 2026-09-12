@@ -9,50 +9,22 @@ two repos share one database.
 
 ---
 
-## 1. Admin write paths not fully exercised
+## Nothing open
 
-**Status:** read paths and the run lifecycle are verified against the live database; two
-mutations have never been run.
+Every item this file was opened for has shipped. The record is below; it is kept for what
+the two repos had to agree on, and for what a schema change costs when it is only
+half-deployed.
 
-Verified in the browser against real data: both tables render, dialogs open and load stored
-values, the requirements editor round-trips an existing row, an ended offer has Edit
-disabled and Close run offered, and Close run itself was proven end to end on a throwaway
-offer — rows deleted, `isActive` false, `endsAt` cleared, editing unblocked, count correct —
-before being cleaned up.
+Two properties are known and accepted rather than outstanding:
 
-Not yet run against a database:
-
-| Untested | Note |
-| --- | --- |
-| `offer.createOffer` / `offer.updateOffer` | the dialog was opened and cancelled, never saved |
-| `winner.upsertReward` | would mint a real prize code against a real winner |
-
-Worth proving before trusting in production, ideally on a scratch database:
-
-1. **Requirements are patched, not replaced** — edit an offer and confirm its
-   `OfferRequirement` row ids are unchanged. That diff logic in `updateOffer` is the whole
-   reason the order server can rely on those ids, and a regression would be silent.
-2. **Reward guards** — a winner whose `userId` is null refuses assignment; a reward with
-   `redeemedAt` set refuses edits; the code does not change on edit.
-
-## 2. `renewsWeekly` is invisible to the customer
-
-The admin can now flag an offer as renewing weekly, and `renewWeeklyOffers` resets exactly
-those offers every Monday. Nothing tells the *customer* that: the app shows a greyed
-"Redeem" button once the allowance is spent, with no copy saying it comes back on Monday —
-`eversweet_app/frontend/_components/offerCard.tsx`.
-
-## 3. Offer field semantics are documented by code, not by spec
-
-`itemPriceInCents` takes precedence over `discountAmount` — true in
-`eversweet_app/backend/src/controllers/cart.controller.ts`, but written down nowhere as a
-rule. The admin form exposes both with a non-blocking hint rather than a validation rule,
-deliberately: any rule stricter than the column itself would stop an offer that is
-*running right now* from loading into its own edit form, and that failure only shows up
-against production data.
-
-If the precedence is ever formalised, tighten the schema with a migration in the house
-style rather than enforcing it only in the UI.
+- **No test database has the CHECK constraints.** `prisma db push` does not run
+  migrations, and that is how both repos build their test databases. The suites prove the
+  zod schema and the router, which is every path an admin can reach; the constraints are
+  defence against a writer that bypasses both.
+- **The price ceiling is not re-checked on existing offers.** Drop a dessert's price below
+  an old offer's fixed price and that offer is no longer under it. Enforcing this would
+  mean failing an unrelated price edit because of an old offer, which is a worse failure
+  than the one it prevents.
 
 ---
 
@@ -61,6 +33,70 @@ style rather than enforcing it only in the UI.
 Everything below was outstanding during the build and has since shipped. Kept as a record
 of what the two repos had to agree on, and of what a schema change costs when it is only
 half-deployed.
+
+**Offer pricing rules — 2026-09-12**
+
+- `20260914000000_offer_pricing_rules` applied to production. All three CHECK constraints
+  are live and the migration is recorded; the live rows were audited against it first and
+  all three complied, so it applied cleanly.
+
+- An offer now carries exactly one price. Both set was accepted and the discount silently
+  ignored, so a row could read "50% off" while every customer paid the fixed price;
+  neither set was accepted and priced at list. `discountAmount` is 1-100, and a fixed
+  price has to come in under the list price of what it covers - for a category-scoped
+  offer, under the **cheapest** item in it, which matters because all three live offers
+  are category-scoped.
+- A fixed price of **0 stays legal and means free**: both giveaway offers are stored that
+  way, so the "positive integer" reading would have made them unsaveable and the
+  constraint unappliable.
+- Split across the layers that can actually hold each rule: CHECK constraints and zod for
+  the two single-row rules, `assertUnderListPrice` in the router for the price ceiling,
+  which compares against another table and so cannot be a constraint. The dialog mirrors
+  the ceiling and names the item that sets it, so the admin is told while typing.
+- Checked in the browser against the live database: the hint reads "A fixed price has to
+  be under $9.99, what Black Sesame Bowl normally costs", and all three refusals fire
+  without a mutation reaching the server. Nothing was written - still exactly three
+  offers.
+
+**Admin write paths, now covered — 2026-09-12**
+
+- `src/server/api/routers/offers.integration.test.ts` (9 cases) and
+  `winners.integration.test.ts` (7), both `describeIfDb` against `eversweet_web_test`.
+  They pin the two guarantees that are invisible from the UI and would otherwise regress
+  in silence: `updateOffer` patches an `OfferRequirement` rather than deleting and
+  recreating it, so the ids the order server joins on survive an edit; and `closeRun` is
+  the *only* procedure that touches a redemption, with edit, pause, resume, archive and
+  restore all leaving a seeded row byte-for-byte intact.
+
+  Also covered: the ended-run edit block (including that pushing `endsAt` forward is
+  refused, which is the move the whole design exists to stop), the refusal to reactivate
+  an ended run, closing a run end to end — rows deleted, `endsAt` cleared, requirements
+  kept, editing unblocked — "Show archived" returning archived rows, whole-percent
+  `discountAmount` arriving as a number, reward code and original assigner surviving an
+  edit made by a *different* admin, the closed-account and already-redeemed refusals, and
+  the NZ end-of-day expiry.
+
+- Checked by mutation rather than trusted for going green. Restoring delete-and-recreate
+  in `updateOffer`, reset-on-reactivate in `setActive`, and re-minting the code on a
+  reward edit each failed exactly the case that names it and nothing else.
+
+- `src/test/caller.ts` carries the shared tRPC caller: the root router cannot be imported
+  (it reaches an email template whose JSX will not compile under the Next `tsconfig`),
+  `server-only` and `~/server/auth` both need stubbing, and the context is a plain
+  object. It takes an admin id so a test can play a second admin.
+
+**Fixed while writing those**
+
+- `itIfDb` added alongside `describeIfDb`. `src/test/db.test.ts` had an unguarded case
+  asserting `DATABASE_URL` names the test database, so `npm test` failed on any machine
+  without `TEST_DATABASE_URL` — the opposite of the skip-not-fail contract `db.ts`
+  promises. A run with no database is now 89 passed, 17 skipped, 0 failed.
+- `npm test` added to `.github/workflows/ci.yml`, which ran lint and typecheck only. The
+  integration suites skip there for want of `TEST_DATABASE_URL`, so CI covers the unit
+  tests — but nothing had been stopping a test regression reaching `main`.
+- `types/next-auth.d.ts` intersected the session **user** with `DefaultSession` instead of
+  `DefaultSession["user"]`, making `expires` a required field of the user and putting a
+  nested `user.user` on the type. Nothing read either; the fix is inert.
 
 **Website (this repo), 2026-09-12**
 
@@ -74,6 +110,14 @@ half-deployed.
 
 **Order server and mobile app (`eversweet_app`)** — verified 2026-09-12
 
+- A spent weekly perk no longer reads as gone for good: `offerCard.tsx` says "Back again
+  each Monday" once the allowance is used, driven by `renewsWeekly` now travelling in the
+  `showOffers` payload. ("each Monday" rather than "on Monday" — the reset runs Monday
+  00:00 NZ, so on a Monday the latter reads as today when it means next week.)
+- Every `Offer` and `OfferRedemption` read given an explicit `select`, the same guard this
+  repo applies to its own queries, so a client generated either side of an unapplied
+  migration cannot ask for a column the database lacks. `showOffers` now asserts its exact
+  response shape, since a hand-written select can drop a field the app needs by one line.
 - Schema mirrored **and committed**, so the deployed client no longer declares the dropped
   `renewsAt` column. That mismatch had been breaking the offers screen and offer
   add-to-cart, because Prisma selects every scalar it knows about.

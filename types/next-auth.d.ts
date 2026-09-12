@@ -11,12 +11,15 @@ import { JWT as DefaultJWTType } from "next-auth/jwt";
 
 declare module "next-auth" {
   interface Session {
+    // Intersected with DefaultSession["user"], not DefaultSession: the latter is the
+    // whole session object, so it made `expires` a required field of the *user* and
+    // put a nested `user.user` on the type. Nothing ever read either.
     user: {
       id: string;
       role: Role;
       email: string;
       requires2FAExpiresAt?: Date | string | null;
-    } & DefaultSession;
+    } & DefaultSession["user"];
   }
 
   interface User extends DefaultUser {
