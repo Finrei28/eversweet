@@ -35,7 +35,9 @@ on missing env. A test that imports a `server-only` module needs
 `vi.mock("server-only", () => ({}))` at the top — see `src/server/notifyAdmin.test.ts`.
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck and tests on Node 22 with dummy
-`DATABASE_URL`/`DIRECT_URL` and `SKIP_ENV_VALIDATION=1`; no database is contacted.
+`DATABASE_URL`/`DIRECT_URL` and `SKIP_ENV_VALIDATION=1`; no database is contacted. The
+integration suites below skip there for want of `TEST_DATABASE_URL`, so CI covers the
+unit tests only - the router suites run locally or nowhere.
 
 ### Integration tests need a database, and `DATABASE_URL` is production
 
@@ -67,8 +69,17 @@ Testing a router: build a caller from just the routers under test rather than im
 `~/server/api/root`, which reaches the order router and an email template whose JSX will
 not compile under the Next `tsconfig`. Mock `server-only` and `~/server/auth` (the latter
 drags in next-auth → `next/server`). `protectedProcedure` only checks `ctx.session.user`
-exists, so the context is a plain object. Worked example and the remaining work:
-`OUTSTANDING.md` §1.
+exists, so the context is a plain object. `src/test/caller.ts` does all of that once;
+`src/server/api/routers/offers.integration.test.ts` is the worked example.
+
+Suites that need the database are wrapped in `describeIfDb` (or `itIfDb` for a lone
+case), so a machine without `TEST_DATABASE_URL` skips them rather than failing. Keep new
+ones wrapped: an unguarded case there fails `npm test` for everyone who has not set the
+database up.
+
+`timingMiddleware` sleeps 100-500ms per call whenever `isDev`, and Vitest sets
+`NODE_ENV=test`, so every procedure call in a router suite pays it. A case making five or
+six calls needs a raised timeout - `describeIfDb("...", { timeout: 30_000 }, ...)`.
 
 ### Running the app
 

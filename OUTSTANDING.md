@@ -9,96 +9,7 @@ two repos share one database.
 
 ---
 
-## 1. Admin write paths not fully exercised
-
-**Status:** read paths and the run lifecycle are verified against the live database; two
-mutations have never been run.
-
-Verified in the browser against real data: both tables render, dialogs open and load stored
-values, the requirements editor round-trips an existing row, an ended offer has Edit
-disabled and Close run offered, and Close run itself was proven end to end on a throwaway
-offer — rows deleted, `isActive` false, `endsAt` cleared, editing unblocked, count correct —
-before being cleaned up.
-
-Not yet run against a database:
-
-| Untested | Note |
-| --- | --- |
-| `offer.createOffer` / `offer.updateOffer` | the dialog was opened and cancelled, never saved |
-| `winner.upsertReward` | would mint a real prize code against a real winner |
-
-### The harness is built — what is left is the two tests
-
-The scratch database exists and the plumbing is proven: a spike drove the real
-`offer.updateOffer` through a tRPC caller against it and confirmed the requirement row
-kept its id. That spike was removed; what it needed is committed.
-
-**Already in place**
-
-- `eversweet_web_test` on the local PG16 cluster (`C:\pg16test`, 127.0.0.1:5432), schema
-  pushed, 31 tables. A *separate* database from the order server's `eversweet_test`:
-  both suites truncate, so sharing one would have them clearing each other's rows.
-- `TEST_DATABASE_URL` in `.env` (gitignored — set it by hand on another machine).
-- `vitest.config.mts` reads it with `loadEnv` at **config** time and swaps it into
-  `DATABASE_URL`/`DIRECT_URL`, plus `fileParallelism: false`.
-- `src/test/db.ts` — `describeIfDb`, and `resetDatabase` refusing any database whose name
-  lacks "test". `src/test/db.test.ts` proves the refusal still bites.
-
-**Read this before writing the tests — four things that will otherwise cost an hour**
-
-1. **`DATABASE_URL` in this repo is production Supabase.** Doing the swap in
-   `src/test/setup.ts` looks natural and is wrong: setup runs before `.env` is reliably
-   readable, so the override silently no-ops and the first `resetDatabase()` truncates the
-   live database. That is `RECOVERY.md` all over again. It is decided in `vitest.config.mts`
-   for that reason — leave it there. Assert `DATABASE_URL` contains `eversweet_web_test`
-   in any new suite as a third check.
-2. **Do not import `~/server/api/root`.** It reaches the order router, which imports an
-   email template whose JSX will not compile under the Next `tsconfig`. Build a caller from
-   just what is under test:
-   ```ts
-   const createCaller = createCallerFactory(
-     createTRPCRouter({ offer: offerRouter, winner: winnerRouter }),
-   );
-   ```
-3. **Mock two modules** or the file will not even load:
-   ```ts
-   vi.mock("server-only", () => ({}));               // throws outside an RSC
-   vi.mock("~/server/auth", () => ({ auth: vi.fn(async () => null) }));
-   ```
-   `trpc.ts` imports `auth`, which drags in next-auth → `next/server`, unresolvable under
-   Vitest. A hand-built context never calls it, so the stub is free.
-4. **The context is just an object.** `protectedProcedure` only checks `ctx.session.user`
-   exists, so this is a signed-in admin:
-   ```ts
-   createCaller({ db, session: { user: { id: "admin-test" }, expires: "2099-01-01" },
-                  headers: new Headers() } as never)
-   ```
-   `WinnerReward.assignedByAdminId` has no foreign key, so that id needs no `User` row.
-   `LoyaltyWinner.userId` **does** — create a real user for the happy path.
-
-   Minor: `timingMiddleware` adds a 100–500ms artificial delay whenever `isDev`, and Vitest
-   sets `NODE_ENV=test`, so every call pays it. Tolerable for a handful of tests; pass
-   `isDev: false` to `initTRPC.create()` if it ever grates.
-
-**The tests to write** (`src/server/api/routers/offers.integration.test.ts` and
-`winners.integration.test.ts`, both `describeIfDb` with `resetDatabase()` in `beforeEach`):
-
-1. **Requirements are patched, not replaced** — create an offer with two requirements, edit
-   it through `offer.updateOffer` changing a quantity and dropping one, and assert the
-   surviving row keeps its original id. This is the whole point of the diff logic, the order
-   server joins on those ids, and a regression would be silent. *(Proven by the spike for
-   the single-requirement case; the two-requirement and removal cases are still unwritten.)*
-2. **`createOffer` round-trips** — requirements created with it come back through
-   `offerSelect`, and `renewsWeekly` persists.
-3. **Reward guards** — `winner.upsertReward` refuses a winner whose `userId` is null
-   ("account has been closed"); refuses a reward with `redeemedAt` set; and on a plain edit
-   changes the title while leaving `code` and `assignedByAdminId` untouched.
-4. **Only Close run touches redemptions** — seed an `OfferRedemption` with
-   `used: 1, status: "REDEEMED"`, then edit, deactivate, reactivate, archive and restore.
-   The row must be untouched after every one. This is the guarantee the run lifecycle rests
-   on, and the order server now depends on it.
-
-## 2. Offer field semantics are documented by code, not by spec
+## 1. Offer field semantics are documented by code, not by spec
 
 `itemPriceInCents` takes precedence over `discountAmount` — true in
 `eversweet_app/backend/src/controllers/cart.controller.ts`, but written down nowhere as a
@@ -117,6 +28,46 @@ style rather than enforcing it only in the UI.
 Everything below was outstanding during the build and has since shipped. Kept as a record
 of what the two repos had to agree on, and of what a schema change costs when it is only
 half-deployed.
+
+**Admin write paths, now covered — 2026-09-12**
+
+- `src/server/api/routers/offers.integration.test.ts` (9 cases) and
+  `winners.integration.test.ts` (7), both `describeIfDb` against `eversweet_web_test`.
+  They pin the two guarantees that are invisible from the UI and would otherwise regress
+  in silence: `updateOffer` patches an `OfferRequirement` rather than deleting and
+  recreating it, so the ids the order server joins on survive an edit; and `closeRun` is
+  the *only* procedure that touches a redemption, with edit, pause, resume, archive and
+  restore all leaving a seeded row byte-for-byte intact.
+
+  Also covered: the ended-run edit block (including that pushing `endsAt` forward is
+  refused, which is the move the whole design exists to stop), the refusal to reactivate
+  an ended run, closing a run end to end — rows deleted, `endsAt` cleared, requirements
+  kept, editing unblocked — "Show archived" returning archived rows, whole-percent
+  `discountAmount` arriving as a number, reward code and original assigner surviving an
+  edit made by a *different* admin, the closed-account and already-redeemed refusals, and
+  the NZ end-of-day expiry.
+
+- Checked by mutation rather than trusted for going green. Restoring delete-and-recreate
+  in `updateOffer`, reset-on-reactivate in `setActive`, and re-minting the code on a
+  reward edit each failed exactly the case that names it and nothing else.
+
+- `src/test/caller.ts` carries the shared tRPC caller: the root router cannot be imported
+  (it reaches an email template whose JSX will not compile under the Next `tsconfig`),
+  `server-only` and `~/server/auth` both need stubbing, and the context is a plain
+  object. It takes an admin id so a test can play a second admin.
+
+**Fixed while writing those**
+
+- `itIfDb` added alongside `describeIfDb`. `src/test/db.test.ts` had an unguarded case
+  asserting `DATABASE_URL` names the test database, so `npm test` failed on any machine
+  without `TEST_DATABASE_URL` — the opposite of the skip-not-fail contract `db.ts`
+  promises. A run with no database is now 89 passed, 17 skipped, 0 failed.
+- `npm test` added to `.github/workflows/ci.yml`, which ran lint and typecheck only. The
+  integration suites skip there for want of `TEST_DATABASE_URL`, so CI covers the unit
+  tests — but nothing had been stopping a test regression reaching `main`.
+- `types/next-auth.d.ts` intersected the session **user** with `DefaultSession` instead of
+  `DefaultSession["user"]`, making `expires` a required field of the user and putting a
+  nested `user.user` on the type. Nothing read either; the fix is inert.
 
 **Website (this repo), 2026-09-12**
 
@@ -138,7 +89,6 @@ half-deployed.
   repo applies to its own queries, so a client generated either side of an unapplied
   migration cannot ask for a column the database lacks. `showOffers` now asserts its exact
   response shape, since a hand-written select can drop a field the app needs by one line.
-
 - Schema mirrored **and committed**, so the deployed client no longer declares the dropped
   `renewsAt` column. That mismatch had been breaking the offers screen and offer
   add-to-cart, because Prisma selects every scalar it knows about.

@@ -1,4 +1,4 @@
-import { describe } from "vitest";
+import { describe, it } from "vitest";
 
 import { db } from "~/server/db";
 
@@ -18,6 +18,9 @@ import { db } from "~/server/db";
 export const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
 
 export const describeIfDb = hasTestDatabase ? describe : describe.skip;
+
+/** The same switch for a single case that needs the database, outside any suite. */
+export const itIfDb = hasTestDatabase ? it : it.skip;
 
 /**
  * Empties every table. Cheaper and more thorough than unwinding fixtures.
