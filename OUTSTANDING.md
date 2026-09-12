@@ -9,20 +9,22 @@ two repos share one database.
 
 ---
 
-## 1. The pricing constraints are not on production yet
+## Nothing open
 
-`20260914000000_offer_pricing_rules` is written, applied to the test database and proven
-there - both set, neither set and a 0% discount are all rejected, and a fixed price of 0
-still saves. It has **not** been applied to production:
+Every item this file was opened for has shipped. The record is below; it is kept for what
+the two repos had to agree on, and for what a schema change costs when it is only
+half-deployed.
 
-```bash
-npm run db:migrate
-```
+Two properties are known and accepted rather than outstanding:
 
-The live rows were audited against it first and all three comply, so it applies cleanly.
-Until it runs, the rules are enforced by `createOfferSchema` and `assertUnderListPrice`
-only - which is every path an admin can reach, so this is defence in depth rather than a
-hole.
+- **No test database has the CHECK constraints.** `prisma db push` does not run
+  migrations, and that is how both repos build their test databases. The suites prove the
+  zod schema and the router, which is every path an admin can reach; the constraints are
+  defence against a writer that bypasses both.
+- **The price ceiling is not re-checked on existing offers.** Drop a dessert's price below
+  an old offer's fixed price and that offer is no longer under it. Enforcing this would
+  mean failing an unrelated price edit because of an old offer, which is a worse failure
+  than the one it prevents.
 
 ---
 
@@ -33,6 +35,10 @@ of what the two repos had to agree on, and of what a schema change costs when it
 half-deployed.
 
 **Offer pricing rules — 2026-09-12**
+
+- `20260914000000_offer_pricing_rules` applied to production. All three CHECK constraints
+  are live and the migration is recorded; the live rows were audited against it first and
+  all three complied, so it applied cleanly.
 
 - An offer now carries exactly one price. Both set was accepted and the discount silently
   ignored, so a row could read "50% off" while every customer paid the fixed price;
