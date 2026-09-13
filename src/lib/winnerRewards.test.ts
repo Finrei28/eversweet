@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   defaultRewardExpiry,
   endOfDayNZ,
+  finishedMonths,
   monthLabel,
   rewardStatus,
 } from "./winnerRewards";
@@ -128,5 +129,42 @@ describe("monthLabel", () => {
   it("names the month in each language", () => {
     expect(monthLabel(9, 2026, "en")).toBe("September 2026");
     expect(monthLabel(9, 2026, "zh")).toBe("2026年9月");
+  });
+});
+
+describe("finishedMonths", () => {
+  // Never the month still being competed for: settling it early would freeze a podium
+  // with weeks of points still to come, and a settled month is never revisited.
+  it("starts at last month, newest first", () => {
+    const now = new Date("2026-09-13T01:00:00Z"); // 13 September, 13:00 in Auckland
+
+    expect(finishedMonths(3, now)).toEqual([
+      { month: 8, year: 2026 },
+      { month: 7, year: 2026 },
+      { month: 6, year: 2026 },
+    ]);
+  });
+
+  it("carries the year back over January", () => {
+    const now = new Date("2026-02-10T01:00:00Z");
+
+    expect(finishedMonths(3, now)).toEqual([
+      { month: 1, year: 2026 },
+      { month: 12, year: 2025 },
+      { month: 11, year: 2025 },
+    ]);
+  });
+
+  // 31 August 20:00 UTC is already 1 September in Auckland, so August has finished there
+  // even though a UTC clock says it has not. The server runs in UTC; this is the bug the
+  // cron itself once had.
+  it("reads the month on the Auckland calendar, not the host's", () => {
+    const now = new Date("2026-08-31T20:00:00Z");
+
+    expect(finishedMonths(1, now)).toEqual([{ month: 8, year: 2026 }]);
+  });
+
+  it("offers a year of months by default", () => {
+    expect(finishedMonths()).toHaveLength(12);
   });
 });

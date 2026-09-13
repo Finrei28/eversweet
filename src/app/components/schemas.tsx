@@ -196,3 +196,13 @@ export const upsertRewardSchema = z.object({
   description: z.string().trim().max(500).optional(),
   expiresAt: z.date(),
 });
+
+/**
+ * A finished month to settle by hand, for when the order server's cron missed NZ midnight
+ * on the 1st. The order server refuses the month still being competed for; the dialog only
+ * offers finished months, so that refusal should never be seen.
+ */
+export const settleMonthSchema = z.object({
+  month: z.number().int().min(1).max(12),
+  year: z.number().int().min(2000),
+});

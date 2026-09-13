@@ -63,12 +63,20 @@ export default function RewardDialog({
     onSuccess: async (data) => {
       await utils.winner.invalidate();
       onOpenChange(false);
+      // Said out loud because it only happens on the first assign, and only when the
+      // winner has notifications on. Otherwise staff cannot tell whether the customer
+      // knows yet.
+      const notice = data.notified
+        ? language === "en"
+          ? " The winner has been notified."
+          : " 已通知得奖者。"
+        : "";
       toast({
         title: language === "en" ? "Reward saved" : "奖品已保存",
         description:
           language === "en"
-            ? `${data.title} — code ${data.code}`
-            : `${data.title} — 兑换码 ${data.code}`,
+            ? `${data.title} — code ${data.code}.${notice}`
+            : `${data.title} — 兑换码 ${data.code}。${notice}`,
       });
     },
     onError: (mutationError) => setError(mutationError.message),
