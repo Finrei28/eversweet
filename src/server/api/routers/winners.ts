@@ -1,27 +1,30 @@
-import { Prisma } from "@prisma/client";
-import { TRPCError } from "@trpc/server";
-
-import { upsertRewardSchema } from "~/app/components/schemas";
+import {
+  settleMonthSchema,
+  upsertRewardSchema,
+} from "~/app/components/schemas";
 import { endOfDayNZ } from "~/lib/winnerRewards";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
-import { generateRewardCode } from "~/server/rewardCode";
+import { callOrderServer } from "~/server/orderServer";
 
 /**
  * Monthly leaderboard winners and the prize each one collects in store.
  *
- * Read-only on winners themselves: the rows come from settleMonthlyWinners on the order
- * server, which ranks the month and writes one row per place. Nothing here creates,
- * ranks or closes anything.
+ * **Reads here, writes on the order server.** `getWinners` reads the database directly;
+ * assigning a prize and settling a missed month both go through `callOrderServer`. The
+ * order server is where a prize code is minted, where the winner is sent a push, and
+ * where every guard lives — this file used to write the reward row itself, with its own
+ * copy of the code generator and no way to notify anyone, so a prize assigned here arrived
+ * in silence and the two code generators had to be kept identical by hand.
  *
- * Read-only on redemption too. The code is typed in at the counter through the admin
- * *mobile* app, which is what stamps redeemedAt and redeemedByAdminId. No procedure in
- * this file writes either field, and `upsertReward`'s input has no shape that could.
+ * Winners themselves come from settleMonthlyWinners on the order server, which ranks the
+ * month and writes one row per place. Redemption is the admin *mobile* app's job: nothing
+ * here stamps `redeemedAt`.
  *
  * protectedProcedure is the admin gate. Only ADMIN users can authenticate on this site
  * at all - src/server/auth/config.ts `authorize()` returns null for everyone else - so
  * "signed in" and "is an admin" are the same statement. If that ever stops being true,
- * every procedure in this file needs a role check before it is deployed. This one mints
- * prizes.
+ * every procedure in this file needs a role check before it is deployed: the order
+ * server trusts the admin id this file sends it.
  */
 
 const rewardSelect = {
@@ -36,18 +39,20 @@ const rewardSelect = {
   redeemedByAdminId: true,
 } as const;
 
-/**
- * 30^8 codes against a table that holds a few dozen rows makes a collision a formality
- * rather than a risk, but the unique index is the only thing that actually decides, so
- * we let it: catching P2002 beats a findUnique check, which is two statements with a
- * gap in between.
- */
-const CODE_ATTEMPTS = 5;
+/** What the order server answers when a prize is saved. */
+type SavedReward = {
+  reward: { title: string; code: string; expiresAt: string };
+  /** Whether a push went out. Only ever true on the first assign, never on an edit. */
+  notified: boolean;
+};
 
-const isCodeCollision = (error: unknown) =>
-  error instanceof Prisma.PrismaClientKnownRequestError &&
-  error.code === "P2002" &&
-  (error.meta?.target as string[] | undefined)?.includes("code");
+/** What the order server answers when a month is settled. A failure arrives as an error. */
+export type SettleOutcome = {
+  month: number;
+  year: number;
+  recorded: number;
+  outcome: "RECORDED" | "ALREADY_SETTLED" | "NO_EARNERS";
+};
 
 export const winnerRouter = createTRPCRouter({
   getWinners: protectedProcedure.query(async ({ ctx }) => {
@@ -79,88 +84,47 @@ export const winnerRouter = createTRPCRouter({
 
   /**
    * One procedure rather than assign + edit: the difference is entirely "does this
-   * winner already have a reward", and the server knows that without being told.
+   * winner already have a reward", and the order server knows that without being told.
+   *
+   * The expiry is pinned to the end of the chosen Auckland day here, because interpreting
+   * a click in the admin's browser calendar is this site's concern — see `endOfDayNZ`. The
+   * order server receives an instant and does not second-guess it.
    */
   upsertReward: protectedProcedure
     .input(upsertRewardSchema)
     .mutation(async ({ ctx, input }) => {
-      const winner = await ctx.db.loyaltyWinner.findUnique({
-        where: { id: input.winnerId },
-        select: {
-          id: true,
-          userId: true,
-          month: true,
-          year: true,
-          reward: { select: { id: true, redeemedAt: true } },
+      const { reward, notified } = await callOrderServer<SavedReward>(
+        "PUT",
+        "/api/internal/winners/reward",
+        {
+          winnerId: input.winnerId,
+          title: input.title,
+          description: input.description ?? null,
+          expiresAt: endOfDayNZ(input.expiresAt).toISOString(),
+          adminId: ctx.session.user.id,
         },
-      });
+      );
 
-      if (!winner) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Winner not found" });
-      }
-
-      // LoyaltyWinner.userId is SetNull on account deletion, so a null here means the
-      // winner closed their account. There is nobody left to hand a prize to and the
-      // reward would be permanently unclaimable.
-      if (!winner.userId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "This winner's account has been closed.",
-        });
-      }
-
-      // The code has already been typed in at the counter and the prize handed over.
-      // Editing the title now would rewrite what happened.
-      if (winner.reward?.redeemedAt) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "This reward has already been redeemed and cannot be changed.",
-        });
-      }
-
-      const expiresAt = endOfDayNZ(input.expiresAt);
-
-      if (winner.reward) {
-        // code and assignedByAdminId are left alone: the winner is already looking at
-        // that code in the app, and assignedBy records who first granted the prize.
-        return ctx.db.winnerReward.update({
-          where: { winnerId: winner.id },
-          data: {
-            title: input.title,
-            description: input.description ?? null,
-            expiresAt,
-          },
-          select: rewardSelect,
-        });
-      }
-
-      for (let attempt = 0; attempt < CODE_ATTEMPTS; attempt++) {
-        try {
-          return await ctx.db.winnerReward.create({
-            data: {
-              winnerId: winner.id,
-              title: input.title,
-              description: input.description ?? null,
-              expiresAt,
-              assignedByAdminId: ctx.session.user.id,
-              code: generateRewardCode(),
-            },
-            select: rewardSelect,
-          });
-        } catch (error) {
-          if (isCodeCollision(error)) continue;
-
-          // A P2002 on winnerId is two admins assigning the same winner at once, not a
-          // code collision. Retrying would spin five times and then report the wrong
-          // reason, so it goes up as itself.
-          throw error;
-        }
-      }
-
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Could not generate a unique reward code. Please try again.",
-      });
+      return {
+        title: reward.title,
+        code: reward.code,
+        expiresAt: new Date(reward.expiresAt),
+        notified,
+      };
     }),
+
+  /**
+   * Settles a month the order server's cron missed — an outage or a deploy across NZ
+   * midnight on the 1st. Nothing else ever writes a podium, so without this the month is
+   * lost. Safe to press twice: the second answers `ALREADY_SETTLED` and writes nothing.
+   */
+  settleMonth: protectedProcedure
+    .input(settleMonthSchema)
+    .mutation(({ input }) =>
+      callOrderServer<SettleOutcome>(
+        "POST",
+        "/api/internal/winners/settle",
+        input,
+      ),
+    ),
 });

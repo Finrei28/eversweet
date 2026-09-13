@@ -16,7 +16,7 @@
  */
 import { beforeEach, expect, it, vi } from "vitest";
 
-// `rewardCode` is `server-only`, which throws outside an RSC, and `trpc.ts` imports
+// `orderServer` is `server-only`, which throws outside an RSC, and `trpc.ts` imports
 // `~/server/auth` -> next-auth -> `next/server`, which will not resolve under Vitest. A
 // server-side caller never calls `auth()`, so the stub costs nothing.
 vi.mock("server-only", () => ({}));

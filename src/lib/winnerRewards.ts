@@ -69,3 +69,23 @@ export const monthLabel = (
   language === "en"
     ? DateTime.fromObject({ year, month }, { zone: ZONE }).toFormat("LLLL yyyy")
     : `${year}年${month}月`;
+
+/**
+ * The most recent finished months on the Auckland calendar, newest first: the months a
+ * missed settle could be for.
+ *
+ * Starts at last month, never this one, so the "settle a missed month" dialog cannot offer
+ * the month still being competed for. Settling that early would freeze a podium with weeks
+ * of points still to come, and it could never be revisited.
+ */
+export const finishedMonths = (
+  count = 12,
+  now: Date = new Date(),
+): { month: number; year: number }[] => {
+  const thisMonth = DateTime.fromJSDate(now).setZone(ZONE).startOf("month");
+
+  return Array.from({ length: count }, (_, index) => {
+    const month = thisMonth.minus({ months: index + 1 });
+    return { month: month.month, year: month.year };
+  });
+};

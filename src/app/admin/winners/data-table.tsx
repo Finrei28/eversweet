@@ -26,11 +26,15 @@ import {
 import { api } from "~/trpc/react";
 import { GetWinnerColumns, type WinnerRow } from "./columns";
 import RewardDialog from "./_components/rewardDialog";
+import SettleMonthDialog from "./_components/settleMonthDialog";
 
 /**
  * Monthly winners, newest first. There is no "add winner" control: the rows are written
  * by settleMonthlyWinners on the order server when it closes a month, so an empty table
  * is the normal state until the first month settles rather than a sign of a problem.
+ *
+ * "Settle a missed month" is the one way to write them from here, for the month the cron
+ * did not run. It asks the order server to rank that month; it cannot choose the winners.
  */
 export function DataTable() {
   const { language } = useLanguage();
@@ -41,6 +45,7 @@ export function DataTable() {
     open: boolean;
     winner: WinnerRow | null;
   }>({ open: false, winner: null });
+  const [settling, setSettling] = useState(false);
 
   const [winners] = api.winner.getWinners.useSuspenseQuery();
 
@@ -80,6 +85,13 @@ export function DataTable() {
           }}
           className="max-w-sm border-black"
         />
+        <Button
+          variant="outline"
+          className="ml-auto"
+          onClick={() => setSettling(true)}
+        >
+          {language === "en" ? "Settle a missed month" : "补结算月份"}
+        </Button>
       </div>
 
       <div className="rounded-md border">
@@ -152,6 +164,8 @@ export function DataTable() {
         onOpenChange={(open) => setEditing((prev) => ({ ...prev, open }))}
         winner={editing.winner}
       />
+
+      <SettleMonthDialog open={settling} onOpenChange={setSettling} />
     </div>
   );
 }
