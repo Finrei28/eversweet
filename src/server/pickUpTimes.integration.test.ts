@@ -109,6 +109,22 @@ describeIfDb("the website's pick-up time check", () => {
     });
   });
 
+  /**
+   * With the order's size unknown, it gets the quote for the largest size - 20 minutes on
+   * the default prep times rather than a single dessert's 10. That can only push a time
+   * later, never let one through early.
+   */
+  it("gives an order of unknown size the largest order's quote", async () => {
+    const now = at(THU, "18:00");
+
+    expect(
+      await checkWebsitePickUpTime(at(THU, "18:10"), 1, now),
+    ).toMatchObject({ ok: true });
+    expect(
+      await checkWebsitePickUpTime(at(THU, "18:10"), null, now),
+    ).toMatchObject({ ok: false, reason: "too-soon", asap: at(THU, "18:20") });
+  });
+
   it("refuses a day off", async () => {
     await db.daysOff.create({ data: { date: at("2026-03-06", "00:00") } });
 

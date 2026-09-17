@@ -365,6 +365,11 @@ process in UTC, Los Angeles and Kolkata.
   (`checkWebsitePickUpTime` in `src/server/pickUpTimes.ts`), which decides on the database's
   hours and days off with a 5-minute grace for a slow click. Any refusal stops and shows the
   new time; it never pays with a time the customer did not see.
+  - It is sent the **payment**, not an item count. The count sets how long the kitchen is
+    given, so `/api/checkout_sessions` records it on the PaymentIntent (`metadata.itemCount`)
+    when it prices the cart, and `itemCountForPayment` reads it back from Stripe.
+  - A payment whose count cannot be read gets the largest order's quote. That can only push
+    a time later.
 - **`createNewOrder` re-checks after payment** and only logs a failure: the card is already
   charged, so refusing would leave a paid customer with no order.
 - Hours, days off and prep times are `unstable_cache`d for 5 minutes (tags `trading-hours`,

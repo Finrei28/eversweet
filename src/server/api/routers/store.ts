@@ -8,6 +8,7 @@ import {
   getDaysOff,
   getPrepTimes,
   getTradingHours,
+  itemCountForPayment,
 } from "~/server/pickUpTimes";
 
 export const storeRouter = createTRPCRouter({
@@ -24,15 +25,22 @@ export const storeRouter = createTRPCRouter({
    * The check a pick-up time must pass before the customer pays. A mutation rather than a
    * query only so React Query never answers it from cache: the same time and cart can be
    * fine at 9:10 PM and too late at 9:21.
+   *
+   * Takes the payment rather than an item count: the size of the order, which decides how
+   * long the kitchen is given, is read from what the server recorded when it priced the
+   * cart for that payment, never from the browser.
    */
   checkPickUpTime: publicProcedure
     .input(
       z.object({
         pickUpTime: z.date(),
-        itemCount: z.number().int().positive(),
+        paymentIntentId: z.string().min(1),
       }),
     )
-    .mutation(({ input }) =>
-      checkWebsitePickUpTime(input.pickUpTime, input.itemCount),
+    .mutation(async ({ input }) =>
+      checkWebsitePickUpTime(
+        input.pickUpTime,
+        await itemCountForPayment(input.paymentIntentId),
+      ),
     ),
 });

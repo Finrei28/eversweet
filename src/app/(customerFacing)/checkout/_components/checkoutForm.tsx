@@ -176,11 +176,13 @@ export default function CheckoutForm({
     // and then paid with the old one anyway - unless the new time happened to be on
     // another day. Any change now stops here, so the customer sees the time they are
     // paying for before they pay for it.
+    //
+    // It is sent the payment, not the cart's size: the server reads how many items that
+    // payment is for from what it recorded when pricing the cart.
     setPaymentLoading(true);
-    const check = await checkPickUpTime({
-      pickUpTime,
-      itemCount: cart.totalItems,
-    }).catch(() => null);
+    const check = paymentIntentId
+      ? await checkPickUpTime({ pickUpTime, paymentIntentId }).catch(() => null)
+      : null;
     setPaymentLoading(false);
 
     if (!check) {

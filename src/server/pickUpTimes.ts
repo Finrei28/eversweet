@@ -1,7 +1,9 @@
 import "server-only";
 
 import { unstable_cache } from "next/cache";
+import Stripe from "stripe";
 
+import { stripe } from "~/lib/stripe";
 import { db } from "~/server/db";
 import {
   DEFAULT_PREP_TIMES,
@@ -138,20 +140,52 @@ export type WebsitePickUpCheck =
     };
 
 /**
+ * How many items the payment about to be made is for, as `/api/checkout_sessions` recorded
+ * when it priced the cart - or null when that cannot be read.
+ *
+ * The count decides how long the kitchen is given, so it cannot come from the browser: a
+ * page sending `itemCount: 1` would have a large order checked against a single dessert's
+ * quote, pay, and keep a pick-up time the kitchen could not meet.
+ */
+export const itemCountForPayment = async (
+  paymentIntentId: string,
+): Promise<number | null> => {
+  try {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const itemCount = Number(paymentIntent.metadata?.itemCount);
+    return Number.isInteger(itemCount) && itemCount > 0 ? itemCount : null;
+  } catch (error) {
+    // A payment Stripe does not know gets the most cautious quote below; anything else is
+    // worth seeing in the logs.
+    if (
+      !(error instanceof Stripe.errors.StripeInvalidRequestError) ||
+      error.code !== "resource_missing"
+    ) {
+      console.error("Could not read a payment's item count:", error);
+    }
+    return null;
+  }
+};
+
+/**
  * Whether a website order may be placed for `pickUpTime`, on the hours, days off and
  * preparation times in the database. The website's copy of the check the order server
  * applies to app orders; the browser runs the same rule, but only this one decides.
+ *
+ * `itemCount` null means the order's size is not known - a payment created before its count
+ * was recorded, or one that cannot be read - and the order is given the quote for the largest
+ * size of order. That can only make the time asked for later, never let one through early.
  */
 export const checkWebsitePickUpTime = async (
   pickUpTime: Date,
-  itemCount: number,
+  itemCount: number | null,
   now: Date = new Date(),
 ): Promise<WebsitePickUpCheck> => {
   const [calendar, prepTimes] = await Promise.all([
     getTradingCalendar(now),
     getPrepTimes(),
   ]);
-  const quote = quoteMinutes(itemCount, prepTimes);
+  const quote = quoteMinutes(itemCount ?? Number.MAX_SAFE_INTEGER, prepTimes);
 
   const reason =
     pickUpProblem(pickUpTime, calendar) ??
