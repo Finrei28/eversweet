@@ -2,14 +2,12 @@ import Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/cache", () => ({
-  unstable_cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
-}));
 
+// The real client throws on import without STRIPE_SECRET_KEY, which CI does not have.
 const { retrieve } = vi.hoisted(() => ({ retrieve: vi.fn() }));
 vi.mock("~/lib/stripe", () => ({ stripe: { paymentIntents: { retrieve } } }));
 
-import { itemCountForPayment } from "./pickUpTimes";
+import { itemCountForPayment } from "./paymentItemCount";
 
 beforeEach(() => {
   retrieve.mockReset();

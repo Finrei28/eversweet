@@ -8,8 +8,8 @@ import {
   getDaysOff,
   getPrepTimes,
   getTradingHours,
-  itemCountForPayment,
 } from "~/server/pickUpTimes";
+import { itemCountForPayment } from "~/server/paymentItemCount";
 
 export const storeRouter = createTRPCRouter({
   getPrepTimes: publicProcedure.query((): Promise<PrepTimes> => getPrepTimes()),

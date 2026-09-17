@@ -39,6 +39,17 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck and tests on Node 22 with d
 integration suites below skip there for want of `TEST_DATABASE_URL`, so CI covers the
 unit tests only - the router suites run locally or nowhere.
 
+**CI has no `.env`, so no `STRIPE_SECRET_KEY`.** `~/lib/stripe` builds its client the
+moment it is imported and throws without one, and a suite that imports it, even one that
+would skip, fails while loading. Keep Stripe out of modules tests import (it is why
+`itemCountForPayment` lives in `src/server/paymentItemCount.ts` and not
+`src/server/pickUpTimes.ts`), or `vi.mock("~/lib/stripe")`. Locally `.env` hides this, so
+reproduce CI before pushing:
+
+```bash
+STRIPE_SECRET_KEY= TEST_DATABASE_URL= SKIP_ENV_VALIDATION=1 npx vitest run
+```
+
 ### Integration tests need a database, and `DATABASE_URL` is production
 
 Unit suites need none. Anything exercising a tRPC router does, and the trap here is that
