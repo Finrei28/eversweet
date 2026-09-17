@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { stripe } from "../../../lib/stripe";
+import { withPaymentLock } from "~/server/paymentLock";
 import {
   attachCheckoutCustomer,
   checkoutCustomerSchema,
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
       stripe,
       parsed.data.clientSecret,
       parsed.data.customer,
+      withPaymentLock,
     );
 
     if (!result.ok) {

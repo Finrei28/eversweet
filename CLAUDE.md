@@ -339,6 +339,12 @@ types an email owns it, and the rules follow from that:
   at once share one customer instead of each missing the other in the list.
 - A payment keeps the first customer it is given, because Stripe refuses to change it once
   set.
+- **Calls for the same payment take turns**, under a Postgres advisory lock on the payment
+  intent id (`withPaymentLock` in `src/server/paymentLock.ts`, the same lock the order
+  server's `lockPayment` takes). It is held from before the payment is read. Without it,
+  two calls sent together with different details each created a customer, and one was left
+  attached to nothing. The lock's transaction stays open across the Stripe calls, so its
+  timeout is 20 seconds.
 
 Never set `receipt_email` on these payments. In live mode Stripe then sends its own receipt as
 well as the Resend confirmation.

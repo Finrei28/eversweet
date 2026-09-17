@@ -8,9 +8,33 @@ import {
   checkoutCustomerSchema,
   customerIdempotencyKey,
   findOrCreateWebsiteCustomer,
+  type PaymentLock,
   type StripeForCheckout,
   type WebsiteCustomerDetails,
 } from "./stripeCustomer";
+
+/**
+ * A lock that makes calls for the same payment take turns, as `withPaymentLock` does in
+ * Postgres (see `paymentLock.integration.test.ts` for that one).
+ */
+const inMemoryLock = (): PaymentLock => {
+  const tails = new Map<string, Promise<unknown>>();
+  return (paymentIntentId, work) => {
+    const run = (tails.get(paymentIntentId) ?? Promise.resolve()).then(() =>
+      work(),
+    );
+    tails.set(
+      paymentIntentId,
+      run.catch(() => undefined),
+    );
+    return run;
+  };
+};
+
+/** No lock at all: calls interleave freely. */
+const noLock: PaymentLock = (_paymentIntentId, work) => work();
+
+const lock = inMemoryLock();
 
 const fake = {
   // `update` is a spy only so a test can prove nothing calls it.
@@ -168,7 +192,7 @@ describe("attachCheckoutCustomer", () => {
   it("attaches the customer to a website payment that has succeeded", async () => {
     fake.paymentIntents.retrieve.mockResolvedValue(websitePayment());
 
-    const result = await attachCheckoutCustomer(stripe, SECRET, ADA);
+    const result = await attachCheckoutCustomer(stripe, SECRET, ADA, lock);
 
     expect(result).toEqual({ ok: true, customerId: "cus_new" });
     expect(fake.paymentIntents.retrieve).toHaveBeenCalledWith("pi_123");
@@ -194,7 +218,9 @@ describe("attachCheckoutCustomer", () => {
         websitePayment({ status }),
       );
 
-      expect(await attachCheckoutCustomer(stripe, SECRET, ADA)).toMatchObject({
+      expect(
+        await attachCheckoutCustomer(stripe, SECRET, ADA, lock),
+      ).toMatchObject({
         ok: false,
         status: 409,
       });
@@ -209,7 +235,9 @@ describe("attachCheckoutCustomer", () => {
       websitePayment({ metadata: { purpose: "app_order" } }),
     );
 
-    expect(await attachCheckoutCustomer(stripe, SECRET, ADA)).toMatchObject({
+    expect(
+      await attachCheckoutCustomer(stripe, SECRET, ADA, lock),
+    ).toMatchObject({
       ok: false,
       status: 409,
     });
@@ -222,7 +250,7 @@ describe("attachCheckoutCustomer", () => {
       websitePayment({ customer: "cus_web" }),
     );
 
-    expect(await attachCheckoutCustomer(stripe, SECRET, ADA)).toEqual({
+    expect(await attachCheckoutCustomer(stripe, SECRET, ADA, lock)).toEqual({
       ok: true,
       customerId: "cus_web",
     });
@@ -236,7 +264,9 @@ describe("attachCheckoutCustomer", () => {
       websitePayment({ customer: "cus_someone_else" }),
     );
 
-    expect(await attachCheckoutCustomer(stripe, SECRET, ADA)).toMatchObject({
+    expect(
+      await attachCheckoutCustomer(stripe, SECRET, ADA, lock),
+    ).toMatchObject({
       ok: false,
       status: 409,
     });
@@ -251,7 +281,7 @@ describe("attachCheckoutCustomer", () => {
     fake.paymentIntents.retrieve.mockResolvedValue(websitePayment());
 
     expect(
-      await attachCheckoutCustomer(stripe, clientSecret, ADA),
+      await attachCheckoutCustomer(stripe, clientSecret, ADA, lock),
     ).toMatchObject({ ok: false, status: 404 });
     expect(fake.customers.create).not.toHaveBeenCalled();
   });
@@ -265,9 +295,96 @@ describe("attachCheckoutCustomer", () => {
       }),
     );
 
-    expect(await attachCheckoutCustomer(stripe, SECRET, ADA)).toMatchObject({
+    expect(
+      await attachCheckoutCustomer(stripe, SECRET, ADA, lock),
+    ).toMatchObject({
       ok: false,
       status: 404,
     });
+  });
+});
+
+/**
+ * Two calls for the same paid payment, sent together with different details. Each used to
+ * find the payment with no customer and create one; Stripe keeps only the first customer it
+ * is given, so the other was created attached to nothing.
+ */
+describe("attachCheckoutCustomer, called twice at once", () => {
+  const GRACE: WebsiteCustomerDetails = {
+    name: "Grace Hopper",
+    email: "grace@example.test",
+    phone: "+64221234567",
+  };
+
+  /**
+   * A Stripe that behaves like the real one for a single payment: every call yields, so two
+   * requests interleave, and a payment's customer cannot be changed once it is set.
+   */
+  const racingStripe = () => {
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
+    let customer: string | null = null;
+    let created = 0;
+
+    const client = {
+      customers: {
+        list: async () => {
+          await tick();
+          return { data: [] };
+        },
+        create: async () => {
+          await tick();
+          created += 1;
+          return { id: `cus_${created}` };
+        },
+      },
+      paymentIntents: {
+        retrieve: async () => {
+          await tick();
+          return websitePayment({ customer });
+        },
+        update: async (_id: string, params: { customer: string }) => {
+          await tick();
+          if (customer && customer !== params.customer) {
+            throw new Error(
+              "You cannot modify `customer` on a PaymentIntent once it already has been set.",
+            );
+          }
+          customer = params.customer;
+          return websitePayment({ customer });
+        },
+      },
+    } as unknown as StripeForCheckout;
+
+    return { client, created: () => created, attached: () => customer };
+  };
+
+  it("creates one customer, attaches it, and refuses the other", async () => {
+    const stripe = racingStripe();
+    const lock = inMemoryLock();
+
+    const results = await Promise.all([
+      attachCheckoutCustomer(stripe.client, SECRET, ADA, lock),
+      attachCheckoutCustomer(stripe.client, SECRET, GRACE, lock),
+    ]);
+
+    expect(stripe.created()).toBe(1);
+    expect(results).toEqual([
+      { ok: true, customerId: "cus_1" },
+      { ok: false, status: 409, error: "This payment already has a customer" },
+    ]);
+    expect(stripe.attached()).toBe("cus_1");
+  });
+
+  // The harness really does race: without the lock the orphan comes back.
+  it("left an orphaned customer without the lock", async () => {
+    const stripe = racingStripe();
+
+    const results = await Promise.allSettled([
+      attachCheckoutCustomer(stripe.client, SECRET, ADA, noLock),
+      attachCheckoutCustomer(stripe.client, SECRET, GRACE, noLock),
+    ]);
+
+    expect(stripe.created()).toBe(2);
+    expect(results.map((r) => r.status)).toEqual(["fulfilled", "rejected"]);
   });
 });

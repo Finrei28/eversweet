@@ -134,32 +134,61 @@ export type AttachCheckoutCustomerResult =
   | { ok: false; status: 404 | 409; error: string };
 
 /**
+ * Runs `work` while holding a lock on one payment, so calls for the same payment take turns.
+ * `~/server/paymentLock` holds it in Postgres; a test can pass an in-memory one.
+ */
+export type PaymentLock = <T>(
+  paymentIntentId: string,
+  work: () => Promise<T>,
+) => Promise<T>;
+
+/**
  * Puts the checkout's customer on its payment, once the payment has succeeded.
  *
  * Proof of ownership is the client secret rather than the payment intent id. The id alone
  * is not a secret - it is sent back to look an order up - while the client secret is what
  * the browser needed to pay at all.
+ *
+ * Calls for the same payment run one at a time, under `lock`. Without it, two calls sent
+ * together each found the payment with no customer and each created one - with different
+ * details, under different idempotency keys - and Stripe kept only the first it was given,
+ * leaving the other customer attached to nothing. Taken before the payment is read, so a
+ * second call sees the customer the first attached and is refused before creating any.
  */
 export async function attachCheckoutCustomer(
   stripe: StripeForCheckout,
   clientSecret: string,
   details: WebsiteCustomerDetails,
+  lock: PaymentLock,
 ): Promise<AttachCheckoutCustomerResult> {
   const paymentIntentId = /^(pi_[A-Za-z0-9]+)_secret_[A-Za-z0-9]+$/.exec(
     clientSecret,
   )?.[1];
 
+  if (!paymentIntentId) {
+    return { ok: false, status: 404, error: "Payment not found" };
+  }
+
+  return lock(paymentIntentId, () =>
+    attachWhileLocked(stripe, paymentIntentId, clientSecret, details),
+  );
+}
+
+async function attachWhileLocked(
+  stripe: StripeForCheckout,
+  paymentIntentId: string,
+  clientSecret: string,
+  details: WebsiteCustomerDetails,
+): Promise<AttachCheckoutCustomerResult> {
   let paymentIntent: Stripe.PaymentIntent | null = null;
-  if (paymentIntentId) {
-    try {
-      paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    } catch (error) {
-      if (
-        !(error instanceof Stripe.errors.StripeInvalidRequestError) ||
-        error.code !== "resource_missing"
-      ) {
-        throw error;
-      }
+  try {
+    paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  } catch (error) {
+    if (
+      !(error instanceof Stripe.errors.StripeInvalidRequestError) ||
+      error.code !== "resource_missing"
+    ) {
+      throw error;
     }
   }
 
