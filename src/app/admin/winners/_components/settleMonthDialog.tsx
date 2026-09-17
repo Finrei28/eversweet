@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useLanguage } from "~/app/components/language";
 import { Button } from "~/components/ui/button";
@@ -28,9 +28,10 @@ type SettleMonthDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+type Month = ReturnType<typeof finishedMonths>[number];
+
 /** "2026-8": a Select value has to be a string. */
-const keyFor = ({ month, year }: { month: number; year: number }) =>
-  `${year}-${month}`;
+const keyFor = ({ month, year }: Month) => `${year}-${month}`;
 
 /**
  * Records a month's podium by hand, for when the order server's cron missed NZ midnight
@@ -51,18 +52,33 @@ export default function SettleMonthDialog({
   const { language } = useLanguage();
   const utils = api.useUtils();
   const [error, setError] = useState<string | null>(null);
+  const [months, setMonths] = useState<Month[]>(() => finishedMonths());
+  const [selected, setSelected] = useState(() =>
+    months[0] ? keyFor(months[0]) : "",
+  );
 
-  // Computed when the dialog opens rather than once at mount, so a tab left open across
-  // the 1st does not still offer last month as the newest choice.
-  const months = useMemo(() => (open ? finishedMonths() : []), [open]);
-  const [selected, setSelected] = useState<string>("");
-
+  // Refilled each time the dialog opens rather than once at mount, so a tab left open
+  // across the 1st does not still offer last month as the newest choice. Held in state
+  // rather than derived from `open`: emptying it on close blanked the picker while the
+  // dialog was still fading out.
   useEffect(() => {
-    if (open && months[0]) {
-      setSelected(keyFor(months[0]));
+    if (open) {
+      const fresh = finishedMonths();
+      setMonths(fresh);
+      setSelected(fresh[0] ? keyFor(fresh[0]) : "");
       setError(null);
     }
-  }, [open, months]);
+  }, [open]);
+
+  // Cleared on close too, like the other admin dialogs, so an error from this visit is
+  // gone before the next one paints instead of flashing until the open effect runs.
+  const prevOpen = useRef(open);
+  useEffect(() => {
+    if (prevOpen.current && !open) {
+      setError(null);
+    }
+    prevOpen.current = open;
+  }, [open]);
 
   const settleMonth = api.winner.settleMonth.useMutation({
     onSuccess: async (result) => {
@@ -89,8 +105,21 @@ export default function SettleMonthDialog({
       });
     },
     // A failed settle shows here and keeps the dialog open, rather than a toast that
-    // could be mistaken for success and dismissed.
-    onError: (mutationError) => setError(mutationError.message),
+    // could be mistaken for success and dismissed. Unless the dialog was closed while it
+    // was running: then there is nowhere to show it, and setting it would only surface it
+    // on the next open as if that visit had failed. A destructive toast says it instead.
+    // Read through the ref because the callback was captured when `mutate` was called.
+    onError: (mutationError) => {
+      if (prevOpen.current) {
+        setError(mutationError.message);
+        return;
+      }
+      toast({
+        variant: "destructive",
+        title: language === "en" ? "Month not settled" : "月份结算失败",
+        description: mutationError.message,
+      });
+    },
   });
 
   const submit = () => {
