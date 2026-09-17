@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { useLanguage } from "~/app/components/language";
 import Loader from "~/app/components/customLoading";
-import { getNowNZ } from "~/lib/pickUpTimeHelper";
 
 function OrderDetails() {
   const { language } = useLanguage();
@@ -99,7 +98,7 @@ function OrderDetails() {
   if (
     error ||
     !order ||
-    getNowNZ().getTime() - new Date(order.createdAt).getTime() > twentyFourHours
+    new Date().getTime() - new Date(order.createdAt).getTime() > twentyFourHours
   ) {
     return (
       <div className="fixed inset-0 mx-auto flex max-w-3xl items-center justify-center">

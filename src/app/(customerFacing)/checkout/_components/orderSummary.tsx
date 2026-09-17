@@ -10,15 +10,15 @@ import { useLanguage } from "~/app/components/language";
 import CustomisationDialog from "../../menu/_components/customisation";
 import { Button } from "~/components/ui/button";
 import { PickupTimePicker } from "./pick-up-time";
-import { format } from "date-fns";
+import { formatNZ } from "~/lib/pickUpTimes";
 
 type orderSummaryProps = {
   cart: CartContextType;
   pickUpTime: Date | null;
   setPickUpTime: React.Dispatch<React.SetStateAction<Date | null>>;
   setPickUpNextOpening: (boolean: boolean) => void;
-  pickUpNextOpening: boolean;
   daysOff: Date[];
+  clockSkewMs: number;
 };
 
 export default function OrderSummary({
@@ -26,8 +26,8 @@ export default function OrderSummary({
   pickUpTime,
   setPickUpTime,
   setPickUpNextOpening,
-  pickUpNextOpening,
   daysOff,
+  clockSkewMs,
 }: orderSummaryProps) {
   const { language } = useLanguage();
 
@@ -46,9 +46,9 @@ export default function OrderSummary({
             value={pickUpTime}
             onChange={setPickUpTime}
             setPickUpNextOpening={setPickUpNextOpening}
-            pickUpNextOpening={pickUpNextOpening}
             numberOfItems={cart.totalItems}
             daysOff={daysOff}
+            clockSkewMs={clockSkewMs}
           />
 
           {pickUpTime && (
@@ -56,7 +56,7 @@ export default function OrderSummary({
               <p className="font-medium">
                 {language === "en" ? "Selected Pickup Time:" : "选定取货时间:"}
               </p>
-              <p>{format(pickUpTime, "dd/MM/yyyy h:mm a")}</p>
+              <p>{formatNZ(pickUpTime, "EEE dd/MM/yyyy h:mm a")}</p>
             </div>
           )}
           {/* <DateTimePicker
