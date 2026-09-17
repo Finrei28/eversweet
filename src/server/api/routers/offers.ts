@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { createOfferSchema, updateOfferSchema } from "~/app/components/schemas";
+import { endOfDayNZ, startOfDayNZ } from "~/lib/aucklandDay";
 import { formatCurrency } from "~/lib/formatters";
 import { canActivate, hasEnded } from "~/lib/offers";
 import { cheapestDessert, isUnderListPrice } from "~/lib/offerPricing";
@@ -114,14 +115,21 @@ const offerSelect = {
   _count: { select: { redemptions: true } },
 } as const;
 
-/** The scalar half of an offer, shared by create and update. */
+/**
+ * The scalar half of an offer, shared by create and update.
+ *
+ * The dates arrive as the calendar days the admin picked and are stored as the span of
+ * those days in Auckland: live from midnight at the start of the first, through the last
+ * millisecond of the last. Both apps compare the bounds inclusively, so an offer ending
+ * on the 31st is served all of the 31st.
+ */
 const offerScalars = (data: z.infer<typeof createOfferSchema>) => ({
   name: data.name,
   description: data.description ?? null,
   image: data.image,
   isActive: data.isActive,
-  startsAt: data.startsAt,
-  endsAt: data.endsAt,
+  startsAt: data.startsOn === null ? null : startOfDayNZ(data.startsOn),
+  endsAt: data.endsOn === null ? null : endOfDayNZ(data.endsOn),
   audience: data.audience,
   itemPriceInCents: data.itemPriceInCents,
   discountAmount: data.discountAmount,
@@ -364,12 +372,11 @@ export const offerRouter = createTRPCRouter({
         /**
          * Stop serving it BEFORE clearing the run.
          *
-         * The order server does not honour `endsAt` yet (see OUTSTANDING.md), so an
-         * offer this admin calls "ended" is still live to the mobile app until
-         * `isActive` goes false. Deleting the redemptions first would re-open it to
-         * everyone for as long as that gap lasted. Both statements share a transaction,
-         * so there is no gap at all - the ordering is belt and braces for the day
-         * somebody splits them.
+         * Clearing `endsAt` takes away the one thing that stops the order server serving
+         * this offer, so `isActive` has to go false in the same breath. Deleting the
+         * redemptions first would re-open it to everyone for as long as that gap lasted.
+         * Both statements share a transaction, so there is no gap at all - the ordering is
+         * belt and braces for the day somebody splits them.
          */
         await tx.offer.update({
           where: { id: input.id },

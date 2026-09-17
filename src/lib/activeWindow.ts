@@ -17,7 +17,8 @@ export type ActiveWindow = {
 
 /**
  * Both bounds are inclusive: a thing is live at the instant it starts and at the instant
- * it ends.
+ * it ends. That is why an offer's `endsAt` is stored as the last millisecond of its end
+ * day rather than midnight at the start of it - see `src/lib/aucklandDay.ts`.
  *
  * A null `startsAt` means "no start bound" and a null `endsAt` means "runs until
  * switched off", which is how the admin leaves them when something is open-ended.

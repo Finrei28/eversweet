@@ -176,9 +176,29 @@ const refineOfferPricing = (
   }
 };
 
-export const createOfferSchema = offerFields.superRefine(refineOfferPricing);
+/** The offer dialog's form, whose dates are the calendar controls' `Date`s. */
+export const offerFormSchema = offerFields.superRefine(refineOfferPricing);
 
-export const updateOfferSchema = offerFields
+/**
+ * An offer as `createOffer` and `updateOffer` receive it: the form, with each date as the
+ * calendar day the admin saw ("2026-10-31") rather than the calendar's `Date`.
+ *
+ * The router turns those into the first instant of the start day and the last instant of
+ * the end day, in Auckland - see `src/lib/aucklandDay.ts`. The form's dates used to be
+ * stored as they came: midnight at the *start* of each day, so an offer set to end on the
+ * 31st stopped as the 31st began.
+ */
+const offerInputFields = offerFields
+  .omit({ startsAt: true, endsAt: true })
+  .extend({
+    startsOn: z.string().date().nullable().default(null),
+    endsOn: z.string().date().nullable().default(null),
+  });
+
+export const createOfferSchema =
+  offerInputFields.superRefine(refineOfferPricing);
+
+export const updateOfferSchema = offerInputFields
   .extend({ id: z.string().min(1) })
   .superRefine(refineOfferPricing);
 

@@ -321,9 +321,19 @@ reserves the logo's width (`pl-64`) and tightens the gap. Check any new link at 
   table and PostgreSQL CHECK forbids subqueries — it is `assertUnderListPrice` in the offers
   router, mirrored in `offerDialog.tsx` so the admin is told before submitting. Prisma
   cannot express a CHECK, so the constraints are invisible to it: `migrate diff` reports no
-  drift and will not drop them, but `prisma db push` never creates them, which means **no
-  test database has them**. Suites prove the application layer; the constraints are defence
-  against a writer that bypasses it.
+  drift and will not drop them, but `prisma db push` never creates them, so **a rebuilt
+  test database lacks them** until they are applied by hand (the local `eversweet_web_test`
+  has at least `Offer_exactly_one_price`, so a raw insert there needs a price). Suites prove
+  the application layer; the constraints are defence against a writer that bypasses it.
+- **An offer's dates are whole Auckland days.** `startsAt` is midnight at the start of its
+  day and `endsAt` the **last millisecond** of its day (23:59:59.999), and both apps compare
+  them inclusively. The dialog sends the days the admin picked as `"2026-10-31"` strings,
+  read in the browser with `pickedDay`, and the router pins them with
+  `startOfDayNZ`/`endOfDayNZ` (`src/lib/aucklandDay.ts`). It used to store the calendar's
+  `Date` as it came — midnight at the *start* of the end day — so every offer stopped a day
+  early; `20260917000000_offer_ends_through_its_last_day` moved the rows written that way.
+  Never read a day off a `Date` on the server: Vercel runs in UTC, where an Auckland
+  midnight is still the day before.
 - **`Offer.renewsWeekly` makes `limit` an allowance per week rather than per run.** The order
   server's `renewWeeklyOffers` cron clears `used` every Monday for exactly those offers. It
   used to be an `updateMany` with no WHERE clause, which reset every redemption row in the

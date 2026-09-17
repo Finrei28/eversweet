@@ -6,7 +6,7 @@ import { type Control, useFieldArray, useWatch } from "react-hook-form";
 import { type z } from "zod";
 
 import { useLanguage } from "~/app/components/language";
-import { type createOfferSchema } from "~/app/components/schemas";
+import { type offerFormSchema } from "~/app/components/schemas";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 
-type OfferForm = z.infer<typeof createOfferSchema>;
+type OfferForm = z.infer<typeof offerFormSchema>;
 
 type TargetKind = "dessert" | "category";
 

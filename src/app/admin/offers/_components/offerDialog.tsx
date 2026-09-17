@@ -7,7 +7,7 @@ import { type z } from "zod";
 
 import DateField from "~/app/components/dateField";
 import { useLanguage } from "~/app/components/language";
-import { createOfferSchema } from "~/app/components/schemas";
+import { offerFormSchema } from "~/app/components/schemas";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
@@ -35,6 +35,7 @@ import {
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { toast } from "~/hooks/use-toast";
+import { calendarDate, pickedDay } from "~/lib/aucklandDay";
 import { formatCurrency } from "~/lib/formatters";
 import { cheapestDessert } from "~/lib/offerPricing";
 import { api } from "~/trpc/react";
@@ -51,7 +52,7 @@ import RequirementsField from "./requirementsField";
  * defaults are, and both are one line.
  */
 
-type OfferForm = z.infer<typeof createOfferSchema>;
+type OfferForm = z.infer<typeof offerFormSchema>;
 
 type OfferDialogProps = {
   open: boolean;
@@ -84,8 +85,10 @@ const toFormValues = (offer: OfferRow | null): OfferForm =>
         description: offer.description ?? "",
         image: offer.image,
         isActive: offer.isActive,
-        startsAt: offer.startsAt,
-        endsAt: offer.endsAt,
+        // Shown as the Auckland day each falls on, which is the day the router stores it
+        // against, so saving an unrelated edit puts the same dates back.
+        startsAt: offer.startsAt && calendarDate(offer.startsAt),
+        endsAt: offer.endsAt && calendarDate(offer.endsAt),
         audience: offer.audience,
         dessertId: offer.dessert?.id ?? null,
         categoryId: offer.category?.id ?? null,
@@ -117,7 +120,7 @@ export default function OfferDialog({
   const [categories] = api.dessert.getCategories.useSuspenseQuery();
 
   const form = useForm<OfferForm>({
-    resolver: zodResolver(createOfferSchema),
+    resolver: zodResolver(offerFormSchema),
     defaultValues: toFormValues(offer),
   });
 
@@ -239,10 +242,19 @@ export default function OfferDialog({
     setLoading(true);
     setError(null);
 
+    // The days are read here, in the browser that showed the calendar. The server runs in
+    // UTC, where midnight on an Auckland day is still the day before.
+    const { startsAt, endsAt, ...rest } = data;
+    const input = {
+      ...rest,
+      startsOn: startsAt && pickedDay(startsAt),
+      endsOn: endsAt && pickedDay(endsAt),
+    };
+
     if (offer) {
-      updateOffer.mutate({ offer: { ...data, id: offer.id } });
+      updateOffer.mutate({ offer: { ...input, id: offer.id } });
     } else {
-      createOffer.mutate({ offer: data });
+      createOffer.mutate({ offer: input });
     }
   };
 
