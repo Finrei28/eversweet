@@ -20,6 +20,9 @@ export default function PrivacyPolicyPage() {
           <p className="text-muted-foreground">
             Last Updated:{" "}
             {new Date().toLocaleDateString("en-NZ", {
+              // Rendered on the server, which runs in UTC: without this the date is
+              // yesterday's for most of an Auckland morning.
+              timeZone: "Pacific/Auckland",
               year: "numeric",
               month: "long",
               day: "numeric",
