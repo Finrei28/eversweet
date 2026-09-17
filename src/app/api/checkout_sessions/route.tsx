@@ -4,6 +4,7 @@ import { z } from "zod";
 import { stripe } from "../../../lib/stripe";
 import { db } from "~/server/db";
 import { CartPricingError, priceCart } from "~/server/pricing";
+import { WEBSITE_SOURCE } from "~/server/stripeCustomer";
 
 /**
  * The amount to charge is computed here, from the database.
@@ -56,6 +57,8 @@ export async function POST(req: Request) {
       amount: totalInCents,
       currency: "nzd",
       payment_method_types: ["card"],
+      // What `/api/updatePaymentIntent` requires before it will attach a customer.
+      metadata: { source: WEBSITE_SOURCE },
     });
 
     return NextResponse.json(

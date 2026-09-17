@@ -26,6 +26,7 @@ type checkoutFormProps = {
   pickUpTime: Date | null;
   setPickUpTime: (time: Date | null) => void;
   pickUpNextOpening: boolean;
+  clientSecret: string;
   paymentIntentId: string | null;
   daysOff: Date[];
 };
@@ -38,6 +39,7 @@ export default function CheckoutForm({
   pickUpTime,
   setPickUpTime,
   pickUpNextOpening,
+  clientSecret,
   paymentIntentId,
   daysOff,
 }: checkoutFormProps) {
@@ -247,6 +249,37 @@ export default function CheckoutForm({
     try {
       setPaymentLoading(true);
       setPaymentError("");
+
+      // Puts these details on the payment as its Stripe customer, so the Stripe
+      // Dashboard shows who paid. Only that label is at stake - the order records
+      // the customer either way - so a failure is logged and payment goes ahead.
+      try {
+        const res = await fetch("/api/updatePaymentIntent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clientSecret,
+            customer: {
+              firstName: customerInfo.customerFirstName,
+              lastName: customerInfo.customerLastName,
+              email: customerInfo.customerEmail,
+              phone: customerInfo.phone,
+            },
+          }),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) {
+          console.error(
+            "Could not record customer details on the payment:",
+            res.status,
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Could not record customer details on the payment:",
+          error,
+        );
+      }
 
       const { error: submitError, paymentIntent } = await stripe.confirmPayment(
         {

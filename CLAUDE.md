@@ -319,6 +319,21 @@ browser. `priceCart()` throws `CartPricingError` for missing or unavailable item
 `isPromoActive` delegates to `isWithinActiveWindow` in `src/lib/activeWindow.ts`, shared with
 offers so the two cannot drift.
 
+**Stripe customers.** A payment shows who paid in the Stripe Dashboard only if it has a
+Stripe customer, so the checkout form calls `/api/updatePaymentIntent` just before
+`confirmPayment` to attach one (`src/server/stripeCustomer.ts`). The route takes the
+**client secret**, not the payment intent id, as proof of ownership, and acts only on an
+unconfirmed payment intent that `/api/checkout_sessions` tagged `source: "website"`.
+Customers are reused by lowercased email, but only ones marked `source: "website"`: the
+order server's customers belong to app accounts (their `metadata.userId`), and since anyone
+can type anyone's email at checkout, the website never reuses or edits those. The call is
+**fail-open**: if it fails, the payment still goes ahead, because only the Dashboard label is
+lost and the `Order` row records the customer anyway. Stripe refuses to change a payment
+intent's `customer` once it is set, so a retry under a different email after a declined card
+keeps the first customer. The route checks for that before creating anything, so it does not
+leave a customer behind with no payment. Never set `receipt_email` on these
+payments. In live mode Stripe then sends its own receipt as well as the Resend confirmation.
+
 ### Caching
 
 `unstable_cache` wrappers live at module scope (so they wrap once, not per request) and use
