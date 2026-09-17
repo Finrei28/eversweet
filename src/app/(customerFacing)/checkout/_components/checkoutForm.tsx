@@ -25,6 +25,7 @@ type checkoutFormProps = {
   pickUpTime: Date | null;
   setPickUpTime: (time: Date | null) => void;
   pickUpNextOpening: boolean;
+  clientSecret: string;
   paymentIntentId: string | null;
   onServerTime: (serverNow: Date) => void;
 };
@@ -37,6 +38,7 @@ export default function CheckoutForm({
   pickUpTime,
   setPickUpTime,
   pickUpNextOpening,
+  clientSecret,
   paymentIntentId,
   onServerTime,
 }: checkoutFormProps) {
@@ -287,6 +289,40 @@ export default function CheckoutForm({
         );
       }
       if (paymentIntent && paymentIntent.status === "succeeded") {
+        // Now that the payment has gone through, put these details on it as its
+        // Stripe customer, so the Stripe Dashboard shows who paid. Only that label
+        // is at stake - the order records the customer either way - so it runs
+        // alongside the order rather than ahead of it, and a failure is only
+        // logged. `keepalive` lets it finish if the page moves on first.
+        void fetch("/api/updatePaymentIntent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clientSecret,
+            customer: {
+              firstName: customerInfo.customerFirstName,
+              lastName: customerInfo.customerLastName,
+              email: customerInfo.customerEmail,
+              phone: customerInfo.phone,
+            },
+          }),
+          keepalive: true,
+        })
+          .then((res) => {
+            if (!res.ok) {
+              console.error(
+                "Could not record customer details on the payment:",
+                res.status,
+              );
+            }
+          })
+          .catch((error: unknown) => {
+            console.error(
+              "Could not record customer details on the payment:",
+              error,
+            );
+          });
+
         await createOrder.mutateAsync({
           orderData: { ...orderData, paymentIntentId: paymentIntentId ?? "" },
         });

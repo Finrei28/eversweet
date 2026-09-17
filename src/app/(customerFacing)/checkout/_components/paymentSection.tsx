@@ -63,6 +63,7 @@ export default function PaymentSection({
             stripe={stripePromise}
           >
             <CheckoutForm
+              clientSecret={clientSecret}
               paymentIntentId={paymentIntentId}
               onServerTime={onServerTime}
               cart={cart}
