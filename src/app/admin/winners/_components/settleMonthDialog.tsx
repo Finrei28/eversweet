@@ -70,10 +70,22 @@ export default function SettleMonthDialog({
     }
   }, [open]);
 
-  // Cleared on close too, like the other admin dialogs, so an error from this visit is
-  // gone before the next one paints instead of flashing until the open effect runs.
+  /**
+   * Which visit to the dialog is on screen: it changes every time the dialog opens or
+   * closes. A settle records the visit it was submitted from, so an answer can tell
+   * whether that visit is still showing. Checking only whether the dialog is open was not
+   * enough - closed and reopened while a settle was running, it is open again, and the old
+   * request's error landed in the new visit as though that one had failed.
+   */
+  const visit = useRef(0);
+
+  // Cleared on close too, the reset every admin dialog does (see CLAUDE.md), so nothing
+  // from this visit outlives it.
   const prevOpen = useRef(open);
   useEffect(() => {
+    if (prevOpen.current !== open) {
+      visit.current += 1;
+    }
     if (prevOpen.current && !open) {
       setError(null);
     }
@@ -81,9 +93,14 @@ export default function SettleMonthDialog({
   }, [open]);
 
   const settleMonth = api.winner.settleMonth.useMutation({
-    onSuccess: async (result) => {
+    // Read back by both callbacks below. They run long after `mutate`, so the visit has to
+    // be captured at submit time rather than read from a closure.
+    onMutate: () => ({ visit: visit.current }),
+    onSuccess: async (result, _input, submitted) => {
       await utils.winner.invalidate();
-      onOpenChange(false);
+      // Closes only the visit that asked. A later one is the admin's own business, and
+      // the toast below says the earlier settle went through.
+      if (submitted?.visit === visit.current) onOpenChange(false);
 
       const label = monthLabel(result.month, result.year, language);
       const description =
@@ -104,13 +121,12 @@ export default function SettleMonthDialog({
         description,
       });
     },
-    // A failed settle shows here and keeps the dialog open, rather than a toast that
-    // could be mistaken for success and dismissed. Unless the dialog was closed while it
-    // was running: then there is nowhere to show it, and setting it would only surface it
-    // on the next open as if that visit had failed. A destructive toast says it instead.
-    // Read through the ref because the callback was captured when `mutate` was called.
-    onError: (mutationError) => {
-      if (prevOpen.current) {
+    // A failed settle shows in the dialog and keeps it open, rather than a toast that
+    // could be mistaken for success and dismissed. Unless the visit that submitted it has
+    // gone - closed, or closed and opened again. Then showing it in the dialog would pin
+    // it on a visit that never asked, so a destructive toast says it instead.
+    onError: (mutationError, _input, submitted) => {
+      if (submitted?.visit === visit.current) {
         setError(mutationError.message);
         return;
       }

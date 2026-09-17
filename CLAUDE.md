@@ -271,8 +271,22 @@ every render and loops until the tab freezes. See the comment in
 
 **Forms** — react-hook-form + `zodResolver`; schemas live centrally in
 `src/app/components/schemas.tsx`. Controls come from `~/components/ui/form`
-(`FormInput` is a project wrapper that reddens the border on error). Dialogs use local
-`dialogOpen` state and a `prevDialogOpen` ref effect to reset on close.
+(`FormInput` is a project wrapper that reddens the border on error).
+
+**Dialogs reset on close** with a ref holding the previous open state and an effect that
+clears when it goes from open to closed. Who owns that open state depends on where the
+dialog is opened from:
+
+- **Its own trigger** (`addProduct`, `editProduct`, `editCustomisationDialog`) — local
+  `dialogOpen` state, and the ref is `prevDialogOpen`.
+- **A table row or toolbar button** (`offerDialog`, `rewardDialog`, `settleMonthDialog`) —
+  the parent owns it and passes `open`/`onOpenChange`, because it also has to say *which*
+  row. The ref is `prevOpen`, on the prop. Copying the prop into local state as well would
+  only add a second source of truth to fall out of step.
+
+A dialog whose mutation can outlive the visit that started it — `settleMonthDialog`, which
+waits on the order server — must check that visit is still on screen before showing the
+answer in it.
 
 **Mutations** — `api.useUtils()` + `await utils.<router>.invalidate()` in `onSuccess`, then
 `toast()` from `~/hooks/use-toast`. Never `router.refresh()`.
