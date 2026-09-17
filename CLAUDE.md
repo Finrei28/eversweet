@@ -111,9 +111,12 @@ Vercel deploy that happens on matters:
 - **A migration that adds a column goes first.** Prisma selects every scalar its client
   knows, so a build reading a column the database lacks fails on its first read of that
   table (see the sharp edge on schema changes).
-- **A migration that corrects what the old code wrote goes after,** or the old build keeps
-  writing the old shape in the gap. `20260917000000_offer_ends_through_its_last_day` is that
-  kind.
+- **A migration that corrects what the old code wrote goes after - if the new build can
+  read the uncorrected rows.** Run first, it leaves the old build writing the old shape
+  in the gap. But if the new build cannot read that shape, deploying first breaks it until
+  the migration runs, so make the new code accept both, deploy, then migrate.
+  `20260917000000_offer_ends_through_its_last_day` qualifies as it stands: to both builds
+  an uncorrected end is still a valid end, only a day early.
 - **The order server deploys before a website build that calls a new internal route** -
   see the architecture section.
 
@@ -143,13 +146,30 @@ environments too - a variable set there fails preview deploys the same way. Over
 Install Command with `npm ci --include=dev` is the surgical fix; removing the variable is
 the correct one.
 
-The reason this matters beyond the build: `src/env.js` **defaults `NODE_ENV` to
-`"development"`** when it is unset, and six places branch on it. The expensive one is
-`timingMiddleware` in `src/server/api/trpc.ts`, which adds an artificial 100-500ms delay to
-**every** tRPC call; the quiet one is `src/env.js` making `AUTH_SECRET` optional instead of
-required. The free tell is the Vercel function log - `prisma:query` lines mean `NODE_ENV` is
-not production, because `src/server/db.ts` logs queries only in development. The
-`[TRPC] … took …ms` lines are unconditional and mean nothing by themselves.
+Beyond the build, what a *runtime* `NODE_ENV` can change is narrower than it looks, and the
+part that costs something is tRPC, not this repo's code. Two mechanisms read it, and they are
+easy to conflate:
+
+- **This repo's own checks are fixed at build time.** Next replaces `process.env.NODE_ENV`
+  with `"production"` in everything `next build` compiles, server code included
+  (`next/dist/build/define-env.js`; only `next dev` or `experimental.allowDevelopmentBuild`,
+  which `next.config.js` does not set, makes it `"development"`). So `src/env.js` requiring
+  `AUTH_SECRET`, `src/server/db.ts` logging queries, the tRPC route handler logging failures
+  and `src/trpc/react.tsx`'s logger link all behave as production in any deploy, whatever
+  the runtime variable says. `src/env.js`'s zod default of `"development"` applies only where
+  nothing inlines and nothing sets the variable - it decides nothing in a deployed build.
+- **tRPC's `isDev` reads the process at runtime.** `initTRPC.create()` sets it from
+  `globalThis.process.env["NODE_ENV"] !== "production"` - a form the build-time replacement
+  does not match - so a runtime where the variable is *unset* counts as development. That is
+  the expensive one: `timingMiddleware` in `src/server/api/trpc.ts` adds an artificial
+  100-500ms to **every** tRPC call, and tRPC puts the error's **stack trace** in every error
+  response the browser receives (`errorFormatter` spreads `shape.data`, which carries it).
+  It is also why the router suites pay the delay: Vitest's `NODE_ENV=test` is not
+  `"production"`.
+
+`isDev` has no log line - the `[TRPC] … took …ms` lines are unconditional and mean nothing by
+themselves, and `prisma:query` lines cannot appear in a deploy at all. The tell is a `stack`
+field in a failing tRPC response's `error.data`, in the browser's network tab.
 
 ## This repo owns the database schema — and another repo shares it
 
