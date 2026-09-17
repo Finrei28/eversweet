@@ -1,9 +1,11 @@
 import { DateTime } from "luxon";
 import { describe, expect, it } from "vitest";
 
+import { endOfDayNZ } from "./aucklandDay";
 import {
   defaultRewardExpiry,
-  endOfDayNZ,
+  finishedMonths,
+  formatPrizeCode,
   monthLabel,
   rewardStatus,
 } from "./winnerRewards";
@@ -65,22 +67,18 @@ describe("defaultRewardExpiry", () => {
   });
 });
 
-describe("endOfDayNZ", () => {
-  it("pins the clock-face date the admin picked to the end of that day in NZ", () => {
-    // What a calendar hands back: midnight, in whatever zone the browser is in.
-    const picked = new Date(2026, 9, 15, 0, 0, 0);
-
-    expect(inNZ(endOfDayNZ(picked))).toBe("2026-10-15T23:59:59.999+13:00");
+// `pickedDay` and `endOfDayNZ` are tested in `aucklandDay.test.ts`; this pins only that a
+// chosen day and the default expiry mean the same instant.
+describe("a chosen expiry day", () => {
+  // Choosing the default day again in the dialog must not move the deadline.
+  it("lands exactly on the default expiry for that day", () => {
+    expect(endOfDayNZ("2026-10-31")).toEqual(defaultRewardExpiry(9, 2026));
   });
+});
 
-  /**
-   * keepLocalTime is the whole point: an admin whose browser is hours behind NZ still
-   * gets the date they clicked, not the one that instant happens to be in Auckland.
-   */
-  it("keeps the date the admin saw rather than shifting it", () => {
-    const picked = new Date(2026, 0, 3, 0, 0, 0);
-
-    expect(inNZ(endOfDayNZ(picked))).toBe("2026-01-03T23:59:59.999+13:00");
+describe("formatPrizeCode", () => {
+  it("groups a stored code the way the order server shows it", () => {
+    expect(formatPrizeCode("ABCD2345")).toBe("ABCD-2345");
   });
 });
 
@@ -128,5 +126,42 @@ describe("monthLabel", () => {
   it("names the month in each language", () => {
     expect(monthLabel(9, 2026, "en")).toBe("September 2026");
     expect(monthLabel(9, 2026, "zh")).toBe("2026年9月");
+  });
+});
+
+describe("finishedMonths", () => {
+  // Never the month still being competed for: settling it early would freeze a podium
+  // with weeks of points still to come, and a settled month is never revisited.
+  it("starts at last month, newest first", () => {
+    const now = new Date("2026-09-13T01:00:00Z"); // 13 September, 13:00 in Auckland
+
+    expect(finishedMonths(3, now)).toEqual([
+      { month: 8, year: 2026 },
+      { month: 7, year: 2026 },
+      { month: 6, year: 2026 },
+    ]);
+  });
+
+  it("carries the year back over January", () => {
+    const now = new Date("2026-02-10T01:00:00Z");
+
+    expect(finishedMonths(3, now)).toEqual([
+      { month: 1, year: 2026 },
+      { month: 12, year: 2025 },
+      { month: 11, year: 2025 },
+    ]);
+  });
+
+  // 31 August 20:00 UTC is already 1 September in Auckland, so August has finished there
+  // even though a UTC clock says it has not. The server runs in UTC; this is the bug the
+  // cron itself once had.
+  it("reads the month on the Auckland calendar, not the host's", () => {
+    const now = new Date("2026-08-31T20:00:00Z");
+
+    expect(finishedMonths(1, now)).toEqual([{ month: 8, year: 2026 }]);
+  });
+
+  it("offers a year of months by default", () => {
+    expect(finishedMonths()).toHaveLength(12);
   });
 });

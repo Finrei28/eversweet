@@ -26,20 +26,11 @@ export const defaultRewardExpiry = (month: number, year: number): Date =>
     .toJSDate();
 
 /**
- * An admin's override, pinned to the last instant of the day they picked.
- *
- * The calendar hands back midnight in the *browser's* timezone. Taken at face value
- * that is a code which dies at the start of the chosen day, and for an admin travelling
- * it is the wrong day entirely. `keepLocalTime` reads the clock-face date they clicked
- * and re-anchors it in Auckland - the same move pickUpTimeHelper makes, for the same
- * reason. Applied on the server, so the expiry the mobile app enforces does not depend
- * on which device assigned it.
+ * How a prize code is shown: two groups of four, the way the order server returns it and
+ * the customer's app displays it. Codes are stored bare, and the counter accepts either.
  */
-export const endOfDayNZ = (date: Date): Date =>
-  DateTime.fromJSDate(date)
-    .setZone(ZONE, { keepLocalTime: true })
-    .endOf("day")
-    .toJSDate();
+export const formatPrizeCode = (code: string): string =>
+  `${code.slice(0, 4)}-${code.slice(4)}`;
 
 export type RewardStatus =
   | "UNASSIGNED"
@@ -69,3 +60,23 @@ export const monthLabel = (
   language === "en"
     ? DateTime.fromObject({ year, month }, { zone: ZONE }).toFormat("LLLL yyyy")
     : `${year}年${month}月`;
+
+/**
+ * The most recent finished months on the Auckland calendar, newest first: the months a
+ * missed settle could be for.
+ *
+ * Starts at last month, never this one, so the "settle a missed month" dialog cannot offer
+ * the month still being competed for. Settling that early would freeze a podium with weeks
+ * of points still to come, and it could never be revisited.
+ */
+export const finishedMonths = (
+  count = 12,
+  now: Date = new Date(),
+): { month: number; year: number }[] => {
+  const thisMonth = DateTime.fromJSDate(now).setZone(ZONE).startOf("month");
+
+  return Array.from({ length: count }, (_, index) => {
+    const month = thisMonth.minus({ months: index + 1 });
+    return { month: month.month, year: month.year };
+  });
+};
