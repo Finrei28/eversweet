@@ -1,6 +1,7 @@
 import "server-only";
 
 import { TRPCError } from "@trpc/server";
+import { type z } from "zod";
 
 import { env } from "~/env";
 
@@ -32,6 +33,24 @@ const NOT_CONFIGURED =
 
 const NO_RESPONSE = "The order server did not respond. Try again in a moment.";
 
+/**
+ * A success this site cannot read. Worded for a change that may well have been saved:
+ * the likeliest cause is the two deploys drifting apart, not the write failing. Checking
+ * first costs nothing, and a retry is safe either way - see `TIMEOUT_MS`.
+ */
+const UNRECOGNISED =
+  "The order server answered in a way this site does not understand, so it cannot tell whether this was saved. Refresh the page to check before trying again.";
+
+/** The order server's own words for a refusal, when it sent some. */
+const refusalMessage = (payload: unknown): string | null =>
+  typeof payload === "object" &&
+  payload !== null &&
+  "message" in payload &&
+  typeof payload.message === "string" &&
+  payload.message
+    ? payload.message
+    : null;
+
 /** The order server's statuses, as the codes the tRPC client understands. */
 const codeFor = (status: number): TRPCError["code"] => {
   switch (status) {
@@ -48,11 +67,18 @@ const codeFor = (status: number): TRPCError["code"] => {
   }
 };
 
-export const callOrderServer = async <T>(
+/**
+ * `schema` is the answer the caller expects, and a success in any other shape is an
+ * error, never a result. Casting the body used to mean a changed or partial answer either
+ * crashed the caller on a missing field or, for a settle, fell through the dialog's
+ * outcomes to "nobody earned points" - a success toast for something nobody understood.
+ */
+export const callOrderServer = async <Schema extends z.ZodTypeAny>(
   method: "POST" | "PUT",
   path: string,
   body: unknown,
-): Promise<T> => {
+  schema: Schema,
+): Promise<z.output<Schema>> => {
   const baseUrl = env.ADMIN_SERVER_URL;
   const secret = env.INTERNAL_SERVICE_SECRET;
 
@@ -85,11 +111,23 @@ export const callOrderServer = async <T>(
     throw new TRPCError({ code: "TIMEOUT", message: NO_RESPONSE });
   }
 
-  const payload = (await response.json().catch(() => null)) as
-    | (T & { message?: unknown })
-    | null;
+  const payload: unknown = await response.json().catch(() => null);
 
-  if (response.ok && payload) return payload;
+  if (response.ok) {
+    const answer = schema.safeParse(payload);
+    if (answer.success) return answer.data as z.output<Schema>;
+
+    // Logged with the issues, which name fields and types, so a drift between the two
+    // deploys is diagnosable from the Vercel log without reproducing it.
+    console.error(
+      `Order server ${method} ${path} answered ${response.status} in a shape this site does not recognise:`,
+      answer.error.issues,
+    );
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: UNRECOGNISED,
+    });
+  }
 
   // A wrong or missing secret. Nothing the admin can fix from the dialog, and "Unauthorised"
   // would suggest their own session had lapsed.
@@ -107,11 +145,10 @@ export const callOrderServer = async <T>(
   // The order server words its refusals for staff ("This prize has already been
   // collected..."), and keeps causes out of its 500s, so its message is the one to show.
   const message =
-    typeof payload?.message === "string" && payload.message
-      ? payload.message
-      : response.status >= 500
-        ? NO_RESPONSE
-        : `The order server refused this (${response.status}).`;
+    refusalMessage(payload) ??
+    (response.status >= 500
+      ? NO_RESPONSE
+      : `The order server refused this (${response.status}).`);
 
   throw new TRPCError({ code: codeFor(response.status), message });
 };

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import {
   settleMonthSchema,
   upsertRewardInputSchema,
@@ -39,20 +41,36 @@ const rewardSelect = {
   redeemedByAdminId: true,
 } as const;
 
-/** What the order server answers when a prize is saved. */
-type SavedReward = {
-  reward: { title: string; code: string; expiresAt: string };
+/**
+ * What the order server answers when a prize is saved. It sends the whole reward row;
+ * these are the fields read here, and extra ones are dropped.
+ */
+const savedRewardSchema = z.object({
+  reward: z.object({
+    title: z.string(),
+    code: z.string(),
+    expiresAt: z
+      .string()
+      .datetime()
+      .transform((iso) => new Date(iso)),
+  }),
   /** Whether a push went out. Only ever true on the first assign, never on an edit. */
-  notified: boolean;
-};
+  notified: z.boolean(),
+});
 
-/** What the order server answers when a month is settled. A failure arrives as an error. */
-export type SettleOutcome = {
-  month: number;
-  year: number;
-  recorded: number;
-  outcome: "RECORDED" | "ALREADY_SETTLED" | "NO_EARNERS";
-};
+/**
+ * What the order server answers when a month is settled. A failure arrives as an error,
+ * and an outcome not named here is refused: the dialog words one toast per outcome and
+ * would otherwise show anything else as "nobody earned points".
+ */
+const settleOutcomeSchema = z.object({
+  month: z.number().int().min(1).max(12),
+  year: z.number().int(),
+  recorded: z.number().int().nonnegative(),
+  outcome: z.enum(["RECORDED", "ALREADY_SETTLED", "NO_EARNERS"]),
+});
+
+export type SettleOutcome = z.infer<typeof settleOutcomeSchema>;
 
 export const winnerRouter = createTRPCRouter({
   getWinners: protectedProcedure.query(async ({ ctx }) => {
@@ -95,7 +113,7 @@ export const winnerRouter = createTRPCRouter({
   upsertReward: protectedProcedure
     .input(upsertRewardInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const { reward, notified } = await callOrderServer<SavedReward>(
+      const { reward, notified } = await callOrderServer(
         "PUT",
         "/api/internal/winners/reward",
         {
@@ -107,14 +125,10 @@ export const winnerRouter = createTRPCRouter({
             : undefined,
           adminId: ctx.session.user.id,
         },
+        savedRewardSchema,
       );
 
-      return {
-        title: reward.title,
-        code: reward.code,
-        expiresAt: new Date(reward.expiresAt),
-        notified,
-      };
+      return { ...reward, notified };
     }),
 
   /**
@@ -125,10 +139,11 @@ export const winnerRouter = createTRPCRouter({
   settleMonth: protectedProcedure
     .input(settleMonthSchema)
     .mutation(({ input }) =>
-      callOrderServer<SettleOutcome>(
+      callOrderServer(
         "POST",
         "/api/internal/winners/settle",
         input,
+        settleOutcomeSchema,
       ),
     ),
 });

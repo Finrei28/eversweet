@@ -214,7 +214,10 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
         title: "One free dessert",
         expiresOn: "2026-10-31",
       }),
-    ).rejects.toMatchObject({ code: "TIMEOUT", message: /did not respond/ });
+    ).rejects.toMatchObject({
+      code: "TIMEOUT",
+      message: expect.stringMatching(/did not respond/),
+    });
   });
 
   // A 401 here is a mismatched secret between the two deploys, not a lapsed session.
@@ -227,8 +230,47 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
         title: "One free dessert",
         expiresOn: "2026-10-31",
       }),
-    ).rejects.toMatchObject({ message: /INTERNAL_SERVICE_SECRET/ });
+    ).rejects.toMatchObject({
+      message: expect.stringMatching(/INTERNAL_SERVICE_SECRET/),
+    });
   });
+
+  /**
+   * A success in a shape this site does not know - most likely the two deploys drifting
+   * apart. It used to be cast and read, so a missing `reward` crashed on `reward.title`
+   * with a raw TypeError for a prize the order server may well have saved.
+   */
+  it.each([
+    ["without the reward", { notified: true }],
+    [
+      "with an expiry that is not a date",
+      {
+        reward: { title: "One free dessert", code: "ABCD-2345", expiresAt: 0 },
+        notified: true,
+      },
+    ],
+    ["that is not JSON", null],
+  ])(
+    "says it cannot tell whether a prize was saved when the answer comes back %s",
+    async (_label, body) => {
+      fetchMock.mockResolvedValue(
+        body === null
+          ? new Response("<html>OK</html>", { status: 201 })
+          : json(201, body),
+      );
+
+      await expect(
+        adminCaller().winner.upsertReward({
+          winnerId: "winner-1",
+          title: "One free dessert",
+          expiresOn: "2026-10-31",
+        }),
+      ).rejects.toMatchObject({
+        code: "INTERNAL_SERVER_ERROR",
+        message: expect.stringMatching(/cannot tell whether this was saved/),
+      });
+    },
+  );
 
   // Refusing out loud: a silent no-op would read as a prize that was saved and simply
   // never turned up.
@@ -243,7 +285,7 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
       }),
     ).rejects.toMatchObject({
       code: "PRECONDITION_FAILED",
-      message: /ADMIN_SERVER_URL/,
+      message: expect.stringMatching(/ADMIN_SERVER_URL/),
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -289,6 +331,31 @@ describe("winner.settleMonth", { timeout: 30_000 }, () => {
       adminCaller().winner.settleMonth({ month: 8, year: 2026 }),
     ).rejects.toMatchObject({ message: "Failed to settle that month" });
   });
+
+  /**
+   * The dialog words one toast per known outcome and shows anything else as "nobody
+   * earned points". A success carrying an outcome it does not know - or none - must
+   * never reach it.
+   */
+  it.each([
+    [
+      "an outcome it does not know",
+      { month: 8, year: 2026, recorded: 0, outcome: "FAILED" },
+    ],
+    ["no count", { month: 8, year: 2026, outcome: "RECORDED" }],
+  ])(
+    "never reports a settle that comes back with %s as a success",
+    async (_label, body) => {
+      fetchMock.mockResolvedValue(json(200, body));
+
+      await expect(
+        adminCaller().winner.settleMonth({ month: 8, year: 2026 }),
+      ).rejects.toMatchObject({
+        code: "INTERNAL_SERVER_ERROR",
+        message: expect.stringMatching(/does not understand/),
+      });
+    },
+  );
 
   it("rejects a month outside 1 to 12 before asking the order server", async () => {
     await expect(
