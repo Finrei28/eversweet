@@ -28,7 +28,12 @@ import {
 } from "~/components/ui/form";
 import { Textarea } from "~/components/ui/textarea";
 import { toast } from "~/hooks/use-toast";
-import { defaultRewardExpiry, monthLabel } from "~/lib/winnerRewards";
+import { pickedDay } from "~/lib/aucklandDay";
+import {
+  defaultRewardExpiry,
+  formatPrizeCode,
+  monthLabel,
+} from "~/lib/winnerRewards";
 import { api } from "~/trpc/react";
 import { type WinnerRow } from "../columns";
 
@@ -63,12 +68,20 @@ export default function RewardDialog({
     onSuccess: async (data) => {
       await utils.winner.invalidate();
       onOpenChange(false);
+      // Said out loud because it only happens on the first assign, and only when the
+      // winner has notifications on. Otherwise staff cannot tell whether the customer
+      // knows yet.
+      const notice = data.notified
+        ? language === "en"
+          ? " The winner has been notified."
+          : " 已通知得奖者。"
+        : "";
       toast({
         title: language === "en" ? "Reward saved" : "奖品已保存",
         description:
           language === "en"
-            ? `${data.title} — code ${data.code}`
-            : `${data.title} — 兑换码 ${data.code}`,
+            ? `${data.title} — code ${data.code}.${notice}`
+            : `${data.title} — 兑换码 ${data.code}。${notice}`,
       });
     },
     onError: (mutationError) => setError(mutationError.message),
@@ -124,7 +137,20 @@ export default function RewardDialog({
 
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) => upsertReward.mutate(data))}
+            onSubmit={form.handleSubmit(({ expiresAt, ...data }) =>
+              upsertReward.mutate({
+                ...data,
+                // The day is read here, in the browser that showed the calendar; the
+                // server runs in UTC and would read an Auckland click as the day before.
+                // An edit that left the date alone sends none, so rewording a prize
+                // cannot move its deadline — the staff app's deadlines are midnight at
+                // the start of a day, and resending one would add a day to it.
+                expiresOn:
+                  !reward || expiresAt.getTime() !== reward.expiresAt.getTime()
+                    ? pickedDay(expiresAt)
+                    : undefined,
+              }),
+            )}
             className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pb-2 pt-2"
           >
             <FormField
@@ -196,14 +222,16 @@ export default function RewardDialog({
               <div className="rounded-md bg-muted p-3">
                 <div className="flex items-center justify-between">
                   <span className="font-mono tracking-wider">
-                    {reward.code}
+                    {formatPrizeCode(reward.code)}
                   </span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() =>
-                      void navigator.clipboard.writeText(reward.code)
+                      void navigator.clipboard.writeText(
+                        formatPrizeCode(reward.code),
+                      )
                     }
                   >
                     <Copy className="h-4 w-4" />

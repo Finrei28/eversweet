@@ -176,9 +176,29 @@ const refineOfferPricing = (
   }
 };
 
-export const createOfferSchema = offerFields.superRefine(refineOfferPricing);
+/** The offer dialog's form, whose dates are the calendar controls' `Date`s. */
+export const offerFormSchema = offerFields.superRefine(refineOfferPricing);
 
-export const updateOfferSchema = offerFields
+/**
+ * An offer as `createOffer` and `updateOffer` receive it: the form, with each date as the
+ * calendar day the admin saw ("2026-10-31") rather than the calendar's `Date`.
+ *
+ * The router turns those into the first instant of the start day and the last instant of
+ * the end day, in Auckland - see `src/lib/aucklandDay.ts`. The form's dates used to be
+ * stored as they came: midnight at the *start* of each day, so an offer set to end on the
+ * 31st stopped as the 31st began.
+ */
+const offerInputFields = offerFields
+  .omit({ startsAt: true, endsAt: true })
+  .extend({
+    startsOn: z.string().date().nullable().default(null),
+    endsOn: z.string().date().nullable().default(null),
+  });
+
+export const createOfferSchema =
+  offerInputFields.superRefine(refineOfferPricing);
+
+export const updateOfferSchema = offerInputFields
   .extend({ id: z.string().min(1) })
   .superRefine(refineOfferPricing);
 
@@ -195,4 +215,29 @@ export const upsertRewardSchema = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().trim().max(500).optional(),
   expiresAt: z.date(),
+});
+
+/**
+ * What `winner.upsertReward` receives: the form, with the expiry as the calendar day the
+ * admin saw ("2026-10-31") rather than the calendar's `Date`.
+ *
+ * The calendar hands back midnight in the browser's timezone, and only the browser knows
+ * which day that was. The router used to read the day off the `Date` itself, which is
+ * right on a machine in Auckland and a day early on Vercel, which runs in UTC.
+ *
+ * Optional because an edit that leaves the date alone sends none, and the order server
+ * then keeps the deadline it has.
+ */
+export const upsertRewardInputSchema = upsertRewardSchema
+  .omit({ expiresAt: true })
+  .extend({ expiresOn: z.string().date().optional() });
+
+/**
+ * A finished month to settle by hand, for when the order server's cron missed NZ midnight
+ * on the 1st. The order server refuses the month still being competed for; the dialog only
+ * offers finished months, so that refusal should never be seen.
+ */
+export const settleMonthSchema = z.object({
+  month: z.number().int().min(1).max(12),
+  year: z.number().int().min(2000),
 });

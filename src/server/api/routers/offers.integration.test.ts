@@ -16,24 +16,29 @@
  */
 import { beforeEach, expect, it, vi } from "vitest";
 
-// `rewardCode` is `server-only`, which throws outside an RSC, and `trpc.ts` imports
+// `orderServer` is `server-only`, which throws outside an RSC, and `trpc.ts` imports
 // `~/server/auth` -> next-auth -> `next/server`, which will not resolve under Vitest. A
 // server-side caller never calls `auth()`, so the stub costs nothing.
 vi.mock("server-only", () => ({}));
 vi.mock("~/server/auth", () => ({ auth: vi.fn(async () => null) }));
 
+import { DateTime, Settings } from "luxon";
 import type { z } from "zod";
 
 import type { createOfferSchema } from "~/app/components/schemas";
+import { endOfDayNZ } from "~/lib/aucklandDay";
 import { db } from "~/server/db";
 import { adminCaller } from "~/test/caller";
 import { describeIfDb, resetDatabase } from "~/test/db";
 
 type OfferInput = z.input<typeof createOfferSchema>;
 
-const HOUR = 60 * 60 * 1000;
-const past = (ms: number) => new Date(Date.now() - ms);
-const future = (ms: number) => new Date(Date.now() + ms);
+/** A day on the Auckland calendar, counted from today, the way the dialog sends one. */
+const aucklandDay = (offset: number) =>
+  DateTime.now()
+    .setZone("Pacific/Auckland")
+    .plus({ days: offset })
+    .toFormat("yyyy-LL-dd");
 
 const offerInput = (overrides: Partial<OfferInput> = {}): OfferInput => ({
   name: "Free mochi bowl",
@@ -41,8 +46,8 @@ const offerInput = (overrides: Partial<OfferInput> = {}): OfferInput => ({
   // not `.nullable()`, and the router maps the undefined to null on the way in.
   image: null,
   isActive: true,
-  startsAt: null,
-  endsAt: null,
+  startsOn: null,
+  endsOn: null,
   audience: "MEMBERS",
   dessertId: null,
   categoryId: null,
@@ -109,7 +114,7 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
   it("round-trips a created offer through the read path", async () => {
     const { dessert } = await seedMenu();
     const caller = adminCaller();
-    const endsAt = future(48 * HOUR);
+    const endsOn = aucklandDay(2);
 
     await caller.offer.createOffer({
       offer: offerInput({
@@ -119,7 +124,7 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
         discountAmount: 50,
         limit: 3,
         renewsWeekly: true,
-        endsAt,
+        endsOn,
         requirements: [{ dessertId: dessert.id, quantity: 2 }],
       }),
     });
@@ -131,7 +136,7 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
       description: "Half price taro",
       limit: 3,
       renewsWeekly: true,
-      endsAt,
+      endsAt: endOfDayNZ(endsOn),
       dessert: { id: dessert.id, name: "Mango sago" },
       _count: { redemptions: 0 },
     });
@@ -144,6 +149,46 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
     expect(offer?.requirements).toMatchObject([
       { quantity: 2, dessert: { id: dessert.id } },
     ]);
+  });
+
+  /**
+   * The bug this shape exists for. The dialog used to send the calendar's `Date`, which
+   * is midnight at the *start* of the day picked, and the router stored it as it came: an
+   * offer set to end on the 31st stopped as the 31st began. Played on a UTC host, as on
+   * Vercel, so reading the day off anything on the server would show up here.
+   */
+  it("stores the dates as the whole of those days in Auckland, even on a UTC host", async () => {
+    const previous = Settings.defaultZone;
+    Settings.defaultZone = "UTC";
+
+    try {
+      const created = await adminCaller().offer.createOffer({
+        offer: offerInput({ startsOn: "2026-10-01", endsOn: "2026-10-31" }),
+      });
+
+      await expect(
+        db.offer.findUnique({
+          where: { id: created.id },
+          select: { startsAt: true, endsAt: true },
+        }),
+      ).resolves.toEqual({
+        // Midnight on 1 October and the last millisecond of 31 October, NZDT.
+        startsAt: new Date("2026-09-30T11:00:00.000Z"),
+        endsAt: new Date("2026-10-31T10:59:59.999Z"),
+      });
+    } finally {
+      Settings.defaultZone = previous;
+    }
+  });
+
+  it("refuses a date that is not a calendar day", async () => {
+    await expect(
+      adminCaller().offer.createOffer({
+        offer: offerInput({ endsOn: "2026-02-30" }),
+      }),
+    ).rejects.toThrow();
+
+    await expect(db.offer.count()).resolves.toBe(0);
   });
 
   it("returns archived offers too, so the table can filter them client-side", async () => {
@@ -253,16 +298,16 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
   it("refuses to edit an offer whose run has ended, and changes nothing", async () => {
     const caller = adminCaller();
     const created = await caller.offer.createOffer({
-      offer: offerInput({ name: "Ended run", endsAt: past(HOUR) }),
+      offer: offerInput({ name: "Ended run", endsOn: aucklandDay(-1) }),
     });
 
     await expect(
       caller.offer.updateOffer({
         offer: {
-          // Pushing endsAt forward is exactly the move the guard exists to stop: it
-          // would take the offer live again with nobody's redemption cleared, and the
+          // Pushing the end date forward is exactly the move the guard exists to stop:
+          // it would take the offer live again with nobody's redemption cleared, and the
           // edit destroys the evidence the run had ended, so no later check could tell.
-          ...offerInput({ name: "Renamed", endsAt: future(48 * HOUR) }),
+          ...offerInput({ name: "Renamed", endsOn: aucklandDay(2) }),
           id: created.id,
         },
       }),
@@ -279,7 +324,7 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
   it("refuses to reactivate an offer whose run has ended", async () => {
     const caller = adminCaller();
     const created = await caller.offer.createOffer({
-      offer: offerInput({ isActive: false, endsAt: past(HOUR) }),
+      offer: offerInput({ isActive: false, endsOn: aucklandDay(-1) }),
     });
 
     await expect(
@@ -294,7 +339,7 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
 
     const created = await caller.offer.createOffer({
       offer: offerInput({
-        endsAt: future(72 * HOUR),
+        endsOn: aucklandDay(3),
         requirements: [{ dessertId: dessert.id, quantity: 2 }],
       }),
     });
@@ -323,7 +368,7 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
         offer: {
           ...offerInput({
             name,
-            endsAt: future(72 * HOUR),
+            endsOn: aucklandDay(3),
             requirements: [
               { id: requirement.id, dessertId: dessert.id, quantity: 2 },
             ],
@@ -470,10 +515,12 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
     ).resolves.toEqual({ itemPriceInCents: 500 });
   });
 
-  it("refuses to close a run that has not ended", async () => {
+  // Ending today on purpose: an offer is served through the whole of its last day, so a
+  // run ending today has not ended. Stored as midnight, it had ended hours ago.
+  it("refuses to close a run that ends today", async () => {
     const caller = adminCaller();
     const created = await caller.offer.createOffer({
-      offer: offerInput({ endsAt: future(HOUR) }),
+      offer: offerInput({ endsOn: aucklandDay(0) }),
     });
 
     await expect(caller.offer.closeRun({ id: created.id })).rejects.toThrow(
@@ -490,7 +537,7 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
     const created = await caller.offer.createOffer({
       offer: offerInput({
         name: "First run",
-        endsAt: past(HOUR),
+        endsOn: aucklandDay(-1),
         requirements: [{ dessertId: dessert.id, quantity: 2 }],
       }),
     });
@@ -528,7 +575,7 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
       offer: {
         ...offerInput({
           name: "Second run",
-          endsAt: future(48 * HOUR),
+          endsOn: aucklandDay(2),
           requirements: [
             { id: requirement.id, dessertId: dessert.id, quantity: 2 },
           ],

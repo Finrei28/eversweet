@@ -225,17 +225,46 @@ Reference: `prisma/migrations/20260908000000_offer_audience_and_redemption_rekey
 - **This website** serves its own customers and the `/admin` dashboard, and prices carts
   itself with `Promo`.
 - **The order server** serves the mobile apps: `Offer`, `Membership`, `Loyalty`,
-  `LoyaltyWinner` and the crons (`settleMonthlyWinners`, `renewMochiOffer`).
+  `LoyaltyWinner`, `WinnerReward` and the crons (`settleMonthlyWinners`,
+  `renewWeeklyOffers`).
 
-So several models in `schema.prisma` are **authored here but never read here** — `Offer` and
-`WinnerReward` are the clearest cases. `/admin/offers` and `/admin/winners` are authoring and
-reporting surfaces only; nothing in this repo prices against an offer or redeems a reward
-code. Before changing the meaning of a column, grep the other repo for it.
+So several models in `schema.prisma` are **authored here but never read here** — `Offer` is
+the clearest case. `/admin/offers` is an authoring and reporting surface only; nothing in this
+repo prices against an offer. Before changing the meaning of a column, grep the other repo
+for it.
 
-The only outbound call is `src/server/notifyAdmin.ts`, which POSTs a paid order to the order
-server's `/api/internal/orders/announce` with an `x-service-secret` header
-(`ADMIN_SERVER_URL` + `INTERNAL_SERVICE_SECRET`, both optional in `src/env.js`). It is
-best-effort — if it fails, the order server's cron sweeps the order up instead.
+**`/admin/winners` reads the database but writes through the order server.** Assigning a
+prize and settling a missed month both call the order server rather than touching
+`WinnerReward` or `LoyaltyWinner` — see `src/server/api/routers/winners.ts`. The order
+server is the only place a prize code is minted, the only place a winner is pushed a
+notification, and where every guard lives. This site used to write the reward row itself
+with its own copy of the code generator (`src/server/rewardCode.ts`, since deleted) and no
+way to push, so prizes assigned here arrived in silence and the two generators had to be kept
+identical by hand — a drift would have made every prize from here unredeemable at the counter.
+The website still pins a chosen expiry to the end of the Auckland day before sending it,
+because interpreting a browser calendar click is this site's concern — and **the day is read
+in the browser** (`pickedDay`), then pinned on the server from that date string
+(`endOfDayNZ`, both in `src/lib/aucklandDay.ts`). The router used to read the day off the
+calendar's `Date` itself, which is
+correct on a machine in Auckland and a day early on Vercel, which runs in UTC. An edit that
+leaves the date alone sends no expiry, and the order server keeps the deadline it has.
+
+Two outbound channels, both to the order server's `/api/internal` with an `x-service-secret`
+header (`ADMIN_SERVER_URL` + `INTERNAL_SERVICE_SECRET`, both optional in `src/env.js`), with
+opposite contracts:
+
+- `src/server/notifyAdmin.ts` announces a paid order. **Best-effort** — it never throws, and
+  if it fails the order server's cron sweeps the order up instead, because a customer who has
+  paid must not wait on the kitchen.
+- `src/server/orderServer.ts` (`callOrderServer`) carries the winners writes. **The answer
+  is the result** — it throws a `TRPCError` with the order server's own wording, so the
+  dialog can show it. An 8s timeout keeps it inside Vercel's default function limit, and a
+  retry is safe: a call that committed but timed out leaves a reward the retry edits in place,
+  with the same code and no second push. When either variable is unset it refuses out loud.
+
+So **assigning a prize or settling a month locally needs the order server running**, with
+`ADMIN_SERVER_URL` pointed at it and a matching `INTERNAL_SERVICE_SECRET`. The order server
+must be deployed before a website build that calls a new internal route.
 
 ### Auth is the admin gate
 
@@ -293,8 +322,22 @@ every render and loops until the tab freezes. See the comment in
 
 **Forms** — react-hook-form + `zodResolver`; schemas live centrally in
 `src/app/components/schemas.tsx`. Controls come from `~/components/ui/form`
-(`FormInput` is a project wrapper that reddens the border on error). Dialogs use local
-`dialogOpen` state and a `prevDialogOpen` ref effect to reset on close.
+(`FormInput` is a project wrapper that reddens the border on error).
+
+**Dialogs reset on close** with a ref holding the previous open state and an effect that
+clears when it goes from open to closed. Who owns that open state depends on where the
+dialog is opened from:
+
+- **Its own trigger** (`addProduct`, `editProduct`, `editCustomisationDialog`) — local
+  `dialogOpen` state, and the ref is `prevDialogOpen`.
+- **A table row or toolbar button** (`offerDialog`, `rewardDialog`, `settleMonthDialog`) —
+  the parent owns it and passes `open`/`onOpenChange`, because it also has to say *which*
+  row. The ref is `prevOpen`, on the prop. Copying the prop into local state as well would
+  only add a second source of truth to fall out of step.
+
+A dialog whose mutation can outlive the visit that started it — `settleMonthDialog`, which
+waits on the order server — must check that visit is still on screen before showing the
+answer in it.
 
 **Mutations** — `api.useUtils()` + `await utils.<router>.invalidate()` in `onSuccess`, then
 `toast()` from `~/hooks/use-toast`. Never `router.refresh()`.
@@ -331,8 +374,18 @@ reserves the logo's width (`pl-64`) and tightens the gap. Check any new link at 
   cannot express a CHECK, so the constraints are invisible to it: `migrate diff` reports no
   drift and will not drop them, but **`prisma db push` never creates them**, so a test
   database built that way does not have them (this machine's was given them by hand - see
-  the integration-test section). The suites prove the application layer either way; the
-  constraints are defence against a writer that bypasses it.
+  the integration-test section - so a raw insert there needs a price). The suites prove the
+  application layer either way; the constraints are defence against a writer that bypasses
+  it.
+- **An offer's dates are whole Auckland days.** `startsAt` is midnight at the start of its
+  day and `endsAt` the **last millisecond** of its day (23:59:59.999), and both apps compare
+  them inclusively. The dialog sends the days the admin picked as `"2026-10-31"` strings,
+  read in the browser with `pickedDay`, and the router pins them with
+  `startOfDayNZ`/`endOfDayNZ` (`src/lib/aucklandDay.ts`). It used to store the calendar's
+  `Date` as it came — midnight at the *start* of the end day — so every offer stopped a day
+  early; `20260917000000_offer_ends_through_its_last_day` moved the rows written that way.
+  Never read a day off a `Date` on the server: Vercel runs in UTC, where an Auckland
+  midnight is still the day before.
 - **`Offer.renewsWeekly` makes `limit` an allowance per week rather than per run.** The order
   server's `renewWeeklyOffers` cron clears `used` every Monday for exactly those offers. It
   used to be an `updateMany` with no WHERE clause, which reset every redemption row in the

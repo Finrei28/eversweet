@@ -29,7 +29,14 @@ type ColumnProps = {
   onCloseRun: (offer: OfferRow) => void;
 };
 
-const dateFormatter = new Intl.DateTimeFormat("en-NZ");
+/**
+ * Pinned to Auckland. Without a zone the cell renders in UTC on the server and in the
+ * browser's zone after hydration, and a start date - midnight in Auckland - is the day
+ * before in UTC, so the two renders disagreed.
+ */
+const dateFormatter = new Intl.DateTimeFormat("en-NZ", {
+  timeZone: "Pacific/Auckland",
+});
 
 const STATE_LABELS: Record<OfferState, { en: string; zh: string }> = {
   LIVE: { en: "Live", zh: "进行中" },
