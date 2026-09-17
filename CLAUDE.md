@@ -320,19 +320,28 @@ browser. `priceCart()` throws `CartPricingError` for missing or unavailable item
 offers so the two cannot drift.
 
 **Stripe customers.** A payment shows who paid in the Stripe Dashboard only if it has a
-Stripe customer, so the checkout form calls `/api/updatePaymentIntent` just before
-`confirmPayment` to attach one (`src/server/stripeCustomer.ts`). The route takes the
-**client secret**, not the payment intent id, as proof of ownership, and acts only on an
-unconfirmed payment intent that `/api/checkout_sessions` tagged `source: "website"`.
-Customers are reused by lowercased email, but only ones marked `source: "website"`: the
-order server's customers belong to app accounts (their `metadata.userId`), and since anyone
-can type anyone's email at checkout, the website never reuses or edits those. The call is
-**fail-open**: if it fails, the payment still goes ahead, because only the Dashboard label is
-lost and the `Order` row records the customer anyway. Stripe refuses to change a payment
-intent's `customer` once it is set, so a retry under a different email after a declined card
-keeps the first customer. The route checks for that before creating anything, so it does not
-leave a customer behind with no payment. Never set `receipt_email` on these
-payments. In live mode Stripe then sends its own receipt as well as the Resend confirmation.
+Stripe customer. Once `confirmPayment` reports success, the checkout form calls
+`/api/updatePaymentIntent` to attach one (`src/server/stripeCustomer.ts`). It runs
+alongside `createNewOrder` and is **fail-open**: only the Dashboard label is at stake, and the
+`Order` row records the customer anyway. There is no login, so nothing proves that whoever
+types an email owns it, and the rules follow from that:
+
+- **After payment, never before.** Stripe accepts a customer on a *succeeded* payment intent
+  that has none. The route acts only on a succeeded one tagged `source: "website"` by
+  `/api/checkout_sessions`, so every customer stands for money taken. Ownership is shown by
+  the **client secret**, not the payment intent id.
+- **Reused only on an exact match of email, name and phone, and never edited.** Matching on
+  the email alone, and updating the rest, let anyone who knew a regular's email rewrite
+  their customer. `StripeForCheckout` leaves out `customers.update` so this cannot come back
+  unnoticed. Only customers marked `source: "website"` are candidates: the order server's
+  belong to app accounts (their `metadata.userId`).
+- **Created with an idempotency key** hashed from those details, so two first orders placed
+  at once share one customer instead of each missing the other in the list.
+- A payment keeps the first customer it is given, because Stripe refuses to change it once
+  set.
+
+Never set `receipt_email` on these payments. In live mode Stripe then sends its own receipt as
+well as the Resend confirmation.
 
 ### Caching
 

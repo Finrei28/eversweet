@@ -6,13 +6,14 @@ vi.mock("server-only", () => ({}));
 import {
   attachCheckoutCustomer,
   checkoutCustomerSchema,
-  findWebsiteCustomer,
-  saveWebsiteCustomer,
+  customerIdempotencyKey,
+  findOrCreateWebsiteCustomer,
   type StripeForCheckout,
   type WebsiteCustomerDetails,
 } from "./stripeCustomer";
 
 const fake = {
+  // `update` is a spy only so a test can prove nothing calls it.
   customers: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
   paymentIntents: { retrieve: vi.fn(), update: vi.fn() },
 };
@@ -24,13 +25,16 @@ const ADA: WebsiteCustomerDetails = {
   phone: "+64211234567",
 };
 
+/** A customer the website created for ADA. */
+const adasCustomer = { id: "cus_web", ...ADA, metadata: { source: "website" } };
+
 const SECRET = "pi_123_secret_abc";
 
-/** A payment intent as `/api/checkout_sessions` creates it. */
+/** A payment intent as `/api/checkout_sessions` creates it, once the browser has paid. */
 const websitePayment = (overrides: Partial<Stripe.PaymentIntent> = {}) => ({
   id: "pi_123",
   client_secret: SECRET,
-  status: "requires_payment_method",
+  status: "succeeded",
   metadata: { source: "website" },
   customer: null,
   ...overrides,
@@ -73,17 +77,7 @@ describe("checkoutCustomerSchema", () => {
   });
 });
 
-describe("findWebsiteCustomer and saveWebsiteCustomer", () => {
-  const findOrCreateWebsiteCustomer = async (
-    stripe: StripeForCheckout,
-    details: WebsiteCustomerDetails,
-  ) =>
-    saveWebsiteCustomer(
-      stripe,
-      await findWebsiteCustomer(stripe, details.email),
-      details,
-    );
-
+describe("findOrCreateWebsiteCustomer", () => {
   it("creates a website customer with top-level details when there is none", async () => {
     const id = await findOrCreateWebsiteCustomer(stripe, ADA);
 
@@ -92,55 +86,46 @@ describe("findWebsiteCustomer and saveWebsiteCustomer", () => {
       email: "ada@example.test",
       limit: 100,
     });
-    expect(fake.customers.create).toHaveBeenCalledWith({
-      ...ADA,
-      metadata: { source: "website" },
-    });
+    expect(fake.customers.create).toHaveBeenCalledWith(
+      { ...ADA, metadata: { source: "website" } },
+      { idempotencyKey: customerIdempotencyKey(ADA) },
+    );
   });
 
-  it("reuses the website customer with that email, unchanged", async () => {
-    fake.customers.list.mockResolvedValue({
-      data: [{ id: "cus_web", ...ADA, metadata: { source: "website" } }],
-    });
+  it("reuses the website customer whose email, name and phone all match", async () => {
+    fake.customers.list.mockResolvedValue({ data: [adasCustomer] });
 
     expect(await findOrCreateWebsiteCustomer(stripe, ADA)).toBe("cus_web");
     expect(fake.customers.create).not.toHaveBeenCalled();
-    expect(fake.customers.update).not.toHaveBeenCalled();
-  });
-
-  it("brings a reused customer's name and phone up to date", async () => {
-    fake.customers.list.mockResolvedValue({
-      data: [
-        {
-          id: "cus_web",
-          ...ADA,
-          phone: "+64220000000",
-          metadata: { source: "website" },
-        },
-      ],
-    });
-
-    await findOrCreateWebsiteCustomer(stripe, ADA);
-
-    expect(fake.customers.update).toHaveBeenCalledWith("cus_web", {
-      name: ADA.name,
-      phone: ADA.phone,
-    });
   });
 
   /**
-   * Anyone can type anyone's email at checkout. An app account's customer holds its cards
-   * and membership, so the website neither pays against it nor rewrites it.
+   * Anyone can type anyone's email at checkout. Matching on the email alone, and updating
+   * the rest, let a stranger who knew a regular's email rewrite that customer's name and
+   * phone and put their own payment under them.
    */
-  it("never reuses or changes an app account's customer with the same email", async () => {
+  it.each([
+    ["a different name", { name: "Someone Else" }],
+    ["a different phone", { phone: "+64229876543" }],
+  ])(
+    "leaves a customer with the same email but %s untouched, and creates another",
+    async (_, differs) => {
+      fake.customers.list.mockResolvedValue({ data: [adasCustomer] });
+
+      const id = await findOrCreateWebsiteCustomer(stripe, {
+        ...ADA,
+        ...differs,
+      });
+
+      expect(id).toBe("cus_new");
+      expect(fake.customers.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it("never reuses an app account's customer with the same details", async () => {
     fake.customers.list.mockResolvedValue({
       data: [
-        {
-          id: "cus_app",
-          name: "Someone Else",
-          email: ADA.email,
-          metadata: { userId: "user_1" },
-        },
+        { ...adasCustomer, id: "cus_app", metadata: { userId: "user_1" } },
       ],
     });
 
@@ -149,8 +134,38 @@ describe("findWebsiteCustomer and saveWebsiteCustomer", () => {
   });
 });
 
+/**
+ * Two first orders with the same details placed together both miss in the list. Stripe
+ * returns the first request's customer to any repeat of its idempotency key, so the key
+ * is what keeps them from becoming two customers.
+ */
+describe("customerIdempotencyKey", () => {
+  it("is the same for the same details", () => {
+    expect(customerIdempotencyKey({ ...ADA })).toBe(
+      customerIdempotencyKey(ADA),
+    );
+  });
+
+  it.each([
+    ["email", { email: "ada2@example.test" }],
+    ["name", { name: "Ada King" }],
+    ["phone", { phone: "+64229876543" }],
+  ])("differs when the %s does", (_, differs) => {
+    expect(customerIdempotencyKey({ ...ADA, ...differs })).not.toBe(
+      customerIdempotencyKey(ADA),
+    );
+  });
+
+  it("does not carry the details themselves", () => {
+    const key = customerIdempotencyKey(ADA);
+
+    expect(key).toMatch(/^website-customer-[0-9a-f]{64}$/);
+    expect(key).not.toContain("ada");
+  });
+});
+
 describe("attachCheckoutCustomer", () => {
-  it("attaches the customer to a website payment that has not been paid", async () => {
+  it("attaches the customer to a website payment that has succeeded", async () => {
     fake.paymentIntents.retrieve.mockResolvedValue(websitePayment());
 
     const result = await attachCheckoutCustomer(stripe, SECRET, ADA);
@@ -162,10 +177,47 @@ describe("attachCheckoutCustomer", () => {
     });
   });
 
-  it("leaves a payment alone that already has this customer", async () => {
-    fake.customers.list.mockResolvedValue({
-      data: [{ id: "cus_web", ...ADA, metadata: { source: "website" } }],
+  /**
+   * Attaching before confirmation let anyone with a fresh client secret mint a customer and
+   * abandon the payment. A customer now stands for money actually taken.
+   */
+  it.each([
+    ["requires_payment_method"],
+    ["requires_confirmation"],
+    ["requires_action"],
+    ["processing"],
+    ["canceled"],
+  ] as const)(
+    "creates no customer for a payment that is %s",
+    async (status) => {
+      fake.paymentIntents.retrieve.mockResolvedValue(
+        websitePayment({ status }),
+      );
+
+      expect(await attachCheckoutCustomer(stripe, SECRET, ADA)).toMatchObject({
+        ok: false,
+        status: 409,
+      });
+      expect(fake.customers.list).not.toHaveBeenCalled();
+      expect(fake.customers.create).not.toHaveBeenCalled();
+      expect(fake.paymentIntents.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses an app payment without creating a customer", async () => {
+    fake.paymentIntents.retrieve.mockResolvedValue(
+      websitePayment({ metadata: { purpose: "app_order" } }),
+    );
+
+    expect(await attachCheckoutCustomer(stripe, SECRET, ADA)).toMatchObject({
+      ok: false,
+      status: 409,
     });
+    expect(fake.customers.create).not.toHaveBeenCalled();
+  });
+
+  it("answers a repeat for a payment that already has this customer", async () => {
+    fake.customers.list.mockResolvedValue({ data: [adasCustomer] });
     fake.paymentIntents.retrieve.mockResolvedValue(
       websitePayment({ customer: "cus_web" }),
     );
@@ -178,13 +230,10 @@ describe("attachCheckoutCustomer", () => {
     expect(fake.paymentIntents.update).not.toHaveBeenCalled();
   });
 
-  /**
-   * Paying again under a different email after a declined card. Stripe refuses to change a
-   * payment's customer once set, so this used to create a customer it could not attach.
-   */
+  // Stripe refuses to change a payment's customer once set.
   it("refuses to move a payment to another customer, and creates none", async () => {
     fake.paymentIntents.retrieve.mockResolvedValue(
-      websitePayment({ customer: "cus_first_email" }),
+      websitePayment({ customer: "cus_someone_else" }),
     );
 
     expect(await attachCheckoutCustomer(stripe, SECRET, ADA)).toMatchObject({
@@ -192,7 +241,6 @@ describe("attachCheckoutCustomer", () => {
       status: 409,
     });
     expect(fake.customers.create).not.toHaveBeenCalled();
-    expect(fake.customers.update).not.toHaveBeenCalled();
     expect(fake.paymentIntents.update).not.toHaveBeenCalled();
   });
 
@@ -221,19 +269,5 @@ describe("attachCheckoutCustomer", () => {
       ok: false,
       status: 404,
     });
-  });
-
-  it.each([
-    ["an app payment", websitePayment({ metadata: { purpose: "app_order" } })],
-    ["a payment already made", websitePayment({ status: "succeeded" })],
-  ])("refuses %s without creating a customer", async (_, paymentIntent) => {
-    fake.paymentIntents.retrieve.mockResolvedValue(paymentIntent);
-
-    expect(await attachCheckoutCustomer(stripe, SECRET, ADA)).toMatchObject({
-      ok: false,
-      status: 409,
-    });
-    expect(fake.customers.create).not.toHaveBeenCalled();
-    expect(fake.paymentIntents.update).not.toHaveBeenCalled();
   });
 });

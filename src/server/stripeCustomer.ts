@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import parsePhoneNumberFromString from "libphonenumber-js";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -11,11 +13,20 @@ import { z } from "zod";
  * customer, and website payments used to belong to none - the details typed at checkout
  * went into the `Order` row and nowhere else.
  *
- * Customers the website creates are marked with `source: "website"` and reused by email,
- * so a regular's orders gather under one customer. The order server creates customers of
- * its own for app accounts (marked with a `userId`, never a `source`), and those are never
- * reused from here: the website has no login, so anyone can type anyone's email at
- * checkout, and that must not reach an app account's cards or membership.
+ * The website has no login, so nothing here can prove that whoever types an email owns it.
+ * Three rules follow from that:
+ *
+ * - **A customer is attached only once the payment has succeeded.** Stripe accepts a
+ *   customer on a paid payment intent that has none. Attaching before confirmation let
+ *   anyone mint customers for payments they then abandoned.
+ * - **A customer is reused only when the email, name and phone all match, and is never
+ *   edited.** Reusing by email alone and updating the rest let anyone who knew a regular's
+ *   email rewrite that customer's name and phone, and put their own payment under them.
+ *   A regular who types the same details every time still gathers under one customer; one
+ *   who changes their phone number starts a second.
+ * - **Only customers the website created (`source: "website"`) are candidates.** The order
+ *   server's customers belong to app accounts (marked with a `userId`, never a `source`) and
+ *   hold their cards and membership.
  */
 
 /** Marks a Stripe object as the website's, on both the customer and the payment intent. */
@@ -57,70 +68,73 @@ export const checkoutCustomerSchema = z
 
 export type WebsiteCustomerDetails = z.output<typeof checkoutCustomerSchema>;
 
-/** The Stripe calls made here - narrow, so a test can hand in a fake. */
+/**
+ * The Stripe calls made here - narrow, so a test can hand in a fake. There is deliberately
+ * no `customers.update`: nothing the website is sent may change a customer that exists.
+ */
 export type StripeForCheckout = {
-  customers: Pick<Stripe["customers"], "list" | "create" | "update">;
+  customers: Pick<Stripe["customers"], "list" | "create">;
   paymentIntents: Pick<Stripe["paymentIntents"], "retrieve" | "update">;
 };
 
 /**
- * The website customer with this email, if there is one.
+ * The website customer with exactly these details, if there is one.
  *
  * `list` rather than `search`: search lags about a minute behind writes, so two orders in
  * quick succession would each have created a customer.
  */
 export async function findWebsiteCustomer(
   stripe: StripeForCheckout,
-  email: string,
+  details: WebsiteCustomerDetails,
 ): Promise<Stripe.Customer | null> {
-  const { data } = await stripe.customers.list({ email, limit: 100 });
+  const { data } = await stripe.customers.list({
+    email: details.email,
+    limit: 100,
+  });
   return (
-    data.find((customer) => customer.metadata?.source === WEBSITE_SOURCE) ??
-    null
+    data.find(
+      (customer) =>
+        customer.metadata?.source === WEBSITE_SOURCE &&
+        customer.name === details.name &&
+        customer.phone === details.phone,
+    ) ?? null
   );
 }
 
 /**
- * Brings the website customer found for these details up to date, or creates one when
- * there is none, and returns its id.
+ * Stripe's idempotency key for creating the customer with these details.
+ *
+ * The list above cannot see a customer another request is creating at the same moment, so
+ * two first orders placed together would each have created one. With the same key, Stripe
+ * hands the second request the customer the first created. Keys last 24 hours, and by then
+ * the list finds the customer. Hashed, so the details themselves are not the key.
  */
-export async function saveWebsiteCustomer(
+export const customerIdempotencyKey = (details: WebsiteCustomerDetails) =>
+  `website-customer-${createHash("sha256")
+    .update(JSON.stringify([details.email, details.name, details.phone]))
+    .digest("hex")}`;
+
+/** The website customer with exactly these details, created on first use. */
+export async function findOrCreateWebsiteCustomer(
   stripe: StripeForCheckout,
-  existing: Stripe.Customer | null,
   details: WebsiteCustomerDetails,
 ): Promise<string> {
-  if (!existing) {
-    const created = await stripe.customers.create({
-      ...details,
-      metadata: { source: WEBSITE_SOURCE },
-    });
-    return created.id;
-  }
+  const existing = await findWebsiteCustomer(stripe, details);
+  if (existing) return existing.id;
 
-  // The latest order's details win: a changed phone number is the newer one.
-  if (existing.name !== details.name || existing.phone !== details.phone) {
-    await stripe.customers.update(existing.id, {
-      name: details.name,
-      phone: details.phone,
-    });
-  }
-
-  return existing.id;
+  const created = await stripe.customers.create(
+    { ...details, metadata: { source: WEBSITE_SOURCE } },
+    { idempotencyKey: customerIdempotencyKey(details) },
+  );
+  return created.id;
 }
-
-/** Statuses in which a payment has not been confirmed, so its customer can still be set. */
-const OPEN_STATUSES = new Set<Stripe.PaymentIntent.Status>([
-  "requires_payment_method",
-  "requires_confirmation",
-  "requires_action",
-]);
 
 export type AttachCheckoutCustomerResult =
   | { ok: true; customerId: string }
   | { ok: false; status: 404 | 409; error: string };
 
 /**
- * Puts the checkout's customer on its payment, before the browser confirms it.
+ * Puts the checkout's customer on its payment, once the payment has succeeded.
  *
  * Proof of ownership is the client secret rather than the payment intent id. The id alone
  * is not a secret - it is sent back to look an order up - while the client secret is what
@@ -153,45 +167,44 @@ export async function attachCheckoutCustomer(
     return { ok: false, status: 404, error: "Payment not found" };
   }
 
-  // Only a website payment that has not been paid yet. An app payment's customer is the
-  // order server's, and a confirmed payment's customer can no longer be changed.
+  // Only a website payment, and only once it is paid: every customer created here stands
+  // for money actually taken. An app payment's customer is the order server's.
   if (
     paymentIntent.metadata?.source !== WEBSITE_SOURCE ||
-    !OPEN_STATUSES.has(paymentIntent.status)
+    paymentIntent.status !== "succeeded"
   ) {
     return {
       ok: false,
       status: 409,
-      error: "This payment can no longer be changed",
+      error: "This payment is not a completed website payment",
     };
   }
 
-  const existing = await findWebsiteCustomer(stripe, details.email);
   const current =
     typeof paymentIntent.customer === "string"
       ? paymentIntent.customer
       : (paymentIntent.customer?.id ?? null);
 
   // Stripe will not move a payment to another customer once it has one ("You cannot modify
-  // `customer` on a PaymentIntent once it already has been set"). That is reached by paying
-  // again under a different email after a declined card, and the payment keeps the first
-  // customer. Checked before saving, so the refusal does not leave a customer behind with
-  // no payment to show for it.
-  if (current && current !== existing?.id) {
-    return {
-      ok: false,
-      status: 409,
-      error: "This payment already has a customer",
-    };
+  // `customer` on a PaymentIntent once it already has been set"), so a payment keeps the
+  // first customer it was given. A repeat of the same call finds that customer and is done;
+  // anything else is refused before a customer is created that could not be attached.
+  if (current) {
+    const existing = await findWebsiteCustomer(stripe, details);
+    return existing?.id === current
+      ? { ok: true, customerId: current }
+      : {
+          ok: false,
+          status: 409,
+          error: "This payment already has a customer",
+        };
   }
 
-  const customerId = await saveWebsiteCustomer(stripe, existing, details);
+  const customerId = await findOrCreateWebsiteCustomer(stripe, details);
 
-  if (!current) {
-    await stripe.paymentIntents.update(paymentIntent.id, {
-      customer: customerId,
-    });
-  }
+  await stripe.paymentIntents.update(paymentIntent.id, {
+    customer: customerId,
+  });
 
   return { ok: true, customerId };
 }

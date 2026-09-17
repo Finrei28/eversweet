@@ -8,10 +8,10 @@ import {
 } from "~/server/stripeCustomer";
 
 /**
- * Records who is paying on the payment itself, just before the browser confirms it, so the
- * Stripe Dashboard shows the customer against it. See `~/server/stripeCustomer`.
+ * Records who paid on the payment itself, once it has succeeded, so the Stripe Dashboard
+ * shows the customer against it. See `~/server/stripeCustomer`.
  *
- * Called with the details as they stand when Pay is pressed, not the debounced ones the
+ * Called with the details as they stood when Pay was pressed, not the debounced ones the
  * payment intent was created from, which the customer may have corrected since.
  *
  * This route used to write whatever `orderData` the browser sent into the metadata of any
