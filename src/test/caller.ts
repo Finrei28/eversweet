@@ -21,10 +21,9 @@ const createCaller = createCallerFactory(
 );
 
 /**
- * Stands in for the admin who is signed in. `WinnerReward.assignedByAdminId` has no
- * foreign key, so this needs no `User` row — which is just as well, since the reward
- * tests assert it survives an edit unchanged. `adminCaller` takes an id so a test can
- * play a *second* admin and prove that.
+ * Stands in for the admin who is signed in. It needs no `User` row: nothing here writes
+ * it anywhere with a foreign key, and `winners.test.ts` only asserts it is the `adminId`
+ * sent to the order server. `adminCaller` takes an id so a test can play a second admin.
  */
 export const ADMIN_ID = "admin-test";
 

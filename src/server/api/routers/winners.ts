@@ -1,6 +1,6 @@
 import {
   settleMonthSchema,
-  upsertRewardSchema,
+  upsertRewardInputSchema,
 } from "~/app/components/schemas";
 import { endOfDayNZ } from "~/lib/winnerRewards";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -86,12 +86,14 @@ export const winnerRouter = createTRPCRouter({
    * One procedure rather than assign + edit: the difference is entirely "does this
    * winner already have a reward", and the order server knows that without being told.
    *
-   * The expiry is pinned to the end of the chosen Auckland day here, because interpreting
-   * a click in the admin's browser calendar is this site's concern — see `endOfDayNZ`. The
-   * order server receives an instant and does not second-guess it.
+   * Interpreting a click in the admin's browser calendar is this site's concern, so the
+   * dialog sends the day it showed and it is pinned to the end of that Auckland day here —
+   * see `endOfDayNZ`. The order server receives an instant and does not second-guess it.
+   * With no day, `expiresAt` is left out of the request entirely: on an edit the order
+   * server then keeps the deadline it has.
    */
   upsertReward: protectedProcedure
-    .input(upsertRewardSchema)
+    .input(upsertRewardInputSchema)
     .mutation(async ({ ctx, input }) => {
       const { reward, notified } = await callOrderServer<SavedReward>(
         "PUT",
@@ -100,7 +102,9 @@ export const winnerRouter = createTRPCRouter({
           winnerId: input.winnerId,
           title: input.title,
           description: input.description ?? null,
-          expiresAt: endOfDayNZ(input.expiresAt).toISOString(),
+          expiresAt: input.expiresOn
+            ? endOfDayNZ(input.expiresOn).toISOString()
+            : undefined,
           adminId: ctx.session.user.id,
         },
       );

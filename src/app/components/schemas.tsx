@@ -198,6 +198,21 @@ export const upsertRewardSchema = z.object({
 });
 
 /**
+ * What `winner.upsertReward` receives: the form, with the expiry as the calendar day the
+ * admin saw ("2026-10-31") rather than the calendar's `Date`.
+ *
+ * The calendar hands back midnight in the browser's timezone, and only the browser knows
+ * which day that was. The router used to read the day off the `Date` itself, which is
+ * right on a machine in Auckland and a day early on Vercel, which runs in UTC.
+ *
+ * Optional because an edit that leaves the date alone sends none, and the order server
+ * then keeps the deadline it has.
+ */
+export const upsertRewardInputSchema = upsertRewardSchema
+  .omit({ expiresAt: true })
+  .extend({ expiresOn: z.string().date().optional() });
+
+/**
  * A finished month to settle by hand, for when the order server's cron missed NZ midnight
  * on the 1st. The order server refuses the month still being competed for; the dialog only
  * offers finished months, so that refusal should never be seen.

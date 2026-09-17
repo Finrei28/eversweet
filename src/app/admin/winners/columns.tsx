@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import {
+  formatPrizeCode,
   monthLabel,
   rewardStatus,
   type RewardStatus,
@@ -169,14 +170,17 @@ export function GetWinnerColumns({
           const reward = row.original.reward;
           if (!reward) return <div className="text-muted-foreground">—</div>;
 
+          // Grouped the way the save toast and the customer's app show it.
+          const code = formatPrizeCode(reward.code);
+
           return (
             <div className="flex items-center gap-1">
-              <span className="font-mono tracking-wider">{reward.code}</span>
+              <span className="font-mono tracking-wider">{code}</span>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0"
-                onClick={() => void navigator.clipboard.writeText(reward.code)}
+                onClick={() => void navigator.clipboard.writeText(code)}
               >
                 <span className="sr-only">Copy code</span>
                 <Copy className="h-3 w-3" />

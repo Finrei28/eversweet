@@ -5,12 +5,12 @@
  * and what they refuse to do is proven against a real Postgres there
  * (`prizeRedemption.integration.test.ts`, `monthlyWinners.integration.test.ts`). What this
  * site owns is the request it sends — the right path, the secret, the admin, and an expiry
- * pinned to the Auckland day that was clicked — and turning the answer into something the
- * dialog can show. That is what is pinned here.
+ * pinned to the Auckland day that was chosen, whatever zone the server runs in — and
+ * turning the answer into something the dialog can show. That is what is pinned here.
  *
  * `getWinners` still reads the database directly; see `winners.integration.test.ts`.
  */
-import { DateTime } from "luxon";
+import { DateTime, Settings } from "luxon";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { env } = vi.hoisted(() => ({
@@ -38,9 +38,6 @@ const json = (status: number, body: unknown) =>
     status,
     headers: { "Content-Type": "application/json" },
   });
-
-/** The clock-face date an admin picks in the calendar: local midnight, as the browser hands it over. */
-const OCTOBER_31 = new Date(2026, 9, 31);
 
 const savedReward = (overrides: Record<string, unknown> = {}) =>
   json(201, {
@@ -74,7 +71,7 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
       winnerId: "winner-1",
       title: "One free dessert",
       description: "Any bowl up to $12",
-      expiresAt: OCTOBER_31,
+      expiresOn: "2026-10-31",
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -94,14 +91,63 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
       adminId: ADMIN_ID,
     });
 
-    // The calendar hands over midnight in the browser's timezone. Taken at face value
-    // that is a code which dies at the *start* of the chosen day, so this site re-anchors
-    // the clock-face date in Auckland before sending it.
+    // Valid through the whole of the day the admin chose, in Auckland.
     expect(
       DateTime.fromISO(body.expiresAt as string)
         .setZone("Pacific/Auckland")
         .toFormat("yyyy-LL-dd HH:mm:ss.SSS"),
     ).toBe("2026-10-31 23:59:59.999");
+  });
+
+  /**
+   * Vercel runs in UTC. The router used to read the day off the calendar's `Date` itself,
+   * which passed here on a machine in Auckland and sent the end of 30 October from
+   * production.
+   */
+  it("sends the same expiry when the server runs in UTC", async () => {
+    fetchMock.mockResolvedValue(savedReward());
+    const previous = Settings.defaultZone;
+    Settings.defaultZone = "UTC";
+
+    try {
+      await adminCaller().winner.upsertReward({
+        winnerId: "winner-1",
+        title: "One free dessert",
+        expiresOn: "2026-10-31",
+      });
+    } finally {
+      Settings.defaultZone = previous;
+    }
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      expiresAt: "2026-10-31T10:59:59.999Z",
+    });
+  });
+
+  // The order server keeps the deadline it has when none is sent, so rewording a prize
+  // cannot move it.
+  it("leaves the expiry out of the request when no day is sent", async () => {
+    fetchMock.mockResolvedValue(savedReward());
+
+    await adminCaller().winner.upsertReward({
+      winnerId: "winner-1",
+      title: "Two free desserts",
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).not.toHaveProperty("expiresAt");
+  });
+
+  it("rejects a day that is not a real date before asking the order server", async () => {
+    await expect(
+      adminCaller().winner.upsertReward({
+        winnerId: "winner-1",
+        title: "One free dessert",
+        expiresOn: "2026-02-30",
+      }),
+    ).rejects.toThrow();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("returns the code and whether the winner was told", async () => {
@@ -110,7 +156,7 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
     const saved = await adminCaller().winner.upsertReward({
       winnerId: "winner-1",
       title: "One free dessert",
-      expiresAt: OCTOBER_31,
+      expiresOn: "2026-10-31",
     });
 
     expect(saved).toEqual({
@@ -127,7 +173,7 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
     await adminCaller().winner.upsertReward({
       winnerId: "winner-1",
       title: "One free dessert",
-      expiresAt: OCTOBER_31,
+      expiresOn: "2026-10-31",
     });
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -149,7 +195,7 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
       adminCaller().winner.upsertReward({
         winnerId: "winner-1",
         title: "Changed",
-        expiresAt: OCTOBER_31,
+        expiresOn: "2026-10-31",
       }),
     ).rejects.toMatchObject({
       code: "CONFLICT",
@@ -166,7 +212,7 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
       adminCaller().winner.upsertReward({
         winnerId: "winner-1",
         title: "One free dessert",
-        expiresAt: OCTOBER_31,
+        expiresOn: "2026-10-31",
       }),
     ).rejects.toMatchObject({ code: "TIMEOUT", message: /did not respond/ });
   });
@@ -179,7 +225,7 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
       adminCaller().winner.upsertReward({
         winnerId: "winner-1",
         title: "One free dessert",
-        expiresAt: OCTOBER_31,
+        expiresOn: "2026-10-31",
       }),
     ).rejects.toMatchObject({ message: /INTERNAL_SERVICE_SECRET/ });
   });
@@ -193,7 +239,7 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
       adminCaller().winner.upsertReward({
         winnerId: "winner-1",
         title: "One free dessert",
-        expiresAt: OCTOBER_31,
+        expiresOn: "2026-10-31",
       }),
     ).rejects.toMatchObject({
       code: "PRECONDITION_FAILED",

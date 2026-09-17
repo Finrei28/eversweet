@@ -190,8 +190,12 @@ notification, and where every guard lives. This site used to write the reward ro
 with its own copy of the code generator (`src/server/rewardCode.ts`, since deleted) and no
 way to push, so prizes assigned here arrived in silence and the two generators had to be kept
 identical by hand — a drift would have made every prize from here unredeemable at the counter.
-The website still pins a chosen expiry to the end of the Auckland day (`endOfDayNZ`) before
-sending it, because interpreting a browser calendar click is this site's concern.
+The website still pins a chosen expiry to the end of the Auckland day before sending it,
+because interpreting a browser calendar click is this site's concern — and **the day is read
+in the browser** (`pickedDay`), then pinned on the server from that date string
+(`endOfDayNZ`). The router used to read the day off the calendar's `Date` itself, which is
+correct on a machine in Auckland and a day early on Vercel, which runs in UTC. An edit that
+leaves the date alone sends no expiry, and the order server keeps the deadline it has.
 
 Two outbound channels, both to the order server's `/api/internal` with an `x-service-secret`
 header (`ADMIN_SERVER_URL` + `INTERNAL_SERVICE_SECRET`, both optional in `src/env.js`), with

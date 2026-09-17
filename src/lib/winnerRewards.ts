@@ -26,20 +26,34 @@ export const defaultRewardExpiry = (month: number, year: number): Date =>
     .toJSDate();
 
 /**
- * An admin's override, pinned to the last instant of the day they picked.
+ * The day an admin clicked in the calendar, as the date they saw: "2026-10-31".
  *
- * The calendar hands back midnight in the *browser's* timezone. Taken at face value
- * that is a code which dies at the start of the chosen day, and for an admin travelling
- * it is the wrong day entirely. `keepLocalTime` reads the clock-face date they clicked
- * and re-anchors it in Auckland - the same move pickUpTimeHelper makes, for the same
- * reason. Applied on the server, so the expiry the mobile app enforces does not depend
- * on which device assigned it.
+ * **Call it in the browser.** The calendar hands back midnight in the browser's own
+ * timezone, and this reads the date in whatever zone it runs in. On the server, which runs
+ * in UTC, a click on 31 October in Auckland is still 30 October.
  */
-export const endOfDayNZ = (date: Date): Date =>
-  DateTime.fromJSDate(date)
-    .setZone(ZONE, { keepLocalTime: true })
-    .endOf("day")
-    .toJSDate();
+export const pickedDay = (date: Date): string =>
+  DateTime.fromJSDate(date).toFormat("yyyy-LL-dd");
+
+/**
+ * An admin's chosen expiry, pinned to the last instant of that day in Auckland.
+ *
+ * Takes the day as a string, so the host's timezone cannot move it. It used to take the
+ * calendar's `Date` and read the day off it with `keepLocalTime` on the server. That
+ * passed every test on a machine in Auckland, and on Vercel it made every chosen expiry a
+ * day early: the prize died at the end of the 30th for a customer told the 31st.
+ *
+ * The last instant rather than the first, so the code is valid *through* the day.
+ */
+export const endOfDayNZ = (day: string): Date =>
+  DateTime.fromISO(day, { zone: ZONE }).endOf("day").toJSDate();
+
+/**
+ * How a prize code is shown: two groups of four, the way the order server returns it and
+ * the customer's app displays it. Codes are stored bare, and the counter accepts either.
+ */
+export const formatPrizeCode = (code: string): string =>
+  `${code.slice(0, 4)}-${code.slice(4)}`;
 
 export type RewardStatus =
   | "UNASSIGNED"
