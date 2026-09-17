@@ -28,11 +28,11 @@ import {
 } from "~/components/ui/form";
 import { Textarea } from "~/components/ui/textarea";
 import { toast } from "~/hooks/use-toast";
+import { pickedDay } from "~/lib/aucklandDay";
 import {
   defaultRewardExpiry,
   formatPrizeCode,
   monthLabel,
-  pickedDay,
 } from "~/lib/winnerRewards";
 import { api } from "~/trpc/react";
 import { type WinnerRow } from "../columns";

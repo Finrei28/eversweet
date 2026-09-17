@@ -2,7 +2,7 @@ import {
   settleMonthSchema,
   upsertRewardInputSchema,
 } from "~/app/components/schemas";
-import { endOfDayNZ } from "~/lib/winnerRewards";
+import { endOfDayNZ } from "~/lib/aucklandDay";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { callOrderServer } from "~/server/orderServer";
 

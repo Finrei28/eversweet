@@ -193,7 +193,8 @@ identical by hand — a drift would have made every prize from here unredeemable
 The website still pins a chosen expiry to the end of the Auckland day before sending it,
 because interpreting a browser calendar click is this site's concern — and **the day is read
 in the browser** (`pickedDay`), then pinned on the server from that date string
-(`endOfDayNZ`). The router used to read the day off the calendar's `Date` itself, which is
+(`endOfDayNZ`, both in `src/lib/aucklandDay.ts`). The router used to read the day off the
+calendar's `Date` itself, which is
 correct on a machine in Auckland and a day early on Vercel, which runs in UTC. An edit that
 leaves the date alone sends no expiry, and the order server keeps the deadline it has.
 

@@ -1,13 +1,12 @@
-import { DateTime, Settings } from "luxon";
+import { DateTime } from "luxon";
 import { describe, expect, it } from "vitest";
 
+import { endOfDayNZ } from "./aucklandDay";
 import {
   defaultRewardExpiry,
-  endOfDayNZ,
   finishedMonths,
   formatPrizeCode,
   monthLabel,
-  pickedDay,
   rewardStatus,
 } from "./winnerRewards";
 
@@ -68,77 +67,10 @@ describe("defaultRewardExpiry", () => {
   });
 });
 
-/**
- * Runs `fn` as if the process were in `zone`. luxon's default zone is what `fromJSDate`
- * reads a `Date` in, so this is how a test plays the admin's browser, or Vercel.
- */
-const inZone = <T>(zone: string, fn: () => T): T => {
-  const previous = Settings.defaultZone;
-  Settings.defaultZone = zone;
-  try {
-    return fn();
-  } finally {
-    Settings.defaultZone = previous;
-  }
-};
-
-/** What the calendar hands back for 31 October in an Auckland browser: midnight there. */
-const CLICKED_31_OCTOBER_IN_NZ = new Date("2026-10-30T11:00:00.000Z");
-
-describe("pickedDay", () => {
-  it("reads the day the admin clicked, in the browser's zone", () => {
-    expect(
-      inZone("Pacific/Auckland", () => pickedDay(CLICKED_31_OCTOBER_IN_NZ)),
-    ).toBe("2026-10-31");
-  });
-
-  /**
-   * Why it has to run in the browser: the same instant read on a UTC host is the day
-   * before. This is the reading the router used to do.
-   */
-  it("gives the day before when the same click is read in UTC", () => {
-    expect(inZone("UTC", () => pickedDay(CLICKED_31_OCTOBER_IN_NZ))).toBe(
-      "2026-10-30",
-    );
-  });
-
-  it("gives an admin behind NZ the day they clicked, not Auckland's", () => {
-    const clicked = inZone("America/Los_Angeles", () =>
-      DateTime.fromObject({ year: 2026, month: 1, day: 3 }).toJSDate(),
-    );
-
-    expect(inZone("America/Los_Angeles", () => pickedDay(clicked))).toBe(
-      "2026-01-03",
-    );
-  });
-});
-
-describe("endOfDayNZ", () => {
-  it("pins a day to its last instant in Auckland", () => {
-    expect(inNZ(endOfDayNZ("2026-10-15"))).toBe(
-      "2026-10-15T23:59:59.999+13:00",
-    );
-  });
-
-  /**
-   * The test that fails if the day is ever read off a `Date` on the server again. On
-   * Vercel that made "collect by 31 October" expire at the end of the 30th.
-   */
-  it("gives the same instant whatever zone the host runs in", () => {
-    for (const zone of ["UTC", "Pacific/Auckland", "America/Los_Angeles"]) {
-      expect(inZone(zone, () => endOfDayNZ("2026-10-31").toISOString())).toBe(
-        "2026-10-31T10:59:59.999Z",
-      );
-    }
-  });
-
-  it("uses the offset in force on that day", () => {
-    expect(inNZ(endOfDayNZ("2026-06-30"))).toBe(
-      "2026-06-30T23:59:59.999+12:00",
-    );
-  });
-
-  // A prize given its default deadline and then reworded must not have it moved.
+// `pickedDay` and `endOfDayNZ` are tested in `aucklandDay.test.ts`; this pins only that a
+// chosen day and the default expiry mean the same instant.
+describe("a chosen expiry day", () => {
+  // Choosing the default day again in the dialog must not move the deadline.
   it("lands exactly on the default expiry for that day", () => {
     expect(endOfDayNZ("2026-10-31")).toEqual(defaultRewardExpiry(9, 2026));
   });
