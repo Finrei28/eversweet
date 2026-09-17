@@ -154,11 +154,3 @@ export type Customisation = {
   isAvailableForPurchase?: boolean;
   categories: Category[];
 };
-
-export type dayHoursType = {
-  open: number | null;
-  close: number | null;
-  displayName: string;
-};
-
-export type BusinessHoursType = Record<number, dayHoursType>;

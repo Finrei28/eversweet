@@ -57,8 +57,17 @@ export async function POST(req: Request) {
       amount: totalInCents,
       currency: "nzd",
       payment_method_types: ["card"],
-      // What `/api/updatePaymentIntent` requires before it will attach a customer.
-      metadata: { source: WEBSITE_SOURCE },
+      metadata: {
+        // What `/api/updatePaymentIntent` requires before it will attach a customer.
+        source: WEBSITE_SOURCE,
+        // How big the kitchen's job is, from the cart this route has just priced. The
+        // pick-up time check before paying reads it from here rather than trusting a
+        // count the browser sends - see `itemCountForPayment` in
+        // ~/server/paymentItemCount.
+        itemCount: String(
+          parsed.data.items.reduce((count, item) => count + item.quantity, 0),
+        ),
+      },
     });
 
     return NextResponse.json(

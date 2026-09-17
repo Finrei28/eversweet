@@ -33,6 +33,7 @@ export default function CustomerDetails({
   const getPickedUpTime = (dateString: string) => {
     const pickedUpTime = new Date(dateString);
     return new Intl.DateTimeFormat("en-NZ", {
+      timeZone: "Pacific/Auckland",
       year: "numeric",
       month: "numeric",
       day: "numeric",

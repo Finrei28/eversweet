@@ -1,74 +1,46 @@
-import { unstable_cache } from "next/cache";
-import { DateTime } from "luxon";
+import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { db } from "~/server/db";
-import { DEFAULT_PREP_TIMES, type PrepTimes } from "~/lib/prepTimes";
-
-/**
- * Read on every customer-facing page load, changes a few times a year.
- *
- * The NZ date is passed as an argument rather than read inside the cached
- * function so it forms part of the cache key - otherwise a cached result would
- * survive past the day boundary it was computed for.
- *
- * ISO strings cross the cache boundary because the Next.js data cache does not
- * preserve `Date` instances, and the client feeds these straight into
- * date-fns `format()`, which rejects strings.
- */
-const getDaysOffCached = unstable_cache(
-  async (todayIso: string) => {
-    const daysOff = await db.daysOff.findMany({
-      select: { date: true },
-      where: { date: { gte: new Date(todayIso) } },
-      orderBy: { date: "asc" },
-    });
-    return daysOff.map((day) => day.date.toISOString());
-  },
-  ["days-off"],
-  { revalidate: 300, tags: ["days-off"] },
-);
-
-/**
- * One row, read on every checkout, changed rarely. Cached like the days off,
- * and falling back to the defaults rather than throwing: an unreadable
- * settings row must not stop a customer being offered a pick-up time.
- */
-const getPrepTimesCached = unstable_cache(
-  async (): Promise<PrepTimes> => {
-    const row = await db.prepTimeSetting.findFirst();
-
-    if (!row) return DEFAULT_PREP_TIMES;
-
-    return {
-      singleItem: row.singleItem,
-      upToThree: row.upToThree,
-      upToSix: row.upToSix,
-      moreThanSix: row.moreThanSix,
-      kitchenSlack: row.kitchenSlack,
-      quoteFloor: row.quoteFloor,
-    };
-  },
-  ["prep-times"],
-  { revalidate: 300, tags: ["prep-times"] },
-);
+import type { PrepTimes } from "~/lib/prepTimes";
+import type { TradingHoursRow } from "~/lib/pickUpTimes";
+import {
+  checkWebsitePickUpTime,
+  getDaysOff,
+  getPrepTimes,
+  getTradingHours,
+} from "~/server/pickUpTimes";
+import { itemCountForPayment } from "~/server/paymentItemCount";
 
 export const storeRouter = createTRPCRouter({
-  getPrepTimes: publicProcedure.query(async (): Promise<PrepTimes> => {
-    try {
-      return await getPrepTimesCached();
-    } catch (error) {
-      console.error("Could not read preparation times:", error);
-      return DEFAULT_PREP_TIMES;
-    }
-  }),
+  getPrepTimes: publicProcedure.query((): Promise<PrepTimes> => getPrepTimes()),
 
-  getDaysOff: publicProcedure.query(async () => {
-    const today = DateTime.now()
-      .setZone("Pacific/Auckland")
-      .startOf("day")
-      .toJSDate();
-    const dates = await getDaysOffCached(today.toISOString());
-    return dates.map((iso) => new Date(iso));
-  }),
+  getDaysOff: publicProcedure.query(() => getDaysOff()),
+
+  /** The weekly hours, one row per weekday, in minutes past Auckland midnight. */
+  getTradingHours: publicProcedure.query(
+    (): Promise<TradingHoursRow[]> => getTradingHours(),
+  ),
+
+  /**
+   * The check a pick-up time must pass before the customer pays. A mutation rather than a
+   * query only so React Query never answers it from cache: the same time and cart can be
+   * fine at 9:10 PM and too late at 9:21.
+   *
+   * Takes the payment rather than an item count: the size of the order, which decides how
+   * long the kitchen is given, is read from what the server recorded when it priced the
+   * cart for that payment, never from the browser.
+   */
+  checkPickUpTime: publicProcedure
+    .input(
+      z.object({
+        pickUpTime: z.date(),
+        paymentIntentId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ input }) =>
+      checkWebsitePickUpTime(
+        input.pickUpTime,
+        await itemCountForPayment(input.paymentIntentId),
+      ),
+    ),
 });
