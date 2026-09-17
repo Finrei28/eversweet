@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { CartContext } from "~/app/components/cartContext";
 import { Button } from "~/components/ui/button";
 import { ShoppingBag } from "lucide-react";
@@ -33,6 +33,13 @@ export default function CheckoutPage() {
 
   const [pickUpTime, setPickUpTime] = useState<Date | null>(null);
   const [pickUpNextOpening, setPickUpNextOpening] = useState(false);
+  // How far the device's clock is from the server's, learned from the server's own check
+  // before paying. The picker reads its clock through this, so a phone a few minutes slow
+  // does not keep offering an ASAP the server keeps refusing.
+  const [clockSkewMs, setClockSkewMs] = useState(0);
+  const handleServerTime = useCallback((serverNow: Date) => {
+    setClockSkewMs(serverNow.getTime() - Date.now());
+  }, []);
   const [debouncedCustomerInfo, setDebouncedCustomerInfo] =
     useState(customerInfo);
   const [isPaymentIntentInitialized, setIsPaymentIntentInitialized] =
@@ -164,7 +171,7 @@ export default function CheckoutPage() {
             pickUpTime={pickUpTime}
             setPickUpTime={setPickUpTime}
             setPickUpNextOpening={setPickUpNextOpening}
-            pickUpNextOpening={pickUpNextOpening}
+            clockSkewMs={clockSkewMs}
             daysOff={daysOff}
           />
 
@@ -187,7 +194,7 @@ export default function CheckoutPage() {
             setPickUpTime={setPickUpTime}
             isLoading={isPaymentSectionLoading}
             error={error}
-            daysOff={daysOff}
+            onServerTime={handleServerTime}
           />
         </div>
       </div>

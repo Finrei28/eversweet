@@ -25,7 +25,7 @@ npm run format:write # prettier
 Run a single test file or case:
 
 ```bash
-npx vitest run src/lib/pickUpTimeHelper.test.ts
+npx vitest run src/lib/pickUpTimes.test.ts
 npx vitest run -t "expires a September win at the end of October"
 ```
 
@@ -71,10 +71,18 @@ hand (this machine's already has them):
 
 ```bash
 "C:/pg16test/pgsql/bin/psql.exe" -v ON_ERROR_STOP=1 -d "$TEST_DATABASE_URL"   -f prisma/migrations/20260914000000_offer_pricing_rules/migration.sql
+# TradingHours: only its ALTER TABLE lines, since db push has already created the table
+sed -n '/^ALTER TABLE "TradingHours"/,/;$/p' prisma/migrations/20260918000000_trading_hours/migration.sql \
+  | "C:/pg16test/pgsql/bin/psql.exe" -v ON_ERROR_STOP=1 -d "$TEST_DATABASE_URL"
 ```
 
 Nothing in the suites depends on them - they assert the zod schema and the router, which is
-every path an admin can reach - so a database without them still passes.
+every path an admin can reach - so a database without them still passes. The one suite that
+asserts a constraint (`src/server/pickUpTimes.integration.test.ts`) skips those cases, in
+the report, when the constraints are missing.
+
+`resetDatabase()` truncates `TradingHours` too, so a suite that reads the shop's hours seeds
+them itself, as `src/server/pickUpTimes.integration.test.ts` does.
 
 Testing a router: build a caller from just the routers under test rather than importing
 `~/server/api/root`, which reaches the order router and an email template whose JSX will
@@ -324,7 +332,66 @@ offers so the two cannot drift.
 `unstable_cache` wrappers live at module scope (so they wrap once, not per request) and use
 the `db` singleton directly. Product mutations `revalidateTag(MENU_CACHE_TAG)`. The Next data
 cache does not preserve `Date`, so ISO strings cross the boundary and are rehydrated — see
-`src/server/api/routers/store.ts`.
+`getDaysOffCached` in `src/server/pickUpTimes.ts`.
+
+### Pick-up times
+
+One rule, implemented three times - here in `src/lib/pickUpTimes.ts`, in the order server's
+`backend/src/lib/tradingHours.ts`, and in the customer app's `frontend/lib/checkoutHelpers.ts`
+and `businessHours.ts` - because the three deploy separately and share no package.
+
+| | |
+|---|---|
+| Clock | `Pacific/Auckland` wall clock (NZST or NZDT), never the device's or the server's |
+| Weekly hours | `TradingHours`: one row per weekday (0 = Sunday), minutes past midnight, both null = closed |
+| Days off | `DaysOff`, each stored as Auckland midnight and matched by Auckland calendar day |
+| **Last pick-up** | **closing − 10 minutes, inclusive**, compared to the minute. A 9:30 PM close takes 9:20. So a late customer still lets the shop close on time. App eat-in orders stop at closing − 30 |
+| Earliest | now + `quoteMinutes(items, PrepTimeSetting)`, rounded **up** to the whole minute |
+| ASAP | the later of earliest and opening, if no later than the last pick-up; otherwise **the next trading day's opening time** (looking 60 days ahead) |
+| Picker | website slots every 10 minutes, 14 days ahead; app pickers every 5 minutes, a month ahead |
+
+**`pickUpTimeCases.json` is the rule as data.** It is copied byte-for-byte into
+`src/lib/` here, `backend/src/lib/` and `frontend/lib/`, and all three test suites run it.
+Change the rule by changing the cases first, then `cmp -s` the three copies. The website's
+suite also checks ASAP and the slots at every minute of a week, and across both daylight
+saving weekends, against a brute-force list of valid minutes. It reruns the cases with the
+process in UTC, Los Angeles and Kolkata.
+
+**How the website uses it:**
+- The picker (`checkout/_components/pick-up-time.tsx`) keeps ASAP current and leaves a
+  picked time alone until it stops being valid. A day with nothing left (today after its last
+  pick-up) moves on to the next day that has a slot.
+- **Before paying,** `checkoutForm.tsx` asks `store.checkPickUpTime`
+  (`checkWebsitePickUpTime` in `src/server/pickUpTimes.ts`), which decides on the database's
+  hours and days off with a 5-minute grace for a slow click. Any refusal stops and shows the
+  new time; it never pays with a time the customer did not see.
+- **`createNewOrder` re-checks after payment** and only logs a failure: the card is already
+  charged, so refusing would leave a paid customer with no order.
+- Hours, days off and prep times are `unstable_cache`d for 5 minutes (tags `trading-hours`,
+  `days-off`, `prep-times`). There is **no fallback for hours**; a failed read shows the
+  customer an error.
+
+**Reading Auckland time.** `nzDayKey`/`nzMinuteOfDay` read `Intl.DateTimeFormat` parts
+directly. `formatInTimeZone` and `toZonedTime` build a device-local `Date`, and an Auckland
+time inside the device's own daylight saving gap comes back an hour out. Every
+`Intl.DateTimeFormat` that shows a time names `timeZone: "Pacific/Auckland"`, because the
+confirmation email renders on Vercel in UTC.
+
+**Changing the hours** (no admin editor yet):
+
+```sql
+UPDATE "TradingHours" SET "opensAt" = 720, "closesAt" = 1290, "updatedAt" = NOW() WHERE "weekday" = 1; -- Monday 12:00-9:30
+UPDATE "TradingHours" SET "opensAt" = NULL, "closesAt" = NULL, "updatedAt" = NOW() WHERE "weekday" = 3; -- closed Wednesdays
+```
+
+The CHECK constraints refuse:
+- a weekday outside 0-6
+- an opening without a closing
+- a close past midnight
+- a day too short to have a last pick-up
+
+The website sees a change within 5 minutes and the order server within 1, so change hours
+outside trading time. One-off closures stay in the admin app's days off.
 
 ## Admin UI conventions
 
@@ -410,6 +477,11 @@ reserves the logo's width (`pl-64`) and tightens the gap. Check any new link at 
   the integration-test section - so a raw insert there needs a price). The suites prove the
   application layer either way; the constraints are defence against a writer that bypasses
   it.
+- **Never read an Auckland hour or day off a `Date`'s own getters, or out of an `Intl`
+  format with no `timeZone`.** Vercel runs in UTC and a customer's browser can be anywhere.
+  The pick-up picker, whose old helper called itself `getNowNZ` but returned `new Date()`,
+  offered times after closing from 9:15 PM, and the confirmation email printed an 8:29 PM
+  pick-up as 8:29 AM. See **Pick-up times**.
 - **An offer's dates are whole Auckland days.** `startsAt` is midnight at the start of its
   day and `endsAt` the **last millisecond** of its day (23:59:59.999), and both apps compare
   them inclusively. The dialog sends the days the admin picked as `"2026-10-31"` strings,

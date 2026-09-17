@@ -1,6 +1,5 @@
 import MaxWidthWapper from "~/app/components/maxWidthWrapper";
 import type { Metadata } from "next";
-import { getNowNZ } from "~/lib/pickUpTimeHelper";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Eversweet",
@@ -20,7 +19,7 @@ export default function PrivacyPolicyPage() {
         <div className="prose prose-lg mx-auto max-w-3xl">
           <p className="text-muted-foreground">
             Last Updated:{" "}
-            {getNowNZ().toLocaleDateString("en-NZ", {
+            {new Date().toLocaleDateString("en-NZ", {
               year: "numeric",
               month: "long",
               day: "numeric",

@@ -15,7 +15,6 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Loader from "../components/customLoading";
 import NotificationModal from "./_homeComponents/notification";
-import { getNowNZ } from "~/lib/pickUpTimeHelper";
 import { DessertAnimation } from "./_homeComponents/_top-desserts-components.tsx/dessert-animation";
 
 /**
@@ -114,7 +113,7 @@ function HomePageContent() {
         <footer className="mt-auto w-full bg-primary py-10 text-white">
           <div className="container mx-auto flex flex-col items-center gap-4 text-center">
             <p className="text-sm">
-              © {getNowNZ().getFullYear()} Eversweet. All rights reserved.
+              © {new Date().getFullYear()} Eversweet. All rights reserved.
             </p>
             <nav className="flex flex-col gap-5 lg:flex-row lg:gap-10">
               {/* <Link href="/about-us" className="hover:underline">

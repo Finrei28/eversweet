@@ -11,8 +11,8 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
-import { getNowNZ } from "~/lib/pickUpTimeHelper";
 import { announceOrder } from "~/server/notifyAdmin";
+import { checkWebsitePickUpTime } from "~/server/pickUpTimes";
 import {
   CartPricingError,
   gstInCentsFromInclusiveTotal,
@@ -51,6 +51,19 @@ export const orderRouter = createTRPCRouter({
         }
         throw error;
       }
+
+      // The checkout checked this time with the server before the customer paid. A time
+      // that fails now got past that - a stale page, a tampered request, or last orders
+      // passing mid-payment - but the card has been charged, so the order is still
+      // written: refusing it would leave a customer who paid with nothing. It is logged
+      // for the shop to follow up instead.
+      const pickUpCheck = await checkWebsitePickUpTime(
+        orderData.pickUpTime,
+        orderData.desserts.reduce((n, item) => n + item.dessert.quantity, 0),
+      ).catch((error: unknown) => {
+        console.error("Could not check a paid order's pick-up time:", error);
+        return null;
+      });
 
       const pickUpNZDate = formatInTimeZone(
         new Date(orderData.pickUpTime),
@@ -173,6 +186,12 @@ export const orderRouter = createTRPCRouter({
           },
         },
       });
+
+      if (pickUpCheck && !pickUpCheck.ok) {
+        console.error(
+          `Order ${newOrder.id} (#${newOrder.tempOrderId}) was paid for a pick-up time the shop cannot take: ${pickUpCheck.reason}, ${newOrder.pickUpTime.toISOString()}.`,
+        );
+      }
 
       // Past this point the order is committed and the card has been charged.
       // Neither of these may fail the mutation: the customer would be shown an
@@ -330,10 +349,10 @@ export const orderRouter = createTRPCRouter({
         where: { id: input.id },
         data: {
           status: input.status as Status,
-          pickedUpAt: input.status === "PICKED_UP" ? getNowNZ() : null,
+          pickedUpAt: input.status === "PICKED_UP" ? new Date() : null,
           completedAt:
             input.status === "READY" || input.status === "PICKED_UP"
-              ? getNowNZ()
+              ? new Date()
               : input.status === "PENDING"
                 ? null
                 : undefined,
@@ -413,10 +432,10 @@ export const orderRouter = createTRPCRouter({
   }),
 
   getSalesToday: protectedProcedure.query(async ({ ctx }) => {
-    const startOfToday = getNowNZ();
+    const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0); // Set to 00:00:00 of today
 
-    const endOfToday = getNowNZ();
+    const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999); // Set to 23:59:59 of today
 
     const salesToday = await ctx.db.order.aggregate({

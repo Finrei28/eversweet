@@ -14,9 +14,8 @@ import { Button } from "~/components/ui/button";
 import { formatCurrency } from "~/lib/formatters";
 import { api } from "~/trpc/react";
 import { toast } from "~/hooks/use-toast";
-import { format } from "date-fns";
 import parsePhoneNumberFromString from "libphonenumber-js";
-import { getNextValidTime, getNowNZ, isTooSoon } from "~/lib/pickUpTimeHelper";
+import { formatNZ } from "~/lib/pickUpTimes";
 
 type checkoutFormProps = {
   totalPriceInCents: number;
@@ -27,7 +26,7 @@ type checkoutFormProps = {
   setPickUpTime: (time: Date | null) => void;
   pickUpNextOpening: boolean;
   paymentIntentId: string | null;
-  daysOff: Date[];
+  onServerTime: (serverNow: Date) => void;
 };
 
 export default function CheckoutForm({
@@ -39,7 +38,7 @@ export default function CheckoutForm({
   setPickUpTime,
   pickUpNextOpening,
   paymentIntentId,
-  daysOff,
+  onServerTime,
 }: checkoutFormProps) {
   const { language } = useLanguage();
   const stripe = useStripe();
@@ -49,8 +48,8 @@ export default function CheckoutForm({
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [warned, setWarned] = useState(false);
   const utils = api.useUtils();
-  // The shop's configured preparation times, shared with the kitchen.
-  const { data: prepTimes } = api.store.getPrepTimes.useQuery();
+  const { mutateAsync: checkPickUpTime } =
+    api.store.checkPickUpTime.useMutation();
   const createOrder = api.order.createNewOrder.useMutation({
     onSuccess: async () => {
       await utils.order.invalidate();
@@ -171,37 +170,62 @@ export default function CheckoutForm({
       setPaymentError("Please select a pick up time.");
       return;
     }
-    const now = getNowNZ();
+    // The last gate before payment, and the server decides it: the same rule as the
+    // picker, on the shop's hours and days off as they stand now. This used to be a
+    // check in the browser that swapped in a new time when the chosen one was too soon
+    // and then paid with the old one anyway - unless the new time happened to be on
+    // another day. Any change now stops here, so the customer sees the time they are
+    // paying for before they pay for it.
+    setPaymentLoading(true);
+    const check = await checkPickUpTime({
+      pickUpTime,
+      itemCount: cart.totalItems,
+    }).catch(() => null);
+    setPaymentLoading(false);
 
-    // The last gate before payment. It compared against a fixed ten minutes,
-    // which let a large order through on a slot the kitchen needed fifteen or
-    // twenty minutes for.
-    if (isTooSoon(pickUpTime, cart.totalItems, prepTimes, now)) {
-      const newPickUpTime = getNextValidTime(
-        cart.totalItems,
-        daysOff,
-        prepTimes,
+    if (!check) {
+      setPaymentError(
+        language === "en"
+          ? "We couldn't confirm your pick up time. Please try again."
+          : "无法确认您的取货时间，请重试。",
       );
-      setPickUpTime(newPickUpTime);
-      const isToday =
-        newPickUpTime?.getDate() === now.getDate() &&
-        newPickUpTime?.getMonth() === now.getMonth() &&
-        newPickUpTime?.getFullYear() === now.getFullYear();
+      return;
+    }
 
-      if (!isToday && newPickUpTime && !warned) {
+    // Before anything else, so the picker's next ASAP is worked out on the server's clock
+    // and agrees with the time about to be set.
+    onServerTime(check.serverNow);
+
+    if (!check.ok) {
+      setPickUpTime(check.asap);
+      if (check.asap) {
         toast({
           title:
             language === "en"
               ? "Your pick up time has changed!"
               : "您的取货时间已更改！",
-          description: `${
-            language === "en" ? "Your pick up time is" : "您的取货时间是"
-          } ${format(newPickUpTime, "dd/MM/yyyy h:mm a")}`,
+          description:
+            check.reason === "too-soon"
+              ? `${
+                  language === "en"
+                    ? "The soonest we can have your order ready is"
+                    : "我们最早可以准备好您订单的时间是"
+                } ${formatNZ(check.asap, "EEE dd/MM/yyyy h:mm a")}`
+              : `${
+                  language === "en"
+                    ? "We can't take a pick up at that time. The soonest we can is"
+                    : "该时间无法取货。最早可取货时间是"
+                } ${formatNZ(check.asap, "EEE dd/MM/yyyy h:mm a")}`,
           variant: "destructive",
         });
-        setWarned(true);
-        return;
+      } else {
+        setPaymentError(
+          language === "en"
+            ? "We're not taking pick up orders at the moment."
+            : "我们目前不接受取货订单。",
+        );
       }
+      return;
     }
 
     if (pickUpNextOpening && !warned) {
@@ -214,7 +238,7 @@ export default function CheckoutForm({
           language === "en"
             ? "Please check your intended pick up date is at"
             : "请确认您预计的取货日期是"
-        } ${format(pickUpTime, "dd/MM/yyyy h:mm a")}`,
+        } ${formatNZ(pickUpTime, "EEE dd/MM/yyyy h:mm a")}`,
         variant: "destructive",
         duration: Infinity,
       });
