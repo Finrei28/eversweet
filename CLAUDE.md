@@ -15,7 +15,7 @@ Single store, NZD, GST-inclusive, `Pacific/Auckland` wall-clock time throughout.
 
 ```bash
 npm run dev          # next dev --turbo, port 3000
-npm run check        # lint + typecheck, what CI runs
+npm run check        # lint + typecheck  (CI runs this plus npm test)
 npm run typecheck    # tsc --noEmit
 npm run lint         # next lint  (lint:fix to autofix)
 npm test             # vitest run (test:watch for watch mode)
@@ -65,6 +65,17 @@ Rebuild the database after a schema change with `prisma db push` — from a scra
 directory whose `.env` holds only the test URL, never from the repo root, where
 `db push` would target production.
 
+`db push` syncs from `schema.prisma`, so it creates **no CHECK constraints** - Prisma
+cannot express them. To make the test database match production, apply those migrations by
+hand (this machine's already has them):
+
+```bash
+"C:/pg16test/pgsql/bin/psql.exe" -v ON_ERROR_STOP=1 -d "$TEST_DATABASE_URL"   -f prisma/migrations/20260914000000_offer_pricing_rules/migration.sql
+```
+
+Nothing in the suites depends on them - they assert the zod schema and the router, which is
+every path an admin can reach - so a database without them still passes.
+
 Testing a router: build a caller from just the routers under test rather than importing
 `~/server/api/root`, which reaches the order router and an email template whose JSX will
 not compile under the Next `tsconfig`. Mock `server-only` and `~/server/auth` (the latter
@@ -86,6 +97,79 @@ six calls needs a raised timeout - `describeIfDb("...", { timeout: 30_000 }, ...
 Prefer the Browser pane over a bare `npm run dev` — `.claude/launch.json` defines an
 `eversweet-dev` config. `/admin` returns **404** without a session (not a redirect); sign in
 first at `/api/auth/signin`, which is NextAuth's default page as no custom one exists.
+
+### Deploying
+
+The website deploys to **Vercel**; the order server goes to Render. `next build` lints and
+typechecks, so **the build needs devDependencies** - and the way it fails without them is
+misleading enough to be worth writing down.
+
+**A deploy never migrates.** `npm run build` is plain `next build`, so a merged migration
+reaches production only when someone runs `npm run db:migrate` - and which side of the
+Vercel deploy that happens on matters:
+
+- **A migration that adds a column goes first.** Prisma selects every scalar its client
+  knows, so a build reading a column the database lacks fails on its first read of that
+  table (see the sharp edge on schema changes).
+- **A migration that corrects what the old code wrote goes after - if the new build can
+  read the uncorrected rows.** Run first, it leaves the old build writing the old shape
+  in the gap. But if the new build cannot read that shape, deploying first breaks it until
+  the migration runs, so make the new code accept both, deploy, then migrate.
+  `20260917000000_offer_ends_through_its_last_day` qualifies as it stands: to both builds
+  an uncorrected end is still a valid end, only a day early.
+- **The order server deploys before a website build that calls a new internal route** -
+  see the architecture section.
+
+**Never set `NODE_ENV` as a Vercel environment variable.** Next sets it itself, `production`
+for both `next build` and the deployed runtime, so the variable is redundant. Setting it
+makes npm install with `--omit=dev`, and the build dies as:
+
+```
+⨯ ESLint must be installed in order to run during builds
+Failed to compile.
+.eslintrc.cjs:1:19  Type error: Cannot find module 'eslint'
+```
+
+Two messages, one fault: eslint is not on disk. The confusing part is the asymmetry.
+`typescript` is `dev: false` in the lockfile because a *production* dependency pulls it in
+transitively, so it survives the very same install; the build therefore gets far enough to
+run `tsc`, and then dies on `.eslintrc.cjs`, which `tsconfig.json` lists in `include` and
+whose first line is `/** @type {import("eslint").Linter.Config} */`. Reproduce it without
+touching anything:
+
+```bash
+npm ci --omit=dev --dry-run --ignore-scripts
+```
+
+It prints `remove eslint` and no `remove typescript`. Check the Preview and Development
+environments too - a variable set there fails preview deploys the same way. Overriding the
+Install Command with `npm ci --include=dev` is the surgical fix; removing the variable is
+the correct one.
+
+Beyond the build, what a *runtime* `NODE_ENV` can change is narrower than it looks, and the
+part that costs something is tRPC, not this repo's code. Two mechanisms read it, and they are
+easy to conflate:
+
+- **This repo's own checks are fixed at build time.** Next replaces `process.env.NODE_ENV`
+  with `"production"` in everything `next build` compiles, server code included
+  (`next/dist/build/define-env.js`; only `next dev` or `experimental.allowDevelopmentBuild`,
+  which `next.config.js` does not set, makes it `"development"`). So `src/env.js` requiring
+  `AUTH_SECRET`, `src/server/db.ts` logging queries, the tRPC route handler logging failures
+  and `src/trpc/react.tsx`'s logger link all behave as production in any deploy, whatever
+  the runtime variable says. `src/env.js`'s zod default of `"development"` applies only where
+  nothing inlines and nothing sets the variable - it decides nothing in a deployed build.
+- **tRPC's `isDev` reads the process at runtime.** `initTRPC.create()` sets it from
+  `globalThis.process.env["NODE_ENV"] !== "production"` - a form the build-time replacement
+  does not match - so a runtime where the variable is *unset* counts as development. That is
+  the expensive one: `timingMiddleware` in `src/server/api/trpc.ts` adds an artificial
+  100-500ms to **every** tRPC call, and tRPC puts the error's **stack trace** in every error
+  response the browser receives (`errorFormatter` spreads `shape.data`, which carries it).
+  It is also why the router suites pay the delay: Vitest's `NODE_ENV=test` is not
+  `"production"`.
+
+`isDev` has no log line - the `[TRPC] … took …ms` lines are unconditional and mean nothing by
+themselves, and `prisma:query` lines cannot appear in a deploy at all. The tell is a `stack`
+field in a failing tRPC response's `error.data`, in the browser's network tab.
 
 ## This repo owns the database schema — and another repo shares it
 
@@ -321,10 +405,11 @@ reserves the logo's width (`pl-64`) and tightens the gap. Check any new link at 
   table and PostgreSQL CHECK forbids subqueries — it is `assertUnderListPrice` in the offers
   router, mirrored in `offerDialog.tsx` so the admin is told before submitting. Prisma
   cannot express a CHECK, so the constraints are invisible to it: `migrate diff` reports no
-  drift and will not drop them, but `prisma db push` never creates them, so **a rebuilt
-  test database lacks them** until they are applied by hand (the local `eversweet_web_test`
-  has at least `Offer_exactly_one_price`, so a raw insert there needs a price). Suites prove
-  the application layer; the constraints are defence against a writer that bypasses it.
+  drift and will not drop them, but **`prisma db push` never creates them**, so a test
+  database built that way does not have them (this machine's was given them by hand - see
+  the integration-test section - so a raw insert there needs a price). The suites prove the
+  application layer either way; the constraints are defence against a writer that bypasses
+  it.
 - **An offer's dates are whole Auckland days.** `startsAt` is midnight at the start of its
   day and `endsAt` the **last millisecond** of its day (23:59:59.999), and both apps compare
   them inclusively. The dialog sends the days the admin picked as `"2026-10-31"` strings,
