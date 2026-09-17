@@ -104,6 +104,19 @@ The website deploys to **Vercel**; the order server goes to Render. `next build`
 typechecks, so **the build needs devDependencies** - and the way it fails without them is
 misleading enough to be worth writing down.
 
+**A deploy never migrates.** `npm run build` is plain `next build`, so a merged migration
+reaches production only when someone runs `npm run db:migrate` - and which side of the
+Vercel deploy that happens on matters:
+
+- **A migration that adds a column goes first.** Prisma selects every scalar its client
+  knows, so a build reading a column the database lacks fails on its first read of that
+  table (see the sharp edge on schema changes).
+- **A migration that corrects what the old code wrote goes after,** or the old build keeps
+  writing the old shape in the gap. `20260917000000_offer_ends_through_its_last_day` is that
+  kind.
+- **The order server deploys before a website build that calls a new internal route** -
+  see the architecture section.
+
 **Never set `NODE_ENV` as a Vercel environment variable.** Next sets it itself, `production`
 for both `next build` and the deployed runtime, so the variable is redundant. Setting it
 makes npm install with `--omit=dev`, and the build dies as:
