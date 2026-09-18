@@ -11,8 +11,7 @@ two repos share one database.
 
 ## Open
 
-Both came out of the hold-then-capture work (2026-09-18). Neither costs a customer money;
-each leaves one of them without something they should have had.
+From the hold-then-capture work (2026-09-18).
 
 **A confirmation email Resend refuses is never sent again**
 
@@ -32,16 +31,6 @@ So it is a schema change: a migration here, `prisma/schema.prisma` mirrored into
 column is read (see `CLAUDE.md`). Worth folding into the next change that already takes both
 repos through one. Until then the kitchen still gets the order and the customer still sees it
 on screen; only the email is missing.
-
-**The refund sweep measures its 48 hours from the wrong clock**
-
-`eversweet_app/backend/src/lib/strandedPayments.ts`. Its refund search bounds on the payment
-intent's `created`, not the charge's, so a website payment whose intent was made more than 48
-hours before the customer paid is outside the window - and stays outside it on every later
-run. The capture-to-commit gap on such a payment would never be refunded automatically.
-Widening the window is the wrong fix: it would reach back into payments staff have already
-settled in the shop, where the order was made and handed over. Item 6 in that repo's
-`TODO.md` has the detail and the approach.
 
 Two properties are known and accepted rather than outstanding:
 
