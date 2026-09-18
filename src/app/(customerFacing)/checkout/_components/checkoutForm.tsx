@@ -57,13 +57,16 @@ const REPRICE_RETRY_MS = 3000;
  * What asking the server to reprice the payment came to.
  *
  * - `priced`: the payment is for the cart sent, at `amountInCents`.
+ * - `already-ordered`: this payment's order was placed after all, by a call whose answer was
+ *   lost. Its id comes back so the checkout can finish that order and go to it.
  * - `unsellable`: something in the cart cannot be sold; the reason is on screen.
  * - `replaced`: the payment could not be repriced and has been dealt with - the checkout has
- *   moved on to its order, or to a new payment. Nothing more to do on this form.
+ *   moved on to a new payment. Nothing more to do on this form.
  * - `failed`: no usable answer. The payment is as it was.
  */
 type RepriceOutcome =
   | { kind: "priced"; amountInCents: number }
+  | { kind: "already-ordered"; orderId: string }
   | { kind: "unsellable" }
   | { kind: "replaced" }
   | { kind: "failed" };
@@ -315,10 +318,13 @@ export default function CheckoutForm({
     }
 
     if (res.status === 409) {
-      if (data.orderId) {
-        // The order call that failed was placed after all; only its answer was lost.
-        goToOrder(data.orderId);
-      } else if (data.refusal && data.refusal.reason !== "not-paid") {
+      // The order call that failed did place its order; only its answer was lost. What to
+      // do with that is the caller's: pressing Pay finishes the order first, a cart edit
+      // just goes to it.
+      if (data.orderId)
+        return { kind: "already-ordered", orderId: data.orderId };
+
+      if (data.refusal && data.refusal.reason !== "not-paid") {
         handleRefusal(data.refusal);
       } else {
         restartPayment();
@@ -366,10 +372,12 @@ export default function CheckoutForm({
     return { kind: "priced", amountInCents: data.totalInCents };
   };
 
-  // Read by the effect below when its timer fires, so it calls this render's `reprice` without
-  // re-running every render.
+  // Read by the effect below when its timer fires, so it calls this render's functions
+  // without re-running every render.
   const latestReprice = useRef(reprice);
   latestReprice.current = reprice;
+  const goToOrderRef = useRef(goToOrder);
+  goToOrderRef.current = goToOrder;
 
   useEffect(() => {
     if (inStep || unsellable || !elements || cart.cart.length === 0) return;
@@ -385,6 +393,11 @@ export default function CheckoutForm({
           repricing.current = false;
           setRepriceRound((round) => round + 1);
         };
+
+        if (outcome.kind === "already-ordered") {
+          goToOrderRef.current(outcome.orderId);
+          return next();
+        }
 
         if (outcome.kind !== "failed") return next();
 
@@ -564,6 +577,48 @@ export default function CheckoutForm({
       return;
     }
 
+    const amountShown = priced.amountInCents;
+
+    // Parsed with the server's own schema. The form's checks are looser in places - zod's
+    // `email()` refuses addresses a simple pattern accepts - and an order the server cannot
+    // read would otherwise hold the card on every press of Pay, for an order that could never
+    // be placed.
+    const parsedOrder = createOrderSchema.safeParse({
+      desserts: cart.cart.map((item) => ({
+        dessert: {
+          id: item.dessert.id,
+          quantity: item.quantity,
+        },
+        priceInCents: item.priceInCents,
+        customisations: item.customisations,
+        discountedAmountInCents: item.discountedAmountInCents,
+        promoId: item.dessert.promo ? item.dessert.promo.id : null,
+      })),
+      customerFirstName: customerInfo.customerFirstName.trim(),
+      customerLastName: customerInfo.customerLastName.trim(),
+      customerEmail: customerInfo.customerEmail.trim(),
+      customerPhoneNumber: customerInfo.phone,
+      totalPriceInCents: amountShown,
+      pickUpTime,
+      clientSecret,
+    });
+
+    if (!parsedOrder.success) {
+      console.error("The order would not be accepted:", parsedOrder.error);
+      setPaymentError(
+        parsedOrder.error.issues.some(
+          (issue) => issue.path[0] === "customerEmail",
+        )
+          ? en
+            ? "Please enter a valid email address."
+            : "请输入有效的电子邮件地址。"
+          : en
+            ? "Something in your order couldn't be read. Please check your details and cart, then try again."
+            : "无法读取您订单中的部分信息。请检查您的资料和购物车后重试。",
+      );
+      return;
+    }
+
     // The last gates, both decided on the server and asked together:
     //
     // - The cart, repriced. Normally the payment is already in step with it, but a price can
@@ -575,7 +630,6 @@ export default function CheckoutForm({
     //   for from what it recorded when pricing the cart. This used to be a check in the
     //   browser that swapped in a new time and then paid with the old one anyway; any change
     //   now stops here, so the customer sees the time they are paying for.
-    const amountShown = priced.amountInCents;
     setPaymentLoading(true);
     const [repriced, check] = await Promise.all([
       reprice(cartKey),
@@ -586,6 +640,26 @@ export default function CheckoutForm({
     setPaymentLoading(false);
 
     if (repriced.kind === "replaced") return;
+
+    // The order this payment pays for was placed after all, by a call that lost its answer.
+    // Placing it again writes nothing and hands back the same order, but it does finish what
+    // that call may never have reached: the kitchen's announcement and the confirmation
+    // email, both safe to repeat. A failure there is not the customer's to act on - their
+    // order exists either way - so it is logged and the checkout goes to it regardless.
+    if (repriced.kind === "already-ordered") {
+      setPaymentLoading(true);
+      await createOrder({ orderData: parsedOrder.data }).catch(
+        (error: unknown) => {
+          console.error(
+            "Could not finish an order that was already placed:",
+            error,
+          );
+        },
+      );
+      setPaymentLoading(false);
+      goToOrder(repriced.orderId);
+      return;
+    }
 
     // Before anything else, so the picker's next ASAP is worked out on the server's clock and
     // agrees with any time about to be set.
@@ -663,46 +737,6 @@ export default function CheckoutForm({
         duration: Infinity,
       });
       setWarned(true);
-      return;
-    }
-
-    // Parsed with the server's own schema. The form's checks are looser in places - zod's
-    // `email()` refuses addresses a simple pattern accepts - and an order the server cannot
-    // read would otherwise hold the card on every press of Pay, for an order that could never
-    // be placed.
-    const parsedOrder = createOrderSchema.safeParse({
-      desserts: cart.cart.map((item) => ({
-        dessert: {
-          id: item.dessert.id,
-          quantity: item.quantity,
-        },
-        priceInCents: item.priceInCents,
-        customisations: item.customisations,
-        discountedAmountInCents: item.discountedAmountInCents,
-        promoId: item.dessert.promo ? item.dessert.promo.id : null,
-      })),
-      customerFirstName: customerInfo.customerFirstName.trim(),
-      customerLastName: customerInfo.customerLastName.trim(),
-      customerEmail: customerInfo.customerEmail.trim(),
-      customerPhoneNumber: customerInfo.phone,
-      totalPriceInCents: amountShown,
-      pickUpTime,
-      clientSecret,
-    });
-
-    if (!parsedOrder.success) {
-      console.error("The order would not be accepted:", parsedOrder.error);
-      setPaymentError(
-        parsedOrder.error.issues.some(
-          (issue) => issue.path[0] === "customerEmail",
-        )
-          ? en
-            ? "Please enter a valid email address."
-            : "请输入有效的电子邮件地址。"
-          : en
-            ? "Something in your order couldn't be read. Please check your details and cart, then try again."
-            : "无法读取您订单中的部分信息。请检查您的资料和购物车后重试。",
-      );
       return;
     }
 

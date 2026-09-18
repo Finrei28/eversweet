@@ -378,6 +378,16 @@ after the cart was edited on that page, so the customer paid the old total for t
 - **Already `succeeded`** can only mean the capture went through and the commit did not. A
   retry with the same cart writes the order without capturing again. One that no longer
   matches is refunded in full.
+- **A retry finishes what the first call started.** `createNewOrder` does not return early
+  when it finds the order already placed: a call that committed and then died, or lost its
+  answer, may never have announced the order or sent its confirmation, and nothing else
+  would ever send that customer one. Both steps repeat safely - the announce endpoint is
+  idempotent, and the email carries `Idempotency-Key: order-confirmation:<orderId>`, so
+  Resend hands back the first send's id rather than sending a second (checked against the
+  live API: the same key returns the same email id, for 24 hours). The email goes to the
+  address on the **order**, not the request, so a repeat is byte-identical - Resend refuses
+  a reused key whose message differs. That is also why the checkout calls `createNewOrder`
+  when the reprice reports the order already placed, rather than going straight to it.
 - **The checkout's error handling** (`checkoutForm.tsx`) runs in three steps: before the
   card is touched, holding it, and placing the order.
   - **Pay reprices before anything else,** awaited, alongside the pick-up time check. That

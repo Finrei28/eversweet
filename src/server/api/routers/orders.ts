@@ -30,27 +30,38 @@ export const orderRouter = createTRPCRouter({
 
       if (!placed.ok) return placed;
 
-      const { order: newOrder, placedNow } = placed;
-
-      // A retry of a call that already placed this order. The kitchen and the customer
-      // were told the first time.
-      if (!placedNow) return { ok: true as const, orderId: newOrder.id };
+      const { order: newOrder } = placed;
 
       // Past this point the order is committed and the card has been charged.
       // Neither of these may fail the mutation: the customer would be shown an
       // error for an order that exists, is paid for, and will be made. They
       // run together so the confirmation screen waits on the slower of the
       // two, not the sum of both.
+      //
+      // They run on a **retry** too - a call that finds the order already placed - rather
+      // than returning early. A call that committed its order and then died, or lost its
+      // answer on the way back, may never have reached this point, and nothing else would
+      // ever send that customer their confirmation. Both steps are safe to repeat: the
+      // announcement endpoint is idempotent, and the email carries an idempotency key, so
+      // one that did go out is not sent twice.
       const [, confirmationEmail] = await Promise.allSettled([
         // Puts the order on the kitchen screen now, rather than leaving it for
         // the order server's cron to find within the next couple of minutes.
         announceOrder(newOrder.id),
-        resend.emails.send({
-          from: '"Eversweet" <eversweet@eversweet.co.nz>',
-          to: orderData.customerEmail,
-          subject: "Order Confirmation",
-          react: EmailOrderConfirmation({ order: newOrder }),
-        }),
+        resend.emails.send(
+          {
+            from: '"Eversweet" <eversweet@eversweet.co.nz>',
+            // The address the order was placed with, from the order itself, so a retry
+            // sends exactly what the first attempt would have - Resend answers a reused
+            // key whose message differs with an error rather than sending it.
+            to: newOrder.customerEmail,
+            subject: "Order Confirmation",
+            react: EmailOrderConfirmation({ order: newOrder }),
+          },
+          // Sent as an `Idempotency-Key`: Resend hands back the first send's answer for 24
+          // hours rather than sending again, which is what makes the retry above safe.
+          { idempotencyKey: `order-confirmation:${newOrder.id}` },
+        ),
       ]);
 
       // Resend reports a refused send in the response rather than by throwing,
