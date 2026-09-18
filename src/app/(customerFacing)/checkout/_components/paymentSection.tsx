@@ -15,9 +15,14 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { useLanguage } from "~/app/components/language";
+import type { PricedCart } from "./checkoutItems";
 
 type paymentSectionProps = {
   clientSecret: string;
+  pricedCart: PricedCart | null;
+  onPriced: (priced: PricedCart) => void;
+  onPaymentReset: () => void;
+  onOrderPlaced: () => void;
   cart: CartContextType;
   customerInfo: CustomerInfo;
   isLoading: boolean;
@@ -35,6 +40,10 @@ const stripePromise = loadStripe(
 
 export default function PaymentSection({
   clientSecret,
+  pricedCart,
+  onPriced,
+  onPaymentReset,
+  onOrderPlaced,
   cart,
   customerInfo,
   isLoading,
@@ -56,7 +65,7 @@ export default function PaymentSection({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {clientSecret && (
+        {clientSecret && pricedCart && (
           <Elements
             key={clientSecret}
             options={{ clientSecret }}
@@ -65,9 +74,12 @@ export default function PaymentSection({
             <CheckoutForm
               clientSecret={clientSecret}
               paymentIntentId={paymentIntentId}
+              pricedCart={pricedCart}
+              onPriced={onPriced}
+              onPaymentReset={onPaymentReset}
+              onOrderPlaced={onOrderPlaced}
               onServerTime={onServerTime}
               cart={cart}
-              totalPriceInCents={cart.totalPrice || 0}
               customerInfo={customerInfo}
               pickUpTime={pickUpTime}
               setPickUpTime={setPickUpTime}

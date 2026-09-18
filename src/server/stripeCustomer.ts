@@ -32,6 +32,20 @@ import { z } from "zod";
 /** Marks a Stripe object as the website's, on both the customer and the payment intent. */
 export const WEBSITE_SOURCE = "website";
 
+/**
+ * The payment a client secret belongs to, or null for anything that is not one.
+ *
+ * The client secret, not the payment intent id, is what shows a request comes from the
+ * browser that is paying: the id is not a secret, while the client secret is what that
+ * browser needed to pay at all. Every route that acts on a website payment on the browser's
+ * word takes the secret, reads the id from it here, and then checks the secret against the
+ * payment Stripe returns - the id is only where to look.
+ */
+export const paymentIntentIdFromClientSecret = (
+  clientSecret: string,
+): string | null =>
+  /^(pi_[A-Za-z0-9]+)_secret_[A-Za-z0-9]+$/.exec(clientSecret)?.[1] ?? null;
+
 /** The same check the checkout form makes, so an address it accepts is accepted here. */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -143,11 +157,11 @@ export type PaymentLock = <T>(
 ) => Promise<T>;
 
 /**
- * Puts the checkout's customer on its payment, once the payment has succeeded.
+ * Puts the checkout's customer on its payment, once the payment has succeeded - which, now
+ * that the card is only held until the order is written, means once the order is placed.
  *
- * Proof of ownership is the client secret rather than the payment intent id. The id alone
- * is not a secret - it is sent back to look an order up - while the client secret is what
- * the browser needed to pay at all.
+ * Proof of ownership is the client secret rather than the payment intent id - see
+ * `paymentIntentIdFromClientSecret`.
  *
  * Calls for the same payment run one at a time, under `lock`. Without it, two calls sent
  * together each found the payment with no customer and each created one - with different
@@ -161,9 +175,7 @@ export async function attachCheckoutCustomer(
   details: WebsiteCustomerDetails,
   lock: PaymentLock,
 ): Promise<AttachCheckoutCustomerResult> {
-  const paymentIntentId = /^(pi_[A-Za-z0-9]+)_secret_[A-Za-z0-9]+$/.exec(
-    clientSecret,
-  )?.[1];
+  const paymentIntentId = paymentIntentIdFromClientSecret(clientSecret);
 
   if (!paymentIntentId) {
     return { ok: false, status: 404, error: "Payment not found" };

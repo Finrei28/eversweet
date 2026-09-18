@@ -1,41 +1,31 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { stripe } from "../../../lib/stripe";
+import {
+  checkoutPaymentMetadata,
+  createPaymentRequestSchema,
+  repricePaymentRequestSchema,
+  repriceCheckoutPayment,
+} from "~/server/checkoutPayment";
 import { db } from "~/server/db";
+import { withPaymentLock } from "~/server/paymentLock";
 import { CartPricingError, priceCart } from "~/server/pricing";
-import { WEBSITE_SOURCE } from "~/server/stripeCustomer";
 
 /**
- * The amount to charge is computed here, from the database.
+ * The checkout's payment: created once the customer's details are complete (`POST`), and
+ * repriced whenever the cart changes after that (`PUT`). See `~/server/checkoutPayment`.
  *
- * This route previously took `totalPriceInCents` straight from the request
- * body and handed it to Stripe, so the browser decided what it paid. It now
- * accepts only the contents of the cart - which items, how many, which
- * customisations - and prices them itself.
+ * The amount to charge is computed here, from the database. This route previously took
+ * `totalPriceInCents` straight from the request body and handed it to Stripe, so the
+ * browser decided what it paid. It now accepts only the contents of the cart.
+ *
+ * The card is only **held** when the customer pays (`capture_method: "manual"`). The money
+ * is taken when `createNewOrder` writes the order, and only if the amount held is what the
+ * cart it is sent costs - see `~/server/websiteOrder`.
  */
-const cartRequestSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        dessertId: z.string().min(1),
-        quantity: z.number().int().positive(),
-        customisations: z
-          .array(
-            z.object({
-              id: z.string().min(1),
-              quantity: z.number().int().nonnegative(),
-            }),
-          )
-          .default([]),
-      }),
-    )
-    .min(1),
-});
-
 export async function POST(req: Request) {
   try {
-    const parsed = cartRequestSchema.safeParse(await req.json());
+    const parsed = createPaymentRequestSchema.safeParse(await req.json());
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -57,25 +47,16 @@ export async function POST(req: Request) {
       amount: totalInCents,
       currency: "nzd",
       payment_method_types: ["card"],
-      metadata: {
-        // What `/api/updatePaymentIntent` requires before it will attach a customer.
-        source: WEBSITE_SOURCE,
-        // How big the kitchen's job is, from the cart this route has just priced. The
-        // pick-up time check before paying reads it from here rather than trusting a
-        // count the browser sends - see `itemCountForPayment` in
-        // ~/server/paymentItemCount.
-        itemCount: String(
-          parsed.data.items.reduce((count, item) => count + item.quantity, 0),
-        ),
-      },
+      capture_method: "manual",
+      metadata: checkoutPaymentMetadata(parsed.data.items),
     });
 
     return NextResponse.json(
       {
         clientSecret: session.client_secret,
         paymentIntentId: session.id,
-        // So the checkout UI can tell the customer if the price moved while
-        // their cart sat in localStorage.
+        // What the card will be held for, which the Pay button shows. The browser's own
+        // total can be out of date if the cart sat in localStorage.
         totalInCents,
       },
       { status: 200 },
@@ -88,6 +69,54 @@ export async function POST(req: Request) {
     console.error("checkout_sessions error:", error);
     return NextResponse.json(
       { error: "Failed to initialise payment" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const parsed = repricePaymentRequestSchema.safeParse(await req.json());
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "A valid cart is required" },
+        { status: 400 },
+      );
+    }
+
+    const result = await repriceCheckoutPayment(
+      stripe,
+      db,
+      withPaymentLock,
+      parsed.data.clientSecret,
+      parsed.data.items,
+    );
+
+    if (!result.ok) {
+      return NextResponse.json(
+        {
+          error: result.error,
+          ...(result.status === 409
+            ? { orderId: result.orderId, refusal: result.refusal }
+            : {}),
+        },
+        { status: result.status },
+      );
+    }
+
+    return NextResponse.json(
+      { totalInCents: result.totalInCents },
+      { status: 200 },
+    );
+  } catch (error) {
+    if (error instanceof CartPricingError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    console.error("checkout_sessions reprice error:", error);
+    return NextResponse.json(
+      { error: "Failed to update payment" },
       { status: 500 },
     );
   }

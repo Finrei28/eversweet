@@ -1,7 +1,21 @@
 import "server-only";
 
+import type { Prisma } from "@prisma/client";
+
 import { db } from "~/server/db";
 import type { PaymentLock } from "~/server/stripeCustomer";
+
+/**
+ * Takes the lock on one payment for the rest of `tx`. Transaction-scoped, so it is released
+ * however the transaction ends. The key is the order server's (`lockPayment` in its
+ * `lib/orderPayment`), so the two services take turns on a payment too: its stranded-payment
+ * sweep settles website payments under this same lock.
+ */
+export const lockPayment = (
+  tx: Prisma.TransactionClient,
+  paymentIntentId: string,
+) =>
+  tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${paymentIntentId}, 0))`;
 
 /**
  * Runs `work` inside a transaction holding a Postgres advisory lock on one payment intent,
@@ -17,7 +31,7 @@ import type { PaymentLock } from "~/server/stripeCustomer";
 export const withPaymentLock: PaymentLock = (paymentIntentId, work) =>
   db.$transaction(
     async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${paymentIntentId}, 0))`;
+      await lockPayment(tx, paymentIntentId);
       return work();
     },
     { maxWait: 10_000, timeout: 20_000 },

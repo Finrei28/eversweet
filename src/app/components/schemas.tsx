@@ -74,7 +74,11 @@ export const orderSchema = z.object({
 
 export const createOrderSchema = z.object({
   desserts: z.array(orderSchema).min(1),
-  paymentIntentId: z.string().min(1),
+  /**
+   * The payment's client secret, not its id: the secret is what shows the caller is the
+   * browser that paid. See `paymentIntentIdFromClientSecret` in ~/server/stripeCustomer.
+   */
+  clientSecret: z.string().min(1),
   customerFirstName: z.string().min(1),
   customerLastName: z.string().min(1),
   customerEmail: z.string().email(),

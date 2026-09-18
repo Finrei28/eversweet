@@ -10,10 +10,13 @@ import { useLanguage } from "~/app/components/language";
 import CustomisationDialog from "../../menu/_components/customisation";
 import { Button } from "~/components/ui/button";
 import { PickupTimePicker } from "./pick-up-time";
+import { checkoutCartKey, type PricedCart } from "./checkoutItems";
 import { formatNZ } from "~/lib/pickUpTimes";
 
 type orderSummaryProps = {
   cart: CartContextType;
+  /** What the server priced this cart at, once it has - see the total below. */
+  pricedCart: PricedCart | null;
   pickUpTime: Date | null;
   setPickUpTime: React.Dispatch<React.SetStateAction<Date | null>>;
   setPickUpNextOpening: (boolean: boolean) => void;
@@ -23,6 +26,7 @@ type orderSummaryProps = {
 
 export default function OrderSummary({
   cart,
+  pricedCart,
   pickUpTime,
   setPickUpTime,
   setPickUpNextOpening,
@@ -31,7 +35,14 @@ export default function OrderSummary({
 }: orderSummaryProps) {
   const { language } = useLanguage();
 
-  // Custom business hours example
+  // What the shop will charge, which is the server's number, not this browser's: prices in a
+  // cart that has sat in localStorage can be out of date, and the payment is held for what the
+  // server prices. Until the server has priced this exact cart - while an edit is still being
+  // repriced - the browser's own total is what matches the lines above.
+  const totalInCents =
+    pricedCart && pricedCart.key === checkoutCartKey(cart.cart)
+      ? pricedCart.amountInCents
+      : cart.totalPrice;
 
   return (
     <>
@@ -192,14 +203,12 @@ export default function OrderSummary({
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>{language === "en" ? "GST included" : "包含消费税"}</span>
-              <span>
-                {formatCurrency((cart.totalPrice * 3) / 23 / 100 || 0)}
-              </span>
+              <span>{formatCurrency((totalInCents * 3) / 23 / 100 || 0)}</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between font-bold">
               <span>{language === "en" ? "Total" : "总计"}</span>
-              <span>{formatCurrency(cart.totalPrice / 100 || 0)}</span>
+              <span>{formatCurrency(totalInCents / 100 || 0)}</span>
             </div>
           </div>
         </CardContent>

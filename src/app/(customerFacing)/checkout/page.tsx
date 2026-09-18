@@ -1,10 +1,10 @@
 "use client";
 
 import type React from "react";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { CartContext } from "~/app/components/cartContext";
 import { Button } from "~/components/ui/button";
-import { ShoppingBag } from "lucide-react";
+import { CheckCircle, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import PaymentSection from "./_components/paymentSection";
 import CustomerInformation from "./_components/customerInformation";
@@ -13,6 +13,7 @@ import { useLanguage } from "~/app/components/language";
 import Loader from "~/app/components/customLoading";
 import parsePhoneNumberFromString from "libphonenumber-js";
 import { api } from "~/trpc/react";
+import { checkoutItems, type PricedCart } from "./_components/checkoutItems";
 
 export default function CheckoutPage() {
   const cart = useContext(CartContext);
@@ -24,6 +25,7 @@ export default function CheckoutPage() {
   const [isPaymentSectionLoading, setPaymentSectionLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [pricedCart, setPricedCart] = useState<PricedCart | null>(null);
   const [customerInfo, setCustomerInfo] = useState({
     customerFirstName: "",
     customerLastName: "",
@@ -44,6 +46,20 @@ export default function CheckoutPage() {
     useState(customerInfo);
   const [isPaymentIntentInitialized, setIsPaymentIntentInitialized] =
     useState(false);
+  const creatingPayment = useRef(false);
+  // Set as the payment form empties the cart on its way to the order.
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const handleOrderPlaced = useCallback(() => setOrderPlaced(true), []);
+
+  // Drops a payment that can no longer be paid with - its hold released, refunded or expired,
+  // or confirmed already when the cart changed - so the effect below creates a new one.
+  const resetPayment = useCallback(() => {
+    setClientSecret("");
+    setPaymentIntentId(null);
+    setPricedCart(null);
+    setError("");
+    setIsPaymentIntentInitialized(false);
+  }, []);
 
   //Check if admin wants ASAP pick up time?
 
@@ -76,44 +92,91 @@ export default function CheckoutPage() {
       return;
     }
 
+    // One payment at a time. Details that change while one is being created would otherwise
+    // create a second, and whichever answered last would replace the payment form - clearing
+    // a card the customer had started typing.
+    if (creatingPayment.current) return;
+    creatingPayment.current = true;
+
     setPaymentSectionLoading(true);
 
-    // Send what is in the cart, not what it costs - the server prices it.
+    // Send what is in the cart, not what it costs - the server prices it. The payment form
+    // reprices the payment if the cart changes after this.
+    const items = checkoutItems(cart?.cart ?? []);
+    const couldNotStart =
+      language === "en"
+        ? "We couldn't start your payment. Please try again."
+        : "无法开始付款，请重试。";
+
     fetch("/api/checkout_sessions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        items:
-          cart?.cart?.map((item) => ({
-            dessertId: item.dessert.id,
-            quantity: item.quantity,
-            customisations: item.customisations.map((customisation) => ({
-              id: customisation.id,
-              quantity: customisation.quantity,
-            })),
-          })) ?? [],
-      }),
+      body: JSON.stringify({ items }),
     })
       .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error ?? "Failed to initialize");
-        return data;
+        // A server that fell over answers with a page, not JSON: say so in our words rather
+        // than show the parser's.
+        const data = (await res.json().catch(() => null)) as {
+          clientSecret?: string;
+          paymentIntentId?: string;
+          totalInCents?: number;
+          error?: string;
+        } | null;
+        if (
+          !res.ok ||
+          !data?.clientSecret ||
+          !data.paymentIntentId ||
+          typeof data.totalInCents !== "number"
+        ) {
+          // The server's own message is for the customer when it refused the cart - an item
+          // sold out or removed.
+          throw new Error(
+            res.status === 400 && data?.error ? data.error : couldNotStart,
+          );
+        }
+        return data as {
+          clientSecret: string;
+          paymentIntentId: string;
+          totalInCents: number;
+        };
       })
       .then((data) => {
         setClientSecret(data.clientSecret);
         setPaymentIntentId(data.paymentIntentId);
+        setPricedCart({
+          key: JSON.stringify(items),
+          amountInCents: data.totalInCents,
+        });
+        setError("");
         setIsPaymentIntentInitialized(true);
         setPaymentSectionLoading(false);
       })
-      .catch((err: Error) => {
+      .catch((err: unknown) => {
+        console.error("Could not start the payment:", err);
         setError(
-          err.message || "Failed to initialize payment. Please try again.",
+          err instanceof Error && err.message ? err.message : couldNotStart,
         );
         setPaymentSectionLoading(false);
+      })
+      .finally(() => {
+        creatingPayment.current = false;
       });
-  }, [cart?.totalPrice, isClient, debouncedCustomerInfo]);
+    // Every value the effect reads to decide, so none of them can change without it looking
+    // again. `pickUpTime` especially: the picker can settle on a time after the details are
+    // already filled in, and without it here that payment would never be created - the
+    // customer would sit in front of a spinner until they touched a field. The guards above
+    // are what stop a second payment, not a short dependency list.
+  }, [
+    cart?.cart,
+    cart?.totalPrice,
+    pickUpTime,
+    isClient,
+    debouncedCustomerInfo,
+    isPaymentIntentInitialized,
+    language,
+  ]);
 
   const handleCustomerInfoChange = (
     value: string | React.ChangeEvent<HTMLInputElement>,
@@ -137,6 +200,24 @@ export default function CheckoutPage() {
   if (!isClient || loadingDaysOff) {
     // Show loading state during server rendering and initial client render
     return <Loader />;
+  }
+
+  // Before the empty-cart check: the cart is emptied the moment the order is placed, and the
+  // customer should see that it was, not "Your cart is empty", until the order page loads.
+  if (orderPlaced) {
+    return (
+      <div className="fixed inset-0 mx-auto my-auto flex max-h-80 max-w-xs flex-col items-center justify-center text-center md:max-w-md">
+        <CheckCircle className="mb-4 h-16 w-16 text-green-500" />
+        <h2 className="mb-2 text-2xl font-medium">
+          {language === "en" ? "Payment Successful!" : "付款成功！"}
+        </h2>
+        <p className="text-gray-500">
+          {language === "en"
+            ? "Thank you for your order. You will be redirected to the confirmation page shortly."
+            : "感谢您的订购。您将被重定向至确认页面"}
+        </p>
+      </div>
+    );
   }
 
   if (!cart?.cart || cart.cart.length === 0) {
@@ -168,6 +249,7 @@ export default function CheckoutPage() {
         <div>
           <OrderSummary
             cart={cart}
+            pricedCart={pricedCart}
             pickUpTime={pickUpTime}
             setPickUpTime={setPickUpTime}
             setPickUpNextOpening={setPickUpNextOpening}
@@ -187,6 +269,10 @@ export default function CheckoutPage() {
           <PaymentSection
             clientSecret={clientSecret}
             paymentIntentId={paymentIntentId}
+            pricedCart={pricedCart}
+            onPriced={setPricedCart}
+            onPaymentReset={resetPayment}
+            onOrderPlaced={handleOrderPlaced}
             cart={cart}
             customerInfo={customerInfo}
             pickUpTime={pickUpTime}
