@@ -338,12 +338,89 @@ browser. `priceCart()` throws `CartPricingError` for missing or unavailable item
 `isPromoActive` delegates to `isWithinActiveWindow` in `src/lib/activeWindow.ts`, shared with
 offers so the two cannot drift.
 
+**Payments are held, then captured.** The website takes no money until the order is
+written, and never takes an amount other than what that order costs. Until 2026-09-18
+`createNewOrder` recorded whatever payment id it was sent without asking Stripe, so a direct
+call put an unpaid order on the kitchen's screen. The checkout also never updated its payment
+after the cart was edited on that page, so the customer paid the old total for the new cart.
+
+- `/api/checkout_sessions` `POST` creates the payment with `capture_method: "manual"`, priced
+  from the database. Confirming the card only **holds** it (`requires_capture`).
+- **Whenever the cart changes,** `checkoutForm.tsx` sends `PUT` to the same route
+  (`repriceCheckoutPayment` in `src/server/checkoutPayment.ts`), then calls
+  `elements.fetchUpdates()`. Pay is disabled until the payment matches the cart, and it
+  shows the amount the card will be held for, not the browser's total. Nothing reprices
+  while a payment is in progress.
+- **The page owns `pricedCart`**, so the order summary's Total and GST show that same server
+  amount rather than the browser's - the two used to disagree when a price changed under an
+  open checkout. Until the server has priced the cart on screen, mid-edit, the summary falls
+  back to the browser's total, which is what its own lines add up to.
+- **Once the card is confirmed** the amount can no longer change. The checkout only reprices
+  then after an order call failed. The `PUT` settles the old payment under its lock with
+  `settleWebsitePayment`:
+  - an order that was placed after all (only its answer lost) sends the checkout there
+    (`orderId`);
+  - a hold for another amount is released, and money taken is refunded (`refusal`);
+  - a hold for exactly the new total is kept.
+
+  Any other 409 starts a new payment.
+- `createNewOrder` calls `placeWebsiteOrder` (`src/server/websiteOrder.ts`). It is one
+  transaction under `lockPayment`:
+  1. Retrieve the payment and require its client secret and `source: "website"`.
+     Otherwise it throws NOT_FOUND, the same answer for "doesn't exist" and "not yours".
+  2. A hold for exactly the server-priced total in NZD, with a pick-up time the shop can
+     take, goes ahead. **Anything else releases the hold.**
+  3. Write the order, then **capture last**. A capture that fails rolls the order back.
+- **Refusals come back as a result, not an error,** so the checkout can word them in both
+  languages: `cart-changed`, `cart-invalid`, `pick-up-time` (with `asap`), `expired`,
+  `refunded`, `not-paid`. Every one except `not-paid` leaves the payment unusable, and the
+  checkout starts a new one.
+- **Already `succeeded`** can only mean the capture went through and the commit did not. A
+  retry with the same cart writes the order without capturing again. One that no longer
+  matches is refunded in full.
+- **The checkout's error handling** (`checkoutForm.tsx`) runs in three steps: before the
+  card is touched, holding it, and placing the order.
+  - **Pay reprices before anything else,** awaited, alongside the pick-up time check. That
+    catches a price that changed or an item that sold out while the page sat open, before the
+    card is held rather than after. It also settles a payment an earlier press left
+    confirmed. A different total stops with the new amount on screen. The server skips a
+    Stripe update when nothing changed. This replaced `dessert.scanCart` (deleted with it),
+    which the checkout never awaited and so always read the previous click's answer.
+  - The order is parsed with `createOrderSchema` before the card is touched. The form's
+    email pattern is looser than zod's `email()`, and an order the server can't read would
+    otherwise hold the card on every press of Pay.
+  - Stripe's message is shown only for `card_error` and `validation_error` (declined,
+    incomplete number). 3D Secure failure gets our own wording, and anything else is logged
+    and shown generically, as Stripe advises.
+  - Pressing Pay again after a failed order call gets `payment_intent_unexpected_state`
+    from Stripe. A held or taken payment then places the order; a released one starts a new
+    payment. That failure never claims the customer wasn't charged, because the order may
+    have committed with only its answer lost. It says retrying is safe.
+  - **The cart is emptied before navigating to the order,** never in an unmount cleanup. A
+    router fetch that fails falls back to a full page load, which runs no unmount code, and
+    the customer would reach the order with its items still in the cart. The page's
+    `orderPlaced` state shows "Payment Successful!" ahead of its empty-cart check, so the
+    emptied cart doesn't flash "Your cart is empty".
+- **The order server shares the keys.** Capture is keyed `order-capture:<id>` and refund
+  `order-refund:<id>` (no metadata), exactly as the order server's `lib/orderPayment` keys
+  them. Its stranded-payment sweep, which also settles website payments
+  (`metadata.source = website`) under the same advisory lock:
+  - releases a hold whose card was held 30 minutes ago with no order;
+  - captures a hold that somehow already has an order;
+  - refunds money taken with no order.
+
+  Change the keys or their parameters in both repos or neither.
+- **The logic lives in `websiteOrder.ts`, not the router,** because Vitest can't load the
+  orders router (see Testing a router). `websiteOrder.integration.test.ts` proves the
+  ordering against the test database: no capture without a written order, one order and one
+  capture for two simultaneous calls.
+
 **Stripe customers.** A payment shows who paid in the Stripe Dashboard only if it has a
-Stripe customer. Once `confirmPayment` reports success, the checkout form calls
-`/api/updatePaymentIntent` to attach one (`src/server/stripeCustomer.ts`). It runs
-alongside `createNewOrder` and is **fail-open**: only the Dashboard label is at stake, and the
-`Order` row records the customer anyway. There is no login, so nothing proves that whoever
-types an email owns it, and the rules follow from that:
+Stripe customer. Once `createNewOrder` has placed the order and taken the money, the checkout
+form calls `/api/updatePaymentIntent` to attach one (`src/server/stripeCustomer.ts`). It
+waits for the order because a held payment has not succeeded yet. It is **fail-open**: only
+the Dashboard label is at stake, and the `Order` row records the customer anyway. There is no
+login, so nothing proves that whoever types an email owns it, and the rules follow from that:
 
 - **After payment, never before.** Stripe accepts a customer on a *succeeded* payment intent
   that has none. The route acts only on a succeeded one tagged `source: "website"` by
@@ -411,8 +488,11 @@ process in UTC, Los Angeles and Kolkata.
     when it prices the cart, and `itemCountForPayment` reads it back from Stripe.
   - A payment whose count cannot be read gets the largest order's quote. That can only push
     a time later.
-- **`createNewOrder` re-checks after payment** and only logs a failure: the card is already
-  charged, so refusing would leave a paid customer with no order.
+- **`createNewOrder` re-checks when the order is placed.** A time the shop can no longer
+  take releases the hold and returns `pick-up-time` with the soonest time instead. The
+  customer has not been charged, so refusing costs them nothing. A check that cannot be read
+  refuses nothing. Only a payment already taken (the capture-then-commit gap) is accepted
+  with a late time, and that is logged.
 - Hours, days off and prep times are `unstable_cache`d for 5 minutes (tags `trading-hours`,
   `days-off`, `prep-times`). There is **no fallback for hours**; a failed read shows the
   customer an error.
