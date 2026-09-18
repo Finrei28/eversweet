@@ -13,30 +13,14 @@ two repos share one database.
 
 From the hold-then-capture work (2026-09-18).
 
-**Two pull requests are written, green and waiting to deploy**
+**One thing to check in Stripe, once** - unless it was done before the sweep first ran
 
-- [`Finrei28/eversweet#19`](https://github.com/Finrei28/eversweet/pull/19), branch
-  `fix/payment-matches-order`. The website holds the card, checks the payment against the
-  server-priced cart, takes the money only as the order commits, reprices the payment
-  whenever the cart changes, and words every failure in both languages. See the pricing
-  section of `CLAUDE.md`.
-- [`Finrei28/eversweet_app#32`](https://github.com/Finrei28/eversweet_app/pull/32), branch
-  `fix/sweep-website-payments`. The order server's stranded-payment sweep settles website
-  payments too, and its refund half now finds candidates by charge and judges them by when
-  the money was captured.
-
-Neither is merged. Deploy in this order:
-
-1. **Check Stripe first.** List captured website payments from the last 48 hours that have
-   no `Order` row. The sweep's first run refunds those, so make sure staff have not already
-   settled one by hand in the shop.
-2. **Deploy the order server** (Render). It carries no schema change.
-3. **Deploy the website** (Vercel) **outside trading hours.** A checkout page opened before
-   the deploy still runs the old script: it charges immediately and sends a payment id the
-   new schema refuses. The sweep refunds that customer within about half an hour, but it is
-   a bad experience.
-
-Move both to **Done** once they are merged and deployed.
+The order server's sweep refunds a captured website payment that has had no `Order` row for
+half an hour, looking back 48 hours. Its first run in production therefore reaches payments
+that were taken before any of this shipped, and some of those were settled by hand in the
+shop: the order was made and handed over, the row never written. Look over the refunds the
+sweep has issued and make sure none of them is one of those. Nothing to do if the check was
+made before deploying, which is what the deploy notes asked for.
 
 **A confirmation email Resend refuses is never sent again**
 
@@ -80,6 +64,29 @@ Two properties are known and accepted rather than outstanding:
 Everything below was outstanding during the build and has since shipped. Kept as a record
 of what the two repos had to agree on, and of what a schema change costs when it is only
 half-deployed.
+
+**The website's payments: held, checked, then captured — 2026-09-18**
+
+Merged as [`Finrei28/eversweet#19`](https://github.com/Finrei28/eversweet/pull/19) and
+[`Finrei28/eversweet_app#32`](https://github.com/Finrei28/eversweet_app/pull/32), the order
+server first. Two holes closed, both from the website never comparing what was paid with what
+was ordered: `createNewOrder` recorded any payment id it was handed without asking Stripe, and
+the checkout never repriced its payment after the cart was edited.
+
+- The card is **held** when the customer pays and captured as the last step before the order
+  commits, only for exactly what the server prices the cart at. Anything else lets the hold
+  go. `src/server/websiteOrder.ts`, under the same advisory lock and idempotency keys the
+  order server uses.
+- The payment follows the cart: every edit reprices it, and so does pressing Pay, so a price
+  that moved or an item that sold out is caught before the card is touched.
+- Every failure is worded for the customer in both languages, and a retry finishes what a
+  call that died never did - bounded to an hour, since the email's idempotency key is.
+- The order server's sweep settles website payments too, finding them by charge and judging
+  them by when the money was captured.
+
+The pricing section of `CLAUDE.md` carries the rules; three review rounds narrowed the sweep's
+clock from the payment intent to the charge to the capture, so read that section before
+changing any of those windows.
 
 **Offer pricing rules — 2026-09-12**
 
