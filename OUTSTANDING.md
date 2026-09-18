@@ -80,7 +80,8 @@ the checkout never repriced its payment after the cart was edited.
 - The payment follows the cart: every edit reprices it, and so does pressing Pay, so a price
   that moved or an item that sold out is caught before the card is touched.
 - Every failure is worded for the customer in both languages, and a retry finishes what a
-  call that died never did - bounded to an hour, since the email's idempotency key is.
+  call that died never did - bounded to an hour, well inside the email's 24-hour idempotency
+  window.
 - The order server's sweep settles website payments too, finding them by charge and judging
   them by when the money was captured.
 
