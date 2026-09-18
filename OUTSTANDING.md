@@ -9,11 +9,39 @@ two repos share one database.
 
 ---
 
-## Nothing open
+## Open
 
-Every item this file was opened for has shipped. The record is below; it is kept for what
-the two repos had to agree on, and for what a schema change costs when it is only
-half-deployed.
+Both came out of the hold-then-capture work (2026-09-18). Neither costs a customer money;
+each leaves one of them without something they should have had.
+
+**A confirmation email Resend refuses is never sent again**
+
+`createNewOrder` sends the order confirmation through Resend and only logs a refusal. The
+call still succeeds, the customer lands on their order page, and nothing ever tries again.
+The other half of this is closed: a call that committed its order and then died is repaired
+when the checkout retries, because the announcement and the email both run again, the email
+keyed `order-confirmation:<orderId>` so Resend cannot send a second. A refusal has no repair.
+
+Closing it means recording the work durably - a column on `Order` (say `confirmationSentAt`)
+set when the send succeeds, and something that sweeps rows without one. The website runs no
+timer of its own, so that sweep belongs with the order server's crons, which already carry
+`sweepStrandedPayments` and read the same database.
+
+So it is a schema change: a migration here, `prisma/schema.prisma` mirrored into
+`eversweet_app/backend/`, `npx prisma generate` there, and that service deployed before the
+column is read (see `CLAUDE.md`). Worth folding into the next change that already takes both
+repos through one. Until then the kitchen still gets the order and the customer still sees it
+on screen; only the email is missing.
+
+**The refund sweep measures its 48 hours from the wrong clock**
+
+`eversweet_app/backend/src/lib/strandedPayments.ts`. Its refund search bounds on the payment
+intent's `created`, not the charge's, so a website payment whose intent was made more than 48
+hours before the customer paid is outside the window - and stays outside it on every later
+run. The capture-to-commit gap on such a payment would never be refunded automatically.
+Widening the window is the wrong fix: it would reach back into payments staff have already
+settled in the shop, where the order was made and handed over. Item 6 in that repo's
+`TODO.md` has the detail and the approach.
 
 Two properties are known and accepted rather than outstanding:
 
