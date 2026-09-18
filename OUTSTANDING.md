@@ -9,11 +9,58 @@ two repos share one database.
 
 ---
 
-## Nothing open
+## Open
 
-Every item this file was opened for has shipped. The record is below; it is kept for what
-the two repos had to agree on, and for what a schema change costs when it is only
-half-deployed.
+From the hold-then-capture work (2026-09-18).
+
+**Two pull requests are written, green and waiting to deploy**
+
+- [`Finrei28/eversweet#19`](https://github.com/Finrei28/eversweet/pull/19), branch
+  `fix/payment-matches-order`. The website holds the card, checks the payment against the
+  server-priced cart, takes the money only as the order commits, reprices the payment
+  whenever the cart changes, and words every failure in both languages. See the pricing
+  section of `CLAUDE.md`.
+- [`Finrei28/eversweet_app#32`](https://github.com/Finrei28/eversweet_app/pull/32), branch
+  `fix/sweep-website-payments`. The order server's stranded-payment sweep settles website
+  payments too, and its refund half now finds candidates by charge and judges them by when
+  the money was captured.
+
+Neither is merged. Deploy in this order:
+
+1. **Check Stripe first.** List captured website payments from the last 48 hours that have
+   no `Order` row. The sweep's first run refunds those, so make sure staff have not already
+   settled one by hand in the shop.
+2. **Deploy the order server** (Render). It carries no schema change.
+3. **Deploy the website** (Vercel) **outside trading hours.** A checkout page opened before
+   the deploy still runs the old script: it charges immediately and sends a payment id the
+   new schema refuses. The sweep refunds that customer within about half an hour, but it is
+   a bad experience.
+
+Move both to **Done** once they are merged and deployed.
+
+**A confirmation email Resend refuses is never sent again**
+
+`createNewOrder` sends the order confirmation through Resend and only logs a refusal. The
+call still succeeds, the customer lands on their order page, and nothing ever tries again.
+The other half of this is closed: a call that committed its order and then died is repaired
+when the checkout retries, because the announcement and the email both run again, the email
+keyed `order-confirmation:<orderId>` so Resend cannot send a second. A refusal has no repair.
+
+That repair is also bounded to an hour after the order was written (`followUpStillDue`),
+because the key is only honoured for 24 hours and this mutation is public - a checkout
+resumed the next day would otherwise send a second confirmation. So a retry that comes later
+than an hour repairs nothing either. Both gaps close the same way.
+
+Closing it means recording the work durably - a column on `Order` (say `confirmationSentAt`)
+set when the send succeeds, and something that sweeps rows without one. The website runs no
+timer of its own, so that sweep belongs with the order server's crons, which already carry
+`sweepStrandedPayments` and read the same database.
+
+So it is a schema change: a migration here, `prisma/schema.prisma` mirrored into
+`eversweet_app/backend/`, `npx prisma generate` there, and that service deployed before the
+column is read (see `CLAUDE.md`). Worth folding into the next change that already takes both
+repos through one. Until then the kitchen still gets the order and the customer still sees it
+on screen; only the email is missing.
 
 Two properties are known and accepted rather than outstanding:
 

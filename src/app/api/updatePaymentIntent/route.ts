@@ -10,7 +10,8 @@ import {
 
 /**
  * Records who paid on the payment itself, once it has succeeded, so the Stripe Dashboard
- * shows the customer against it. See `~/server/stripeCustomer`.
+ * shows the customer against it. See `~/server/stripeCustomer`. The card is only held until
+ * `createNewOrder` places the order, so the checkout calls this after that, not after paying.
  *
  * Called with the details as they stood when Pay was pressed, not the debounced ones the
  * payment intent was created from, which the customer may have corrected since.
