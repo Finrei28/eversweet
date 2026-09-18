@@ -13,6 +13,31 @@ two repos share one database.
 
 From the hold-then-capture work (2026-09-18).
 
+**Two pull requests are written, green and waiting to deploy**
+
+- [`Finrei28/eversweet#19`](https://github.com/Finrei28/eversweet/pull/19), branch
+  `fix/payment-matches-order`. The website holds the card, checks the payment against the
+  server-priced cart, takes the money only as the order commits, reprices the payment
+  whenever the cart changes, and words every failure in both languages. See the pricing
+  section of `CLAUDE.md`.
+- [`Finrei28/eversweet_app#32`](https://github.com/Finrei28/eversweet_app/pull/32), branch
+  `fix/sweep-website-payments`. The order server's stranded-payment sweep settles website
+  payments too, and its refund half now finds candidates by charge and judges them by when
+  the money was captured.
+
+Neither is merged. Deploy in this order:
+
+1. **Check Stripe first.** List captured website payments from the last 48 hours that have
+   no `Order` row. The sweep's first run refunds those, so make sure staff have not already
+   settled one by hand in the shop.
+2. **Deploy the order server** (Render). It carries no schema change.
+3. **Deploy the website** (Vercel) **outside trading hours.** A checkout page opened before
+   the deploy still runs the old script: it charges immediately and sends a payment id the
+   new schema refuses. The sweep refunds that customer within about half an hour, but it is
+   a bad experience.
+
+Move both to **Done** once they are merged and deployed.
+
 **A confirmation email Resend refuses is never sent again**
 
 `createNewOrder` sends the order confirmation through Resend and only logs a refusal. The
