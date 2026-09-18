@@ -21,6 +21,11 @@ The other half of this is closed: a call that committed its order and then died 
 when the checkout retries, because the announcement and the email both run again, the email
 keyed `order-confirmation:<orderId>` so Resend cannot send a second. A refusal has no repair.
 
+That repair is also bounded to an hour after the order was written (`followUpStillDue`),
+because the key is only honoured for 24 hours and this mutation is public - a checkout
+resumed the next day would otherwise send a second confirmation. So a retry that comes later
+than an hour repairs nothing either. Both gaps close the same way.
+
 Closing it means recording the work durably - a column on `Order` (say `confirmationSentAt`)
 set when the send succeeds, and something that sweeps rows without one. The website runs no
 timer of its own, so that sweep belongs with the order server's crons, which already carry

@@ -8,6 +8,8 @@ vi.mock("next/cache", () => ({
 
 import {
   captureIdempotencyKey,
+  FOLLOW_UP_WINDOW_MS,
+  followUpStillDue,
   refundIdempotencyKey,
   settleWebsitePayment,
   type StripeForOrder,
@@ -290,5 +292,41 @@ describe("settleWebsitePayment", () => {
   it("keys the capture the way the order server's sweep does", () => {
     expect(captureIdempotencyKey("pi_123")).toBe("order-capture:pi_123");
     expect(refundIdempotencyKey("pi_123")).toBe("order-refund:pi_123");
+  });
+});
+
+/**
+ * What `createNewOrder` asks before repeating an order's announcement and confirmation email
+ * for a call that found the order already placed. The email's idempotency key is what makes
+ * that repeat safe, and Resend only honours it for 24 hours - so a checkout resumed the next
+ * day, still holding the client secret, must not reach the send at all.
+ */
+describe("followUpStillDue", () => {
+  const NOW = new Date("2026-09-18T03:00:00Z");
+  const placedAgo = (ms: number) => ({
+    createdAt: new Date(NOW.getTime() - ms),
+  });
+
+  it("is due for the order just written", () => {
+    expect(followUpStillDue(placedAgo(0), NOW)).toBe(true);
+  });
+
+  it("is due for a retry moments after the call that placed the order failed", () => {
+    expect(followUpStillDue(placedAgo(30_000), NOW)).toBe(true);
+  });
+
+  it("is due up to the end of the window", () => {
+    expect(followUpStillDue(placedAgo(FOLLOW_UP_WINDOW_MS), NOW)).toBe(true);
+  });
+
+  it("is not due past it, so a resumed checkout cannot send a second confirmation", () => {
+    expect(followUpStillDue(placedAgo(FOLLOW_UP_WINDOW_MS + 1), NOW)).toBe(
+      false,
+    );
+    expect(followUpStillDue(placedAgo(25 * 60 * 60 * 1000), NOW)).toBe(false);
+  });
+
+  it("stays well inside the 24 hours Resend honours the key for", () => {
+    expect(FOLLOW_UP_WINDOW_MS).toBeLessThan(24 * 60 * 60 * 1000);
   });
 });

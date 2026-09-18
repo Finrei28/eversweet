@@ -11,7 +11,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { announceOrder } from "~/server/notifyAdmin";
-import { placeWebsiteOrder } from "~/server/websiteOrder";
+import { followUpStillDue, placeWebsiteOrder } from "~/server/websiteOrder";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -30,7 +30,7 @@ export const orderRouter = createTRPCRouter({
 
       if (!placed.ok) return placed;
 
-      const { order: newOrder } = placed;
+      const { order: newOrder, placedNow } = placed;
 
       // Past this point the order is committed and the card has been charged.
       // Neither of these may fail the mutation: the customer would be shown an
@@ -44,6 +44,14 @@ export const orderRouter = createTRPCRouter({
       // ever send that customer their confirmation. Both steps are safe to repeat: the
       // announcement endpoint is idempotent, and the email carries an idempotency key, so
       // one that did go out is not sent twice.
+      //
+      // That key is only honoured for a day, though, and this mutation is public and takes a
+      // client secret that never expires - so the repeat stops well inside it, or a checkout
+      // resumed tomorrow would send a second confirmation. See `followUpStillDue`.
+      if (!placedNow && !followUpStillDue(newOrder)) {
+        return { ok: true as const, orderId: newOrder.id };
+      }
+
       const [, confirmationEmail] = await Promise.allSettled([
         // Puts the order on the kitchen screen now, rather than leaving it for
         // the order server's cron to find within the next couple of minutes.

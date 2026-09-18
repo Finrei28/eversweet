@@ -152,6 +152,29 @@ export const captureIdempotencyKey = (paymentIntentId: string) =>
 export const refundIdempotencyKey = (paymentIntentId: string) =>
   `order-refund:${paymentIntentId}`;
 
+/**
+ * How long after an order was written a call that finds it already placed still repeats its
+ * follow-up work - the kitchen announcement and the confirmation email.
+ *
+ * Repeating those is safe only while Resend still honours the email's idempotency key, which
+ * it keeps for **24 hours**; past that the same key sends a second confirmation. The repair
+ * exists for a call that failed moments ago - its answer lost, its process gone - so an hour
+ * is far past any retry of that, and far inside the key's life. Without this bound a checkout
+ * tab resumed the next day, still holding the client secret, would reach the order through
+ * the reprice and send the customer their confirmation a second time.
+ *
+ * An order older than that is left alone. The kitchen has had it for an hour by then, and a
+ * customer whose email never went out at all needs the send recorded on the order itself -
+ * the open item in `OUTSTANDING.md`, which this window does not close.
+ */
+export const FOLLOW_UP_WINDOW_MS = 60 * 60 * 1000;
+
+/** Whether an order is young enough for that work to be repeated. */
+export const followUpStillDue = (
+  order: { createdAt: Date },
+  now: Date = new Date(),
+): boolean => now.getTime() - order.createdAt.getTime() <= FOLLOW_UP_WINDOW_MS;
+
 /** Thrown out of the order's transaction, to roll it back, when the hold is gone by capture. */
 class HoldReleasedError extends Error {}
 

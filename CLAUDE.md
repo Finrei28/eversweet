@@ -388,6 +388,11 @@ after the cart was edited on that page, so the customer paid the old total for t
   address on the **order**, not the request, so a repeat is byte-identical - Resend refuses
   a reused key whose message differs. That is also why the checkout calls `createNewOrder`
   when the reprice reports the order already placed, rather than going straight to it.
+  **The repeat stops an hour after the order was written** (`followUpStillDue`). The key is
+  only honoured for a day, while this mutation is public and its client secret never
+  expires: without the bound, a checkout tab resumed tomorrow would reach its order through
+  the reprice and send that customer a second confirmation. An hour is far past any retry
+  and far inside the key's life; an order older than that is left alone.
 - **The checkout's error handling** (`checkoutForm.tsx`) runs in three steps: before the
   card is touched, holding it, and placing the order.
   - **Pay reprices before anything else,** awaited, alongside the pick-up time check. That
