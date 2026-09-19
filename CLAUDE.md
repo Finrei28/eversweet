@@ -534,6 +534,73 @@ The CHECK constraints refuse:
 The website sees a change within 5 minutes and the order server within 1, so change hours
 outside trading time. One-off closures stay in the admin app's days off.
 
+(The hours have no editor. The other shop settings do - see below - and that page is where
+one would go.)
+
+## Shop settings: `/admin/settings`
+
+Four things that used to be compiled into the order server, moved into the database by
+`20260919000000_shop_settings_from_code` and edited here: the loyalty earn rates
+(`LoyaltySetting`), the shop's own details (`ShopProfile`), the customer app's launch
+announcements (`Announcement`) and the membership benefits (`MembershipPlan.benefits`).
+
+**They are edited here rather than in the staff app on purpose.** Preparation times belong
+on the tablet, where the kitchen adjusts them as service speeds up or slows down. Nobody
+standing in the shop should be able to change what an order earns or reword a membership.
+
+`src/server/api/routers/settings.ts` writes the rows **directly**, unlike `/admin/winners`.
+That hop exists because the order server holds guards this repo cannot reproduce - minting a
+prize code, pushing a notification. Nothing here has an equivalent.
+
+- **The order server picks a change up within a minute, not at once.** It caches each of
+  these in memory (`lib/loyaltyRates`, `lib/storeInfo`, `lib/announcements`), because a
+  writer here cannot invalidate a cache in that process. Same caveat as the hours.
+- **This site's own reads go through `~/server/shopProfile`**, `unstable_cache`d with the
+  `shop-profile` tag, which `saveShopProfile` revalidates. The contact page, the JSON-LD and
+  the privacy policy's contact block all read it, so the address is no longer written out
+  four times in two formats.
+- **Rates are whole numbers.** `memberBonusPercent` 150 means 1.5x; the order server divides
+  at the edge. Bounds live in `~/lib/shopSettings` and are what both the zod schemas and the
+  CHECK constraints enforce - change one and change the other.
+- **An announcement's `publishedAt` is what the app compares** against the last one it
+  showed. Leave it alone to fix a typo; move it forward to put the message back in front of
+  everyone. It is a picked calendar day, pinned with `startOfDayNZ`, like an offer's dates.
+- **The benefits are free text**, so nothing stops one claiming what the rates do not do -
+  the list advertised "2x loyalty points" against a 1.5x rate for months. The screen checks
+  the wording against the live multiplier and says so.
+- **The legal text is deliberately not here.** See TODO.md item 5 in the other repo.
+
+## Legal documents
+
+`src/lib/legalDocuments.ts` holds the Terms and the Privacy Policy as data, and is copied
+**byte-for-byte** from the order server's `backend/src/legal/legalDocuments.ts`. It imports
+nothing, so copying it is all there is to it. `npm run verify:legal` compares the two and
+exits non-zero when they differ - run it after touching either.
+
+`/privacy-policy` and `/terms-and-conditions` both render it through
+`src/app/components/legalDocument.tsx`. The privacy policy used to be 234 lines of
+hand-written JSX that had drifted from the app's copy, and there was no terms page at all
+while the checkout told customers - in both languages - that they agreed to a "Terms of
+Service" this site did not host.
+
+- **Both platforms render the same words.** Sections that apply to one channel carry
+  `appliesTo` and are labelled. Points, membership, offers, prizes and notifications are
+  app-only; cookies are website-only.
+- **The shop's details are tokens** resolved from `ShopProfile`, so an address in a policy
+  cannot drift from the one on the contact page.
+- **It is in `.prettierignore`.** This repo's Prettier adds semicolons and the order
+  server's does not, so `format:write` would rewrite the copy and break the byte-for-byte
+  match. That exemption is load-bearing.
+- **English only**, as the app is, while the rest of this site is bilingual. A translated
+  legal document raises which version governs when they disagree; that is a decision for a
+  translator working with whoever reviews the English.
+- `src/lib/legalDocuments.test.ts` is copied from the order server too and is the
+  specification for the content: no section may trail off in an ellipsis, headings are
+  numbered once and in order, and every token must resolve.
+- The footer (`src/app/components/siteFooter.tsx`) is the only route to either document. It
+  lives in `(customerFacing)/layout.tsx` so it renders on every page; it used to be inline
+  at the bottom of `homePageContent.tsx` and therefore appeared only on `/`.
+
 ## Admin UI conventions
 
 Read an existing page before writing a new one; these are load-bearing.

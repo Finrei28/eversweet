@@ -31,6 +31,9 @@ export default function AdminLayout({
         <NavbarLink href={"/admin/winners"}>
           {language === "en" ? "Winners" : "得奖者"}
         </NavbarLink>
+        <NavbarLink href={"/admin/settings"}>
+          {language === "en" ? "Settings" : "设置"}
+        </NavbarLink>
       </Navbar>
       <div className="my-6">{children}</div>
     </>

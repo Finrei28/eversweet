@@ -5,6 +5,18 @@ import {
   DISCOUNT_MIN_PERCENT,
   hasExactlyOnePrice,
 } from "~/lib/offerPricing";
+import {
+  ANNOUNCEMENT_TEXT_MAX_LENGTH,
+  ANNOUNCEMENT_TITLE_MAX_LENGTH,
+  BENEFIT_MAX_LENGTH,
+  MAX_ACTIVE_ANNOUNCEMENTS,
+  MEMBER_BONUS_PERCENT_MAX,
+  MEMBER_BONUS_PERCENT_MIN,
+  MODIFIER_PERCENT_MAX,
+  MODIFIER_PERCENT_MIN,
+  POINTS_PER_DOLLAR_MAX,
+  POINTS_PER_DOLLAR_MIN,
+} from "~/lib/shopSettings";
 
 const fileSchema = z.instanceof(File, { message: "File is required" });
 export const imageSchema = fileSchema.refine(
@@ -244,4 +256,85 @@ export const upsertRewardInputSchema = upsertRewardSchema
 export const settleMonthSchema = z.object({
   month: z.number().int().min(1).max(12),
   year: z.number().int().min(2000),
+});
+
+/**
+ * The shop settings that moved out of the order server's code and into the database.
+ *
+ * Bounds come from `~/lib/shopSettings`, which is also what the CHECK constraints in
+ * 20260919000000_shop_settings_from_code enforce, so the form refuses what Postgres would
+ * refuse instead of surfacing a constraint violation to an admin.
+ */
+export const loyaltyRatesSchema = z.object({
+  pointsPerDollar: z.coerce
+    .number()
+    .int()
+    .min(POINTS_PER_DOLLAR_MIN)
+    .max(POINTS_PER_DOLLAR_MAX),
+  memberBonusPercent: z.coerce
+    .number()
+    .int()
+    .min(MEMBER_BONUS_PERCENT_MIN)
+    .max(MEMBER_BONUS_PERCENT_MAX),
+  modifierPercent: z.coerce
+    .number()
+    .int()
+    .min(MODIFIER_PERCENT_MIN)
+    .max(MODIFIER_PERCENT_MAX),
+});
+
+/**
+ * The shop's own details. Every field is required: these are served to the customer app as
+ * one object and a blank address is worse than a stale one.
+ */
+export const shopProfileSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  address: z.string().trim().min(1).max(200),
+  city: z.string().trim().min(1).max(100),
+  state: z.string().trim().min(1).max(100),
+  postal: z.string().trim().min(1).max(20),
+  phone: z.string().trim().min(1).max(30),
+  email: z.string().trim().email().max(254),
+  website: z.string().trim().url().max(200),
+});
+
+/**
+ * The membership benefits, in the order the app lists them.
+ *
+ * At least one, because an empty list renders as a membership offering nothing. Blank rows
+ * are dropped before the length is checked, so an admin who clears a field and saves gets
+ * the row removed rather than an empty bullet on the join screen.
+ */
+export const membershipBenefitsSchema = z.object({
+  benefits: z
+    .array(z.string().trim().max(BENEFIT_MAX_LENGTH))
+    .transform((list) => list.filter((benefit) => benefit.length > 0))
+    .pipe(z.array(z.string().min(1)).min(1)),
+});
+
+/**
+ * One announcement. `publishedAt` is the calendar day the admin picked, read in the browser
+ * so that Vercel's UTC clock cannot shift it, and pinned to an Auckland instant on the
+ * server - the same arrangement as an offer's dates and a prize's expiry.
+ *
+ * It is separate from the row's own `updatedAt` on purpose: the app treats a later date as
+ * a new announcement worth re-showing, so correcting a typo must not reach for it.
+ */
+export const announcementSchema = z.object({
+  id: z.string().min(1).optional(),
+  title: z.string().trim().min(1).max(ANNOUNCEMENT_TITLE_MAX_LENGTH),
+  text1: z.string().trim().min(1).max(ANNOUNCEMENT_TEXT_MAX_LENGTH),
+  text2: z.string().trim().max(ANNOUNCEMENT_TEXT_MAX_LENGTH).optional(),
+  isActive: z.boolean(),
+  publishedOn: z.string().date(),
+});
+
+export const saveAnnouncementsSchema = z.object({
+  announcements: z
+    .array(announcementSchema)
+    .refine(
+      (list) =>
+        list.filter((a) => a.isActive).length <= MAX_ACTIVE_ANNOUNCEMENTS,
+      `At most ${MAX_ACTIVE_ANNOUNCEMENTS} announcements can be showing at once`,
+    ),
 });

@@ -1,10 +1,11 @@
 import { offerRouter } from "~/server/api/routers/offers";
+import { settingsRouter } from "~/server/api/routers/settings";
 import { winnerRouter } from "~/server/api/routers/winners";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { db } from "~/server/db";
 
 /**
- * A server-side tRPC caller over just the two admin routers under test.
+ * A server-side tRPC caller over just the admin routers under test.
  *
  * Deliberately **not** `~/server/api/root`. The root router reaches the order router,
  * which imports an email template whose JSX will not compile under the Next `tsconfig`
@@ -17,7 +18,11 @@ import { db } from "~/server/db";
  * mocked `ctx.db` would only assert the mock was called.
  */
 const createCaller = createCallerFactory(
-  createTRPCRouter({ offer: offerRouter, winner: winnerRouter }),
+  createTRPCRouter({
+    offer: offerRouter,
+    winner: winnerRouter,
+    settings: settingsRouter,
+  }),
 );
 
 /**
