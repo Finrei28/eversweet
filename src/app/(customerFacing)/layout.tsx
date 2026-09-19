@@ -4,6 +4,7 @@ import { useState } from "react";
 import NotificationModal from "../_components/_homeComponents/notification";
 import { useLanguage } from "../components/language";
 import { Navbar, NavbarLink } from "../components/navbar";
+import SiteFooter from "../components/siteFooter";
 import { api } from "~/trpc/react";
 import { format } from "date-fns";
 
@@ -42,6 +43,7 @@ export default function CustomerFacingLayout({
       </Navbar>
 
       <div>{children}</div>
+      <SiteFooter />
       {daysOff && daysOff.length > 0 && (
         <NotificationModal
           open={notificationModalOpen}

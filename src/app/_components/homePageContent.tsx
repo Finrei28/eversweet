@@ -16,7 +16,6 @@ import { useSearchParams } from "next/navigation";
 import Loader from "../components/customLoading";
 import NotificationModal from "./_homeComponents/notification";
 import { DessertAnimation } from "./_homeComponents/_top-desserts-components.tsx/dessert-animation";
-import { formatNZ } from "~/lib/pickUpTimes";
 
 /**
  * `useSearchParams()` makes the closest Suspense boundary bail out of the
@@ -111,27 +110,8 @@ function HomePageContent() {
           <OpeningHours />
         </section>
 
-        <footer className="mt-auto w-full bg-primary py-10 text-white">
-          <div className="container mx-auto flex flex-col items-center gap-4 text-center">
-            <p className="text-sm">
-              © {formatNZ(new Date(), "yyyy")} Eversweet. All rights reserved.
-            </p>
-            <nav className="flex flex-col gap-5 lg:flex-row lg:gap-10">
-              {/* <Link href="/about-us" className="hover:underline">
-              {language === "en" ? "About Us" : "关于我们"}
-            </Link> */}
-              <Link href="/contact" className="hover:underline">
-                {language === "en" ? "Contact" : "联系方法"}
-              </Link>
-              <Link href="/feedback" className="hover:underline">
-                {language === "en" ? "Feedback" : "反馈"}
-              </Link>
-              <Link href="/privacy-policy" className="hover:underline">
-                {language === "en" ? "Privacy Policy" : "隐私政策"}
-              </Link>
-            </nav>
-          </div>
-        </footer>
+        {/* The footer moved to `(customerFacing)/layout.tsx`, so that it - and the only
+            links to the legal documents - appear on every page rather than only here. */}
       </div>
 
       {/* <NotificationModal
