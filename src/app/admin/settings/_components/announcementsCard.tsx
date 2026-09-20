@@ -120,6 +120,9 @@ export function AnnouncementsCard() {
           <form
             onSubmit={form.handleSubmit((values) =>
               mutate({
+                // The ids this form opened with. The server refuses the save if the set
+                // has changed since, rather than deleting whatever was added meanwhile.
+                knownIds: announcements.map((a) => a.id),
                 announcements: values.announcements.map((a) => ({
                   id: a.id,
                   title: a.title,

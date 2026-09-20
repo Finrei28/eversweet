@@ -86,3 +86,41 @@ export const DEFAULT_SHOP_PROFILE: ShopProfile = {
 /** The address as one line, the way the contact page and the JSON-LD both want it. */
 export const oneLineAddress = (profile: ShopProfile): string =>
   `${profile.address}, ${profile.city} ${profile.postal}`;
+
+/**
+ * The token a membership benefit uses instead of writing the member multiplier out.
+ *
+ * Mirrors `MEMBER_RATE_TOKEN` in the order server's `lib/membership.ts`, which is what
+ * actually resolves it when the benefits are served. Two copies because the repos share no
+ * package; if they ever disagree, a benefit renders with the token still in it, which is
+ * ugly but visible rather than wrong.
+ */
+export const MEMBER_RATE_TOKEN = "{{memberRate}}";
+
+/**
+ * Benefits whose wording claims a multiplier the rates do not give.
+ *
+ * The list is free text an admin types, and the number is the one thing it kept getting
+ * wrong - "Earn 2x loyalty points" was live against a 1.5x rate for months. A benefit using
+ * the token is correct by construction and never flagged.
+ *
+ * A heuristic, deliberately not a rule that blocks saving: `modifier` exists so the shop can
+ * run a genuine double-points weekend, and "Earn 2x points this weekend" would then be true.
+ * The screen says so while the admin types and leaves the decision with them.
+ */
+export const benefitsClaimingOtherMultiplier = (
+  benefits: readonly string[],
+  memberMultiplier: number,
+): string[] =>
+  benefits.filter((benefit) => {
+    if (benefit.includes(MEMBER_RATE_TOKEN)) return false;
+    const claim = /(\d+(?:\.\d+)?)\s*x\s*(?:loyalty\s*)?points/i.exec(benefit);
+    return claim ? Number(claim[1]) !== memberMultiplier : false;
+  });
+
+/** A benefit as the app will render it, for the admin screen's preview. */
+export const previewBenefit = (
+  benefit: string,
+  memberMultiplier: number,
+): string =>
+  benefit.split(MEMBER_RATE_TOKEN).join(String(memberMultiplier));

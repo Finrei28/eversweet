@@ -22,7 +22,12 @@ import {
   FormMessage,
 } from "~/components/ui/form";
 import { useToast } from "~/hooks/use-toast";
-import { BENEFIT_MAX_LENGTH } from "~/lib/shopSettings";
+import {
+  BENEFIT_MAX_LENGTH,
+  MEMBER_RATE_TOKEN,
+  benefitsClaimingOtherMultiplier,
+  previewBenefit,
+} from "~/lib/shopSettings";
 import { api } from "~/trpc/react";
 import { z } from "zod";
 
@@ -66,6 +71,20 @@ export function MembershipBenefitsCard() {
     name: "benefits",
   });
 
+  /**
+   * Checked against what is currently typed, not against what is saved.
+   *
+   * The warning used to come from the server, which could only see the rows already in the
+   * database - so an admin could type "2x loyalty points" over a 1.5x rate, save it, and
+   * only be told once customers could already read it. `memberMultiplier` still comes from
+   * the server because that is the live rate; the claim is judged here.
+   */
+  const typed = form.watch("benefits").map((b) => b.value);
+  const claims = benefitsClaimingOtherMultiplier(
+    typed,
+    warnings.memberMultiplier,
+  );
+
   const { mutate, isPending } = api.settings.saveMembershipBenefits.useMutation({
     onSuccess: async () => {
       await utils.settings.invalidate();
@@ -85,12 +104,12 @@ export function MembershipBenefitsCard() {
         </CardTitle>
         <CardDescription>
           {language === "en"
-            ? "Shown on the app's join screen, in this order."
-            : "按此顺序显示在应用程序的加入页面上。"}
+            ? `Shown on the app's join screen, in this order. Write ${MEMBER_RATE_TOKEN} for the member points multiplier and it will always match the rate.`
+            : `按此顺序显示在应用程序的加入页面上。使用 ${MEMBER_RATE_TOKEN} 表示会员积分倍数，即可始终与费率保持一致。`}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {warnings.claimsOtherMultiplier.length > 0 && (
+        {claims.length > 0 && (
           <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
             {language === "en" ? (
               <>
@@ -105,10 +124,22 @@ export function MembershipBenefitsCard() {
               </>
             )}
             <ul className="mt-1 list-inside list-disc">
-              {warnings.claimsOtherMultiplier.map((benefit) => (
+              {claims.map((benefit) => (
                 <li key={benefit}>{benefit}</li>
               ))}
             </ul>
+            <p className="mt-2">
+              {language === "en" ? (
+                <>
+                  Write <code>{MEMBER_RATE_TOKEN}</code> instead of the number and
+                  it will always match the rate.
+                </>
+              ) : (
+                <>
+                  使用 <code>{MEMBER_RATE_TOKEN}</code> 代替数字，即可始终与费率保持一致。
+                </>
+              )}
+            </p>
           </div>
         )}
 
@@ -136,6 +167,13 @@ export function MembershipBenefitsCard() {
                           }
                         />
                       </FormControl>
+                      {/* What the app will actually print, so the token is not a guess. */}
+                      {input.value?.includes(MEMBER_RATE_TOKEN) && (
+                        <p className="text-xs text-muted-foreground">
+                          {language === "en" ? "Shows as: " : "显示为："}
+                          {previewBenefit(input.value, warnings.memberMultiplier)}
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}

@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
@@ -8,6 +9,7 @@ import {
   shopProfileSchema,
 } from "~/app/components/schemas";
 import { calendarDate, startOfDayNZ } from "~/lib/aucklandDay";
+import { benefitsClaimingOtherMultiplier } from "~/lib/shopSettings";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { SHOP_PROFILE_TAG } from "~/server/shopProfile";
 
@@ -191,14 +193,38 @@ export const settingsRouter = createTRPCRouter({
         .map((a) => a.id)
         .filter((id): id is string => Boolean(id));
 
-      await ctx.db.$transaction([
+      // Interactive rather than the array form, because the check below has to happen
+      // inside the same transaction as the writes it guards.
+      await ctx.db.$transaction(async (tx) => {
+        // Refuse a submission built from a list that has since changed. Saving replaces
+        // the whole collection, so without this an admin whose form loaded before someone
+        // else added an announcement would delete it on save - silently, with no error and
+        // nothing in the UI to suggest anything had gone. Comparing the whole set catches
+        // a row added elsewhere and one deleted elsewhere alike.
+        const current = await tx.announcement.findMany({ select: { id: true } });
+        const currentIds = new Set(current.map((a) => a.id));
+        const knownIds = new Set(input.knownIds);
+
+        const unchanged =
+          currentIds.size === knownIds.size &&
+          [...currentIds].every((id) => knownIds.has(id));
+
+        if (!unchanged) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Someone else changed the announcements while this page was open. Reload and make your change again.",
+          });
+        }
+
         // Anything the admin removed from the list. Deleting is safe here in a way it is
         // not for an offer: nothing references an announcement, so there is no history to
         // take with it.
-        ctx.db.announcement.deleteMany({
+        await tx.announcement.deleteMany({
           where: keep.length ? { id: { notIn: keep } } : {},
-        }),
-        ...input.announcements.map((a, position) => {
+        });
+
+        for (const [position, a] of input.announcements.entries()) {
           const data = {
             title: a.title,
             text1: a.text1,
@@ -208,11 +234,13 @@ export const settingsRouter = createTRPCRouter({
             publishedAt: startOfDayNZ(a.publishedOn),
           };
 
-          return a.id
-            ? ctx.db.announcement.update({ where: { id: a.id }, data })
-            : ctx.db.announcement.create({ data });
-        }),
-      ]);
+          if (a.id) {
+            await tx.announcement.update({ where: { id: a.id }, data });
+          } else {
+            await tx.announcement.create({ data });
+          }
+        }
+      });
 
       return { saved: input.announcements.length };
     }),
@@ -236,13 +264,16 @@ export const settingsRouter = createTRPCRouter({
       ]);
 
       const memberMultiplier = (rates?.memberBonusPercent ?? 150) / 100;
-      const claimsOtherMultiplier = (plan?.benefits ?? []).filter((benefit) => {
-        const claim = /(\d+(?:\.\d+)?)\s*x\s*(?:loyalty\s*)?points/i.exec(
-          benefit,
-        );
-        return claim ? Number(claim[1]) !== memberMultiplier : false;
-      });
 
-      return { memberMultiplier, claimsOtherMultiplier };
+      // The saved rows, for the state the screen opens in. The card re-runs the same
+      // detector against what is currently typed, so a mismatch is shown before it is
+      // published rather than after - which was the whole point of the warning.
+      return {
+        memberMultiplier,
+        claimsOtherMultiplier: benefitsClaimingOtherMultiplier(
+          plan?.benefits ?? [],
+          memberMultiplier,
+        ),
+      };
     }),
 });

@@ -330,6 +330,14 @@ export const announcementSchema = z.object({
 });
 
 export const saveAnnouncementsSchema = z.object({
+  /**
+   * The ids the form was opened with.
+   *
+   * Saving replaces the whole list, so without this a tab opened before another admin added
+   * an announcement would delete it on save and say nothing. The server compares this with
+   * what is actually there and refuses a stale submission.
+   */
+  knownIds: z.array(z.string().min(1)),
   announcements: z
     .array(announcementSchema)
     .refine(

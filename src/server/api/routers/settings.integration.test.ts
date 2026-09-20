@@ -169,6 +169,14 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
   });
 
   describe("announcements", () => {
+
+    /**
+     * The ids currently in the database. Saving replaces the whole list, so the mutation
+     * takes the ids the form was opened with and refuses if they have changed since.
+     */
+    const currentIds = async () =>
+      (await db.announcement.findMany({ select: { id: true } })).map((a) => a.id);
+
     const one = (overrides: Record<string, unknown> = {}) => ({
       title: "Closed Tuesday",
       text1: "We are shut for a private event.",
@@ -179,6 +187,7 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
 
     it("writes the picked day as an Auckland instant, not a UTC one", async () => {
       await adminCaller().settings.saveAnnouncements({
+        knownIds: await currentIds(),
         announcements: [one()],
       });
 
@@ -189,6 +198,7 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
 
     it("keeps positions in the order the list was given", async () => {
       await adminCaller().settings.saveAnnouncements({
+        knownIds: await currentIds(),
         announcements: [
           one({ title: "First" }),
           one({ title: "Second" }),
@@ -214,10 +224,11 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
      */
     it("leaves the date alone when only the text is edited", async () => {
       const caller = adminCaller();
-      await caller.settings.saveAnnouncements({ announcements: [one()] });
+      await caller.settings.saveAnnouncements({ knownIds: await currentIds(), announcements: [one()] });
       const before = await db.announcement.findFirstOrThrow();
 
       await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
         announcements: [
           one({ id: before.id, text1: "We are shut for a private function." }),
         ],
@@ -233,10 +244,11 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
 
     it("moves the date when the admin moves it, which re-shows the pop-up", async () => {
       const caller = adminCaller();
-      await caller.settings.saveAnnouncements({ announcements: [one()] });
+      await caller.settings.saveAnnouncements({ knownIds: await currentIds(), announcements: [one()] });
       const before = await db.announcement.findFirstOrThrow();
 
       await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
         announcements: [one({ id: before.id, publishedOn: "2026-08-15" })],
       });
 
@@ -249,6 +261,7 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
     it("removes only what was taken out of the list", async () => {
       const caller = adminCaller();
       await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
         announcements: [one({ title: "Keep" }), one({ title: "Drop" })],
       });
       const kept = await db.announcement.findFirstOrThrow({
@@ -256,6 +269,7 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
       });
 
       await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
         announcements: [one({ id: kept.id, title: "Keep" })],
       });
 
@@ -266,6 +280,7 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
     it("refuses more showing at once than the pop-up should carry", async () => {
       await expect(
         adminCaller().settings.saveAnnouncements({
+          knownIds: await currentIds(),
           announcements: Array.from({ length: 6 }, (_, i) =>
             one({ title: `Announcement ${i}` }),
           ),
@@ -273,9 +288,61 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
       ).rejects.toThrow();
     });
 
+    /**
+     * Saving replaces the collection, so a form opened before somebody else added an
+     * announcement used to delete it - silently, with nothing to say it had happened.
+     */
+    it("refuses a save built from a list that has since changed", async () => {
+      const caller = adminCaller();
+      await caller.settings.saveAnnouncements({
+        knownIds: [],
+        announcements: [one({ title: "First" })],
+      });
+      const stale = await currentIds();
+
+      // Another admin, in another tab, adds one.
+      await caller.settings.saveAnnouncements({
+        knownIds: stale,
+        announcements: [
+          one({ id: stale[0], title: "First" }),
+          one({ title: "Second" }),
+        ],
+      });
+
+      await expect(
+        caller.settings.saveAnnouncements({
+          knownIds: stale,
+          announcements: [one({ id: stale[0], title: "First, edited" })],
+        }),
+      ).rejects.toThrow(/changed the announcements/i);
+
+      // And nothing was lost.
+      const left = await db.announcement.findMany({ select: { title: true } });
+      expect(left).toHaveLength(2);
+    });
+
+    it("refuses a save whose list was deleted from underneath it", async () => {
+      const caller = adminCaller();
+      await caller.settings.saveAnnouncements({
+        knownIds: [],
+        announcements: [one()],
+      });
+      const stale = await currentIds();
+
+      await db.announcement.deleteMany({});
+
+      await expect(
+        caller.settings.saveAnnouncements({
+          knownIds: stale,
+          announcements: [one({ id: stale[0] })],
+        }),
+      ).rejects.toThrow(/changed the announcements/i);
+    });
+
     /** A retired announcement is kept, so it can be brought back without retyping it. */
     it("counts only the ones showing towards that limit", async () => {
       await adminCaller().settings.saveAnnouncements({
+        knownIds: await currentIds(),
         announcements: Array.from({ length: 6 }, (_, i) =>
           one({ title: `Announcement ${i}`, isActive: i < 5 }),
         ),

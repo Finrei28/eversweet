@@ -380,7 +380,11 @@ export const offerRouter = createTRPCRouter({
          */
         await tx.offer.update({
           where: { id: input.id },
-          data: { isActive: false, endsAt: null },
+          // notifiedAt goes back to null with the rest of it. Closing a run is the one
+          // action that deliberately starts an offer over - redemptions cleared, dates
+          // cleared - so its next run should be announced to customers like a new offer,
+          // which is what it is to anyone who missed the first.
+          data: { isActive: false, endsAt: null, notifiedAt: null },
           select: { id: true },
         });
 

@@ -16,8 +16,10 @@
 --
 -- The seeded values reproduce current behaviour precisely, with one exception, called out
 -- because it is a change and not a copy: the benefits list advertised "Earn 2x loyalty
--- points" while the rate gave members 1.5x. The wording is corrected here. Nothing about
--- what anyone earns changes - LoyaltySetting is seeded with the rates as they stand.
+-- points" while the rate gave members 1.5x. It is seeded as "{{memberRate}}x" instead, a
+-- token the order server fills in from LoyaltySetting when it serves the benefits, so the
+-- sentence cannot disagree with the rate again. Nothing about what anyone earns changes -
+-- LoyaltySetting is seeded with the rates as they stand.
 --
 -- The announcements are seeded as they are, placeholder text and all, because a migration
 -- is the wrong place to decide what the shop wants to say. Their publishedAt keeps the
@@ -146,7 +148,7 @@ UPDATE "MembershipPlan"
 SET    "benefits" = ARRAY[
          'Free weekly Mochi Series Bowl ($9.99)',
          'Stackable membership discount from 5% to 25%, up by 5% each month',
-         'Earn 1.5x loyalty points',
+         'Earn {{memberRate}}x loyalty points',
          'Exclusive membership offers',
          'Cancel anytime'
        ]
