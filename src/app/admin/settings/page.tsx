@@ -28,6 +28,9 @@ export default async function SettingsPage() {
     api.settings.getLoyaltyRates.prefetch(),
     api.settings.getShopProfile.prefetch(),
     api.settings.getMembershipBenefits.prefetch(),
+    // `{}` matches the card's useSuspenseQuery({}) exactly. A prefetch whose input differs
+    // misses the cache key entirely, which is the same as not prefetching at all.
+    api.settings.getSettingsWarnings.prefetch({}),
     api.settings.getAnnouncements.prefetch(),
   ]);
 
