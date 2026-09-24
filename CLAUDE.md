@@ -598,6 +598,11 @@ hand-written JSX that had drifted from the app's copy, and there was no terms pa
 while the checkout told customers - in both languages - that they agreed to a "Terms of
 Service" this site did not host.
 
+- **CI waits for the other half.** Each repo's `verify-legal` job compares against the other
+  repo, so on a paired change whichever is pushed first briefly sees the old copy. The job
+  fetches the other repo again every 30 seconds for about five minutes before failing - a
+  slow legal check is waiting for the second push, not hung. A real one-sided edit fails
+  after that, with an error saying so.
 - **Both platforms render the same words.** Sections that apply to one channel carry
   `appliesTo` and are labelled. Points, membership, offers, prizes and notifications are
   app-only; cookies are website-only.
