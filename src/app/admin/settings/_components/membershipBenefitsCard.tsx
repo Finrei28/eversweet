@@ -3,8 +3,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash2 } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
+import type { z } from "zod";
 
 import { useLanguage } from "~/app/components/language";
+import { membershipBenefitsFormSchema } from "~/app/components/schemas";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -23,27 +25,13 @@ import {
 } from "~/components/ui/form";
 import { useToast } from "~/hooks/use-toast";
 import {
-  BENEFIT_MAX_LENGTH,
   MEMBER_RATE_TOKEN,
   benefitsClaimingOtherMultiplier,
   previewBenefit,
 } from "~/lib/shopSettings";
 import { api } from "~/trpc/react";
-import { z } from "zod";
 
-/**
- * The form's own shape. The router's `membershipBenefitsSchema` drops blank rows before
- * checking the list is non-empty, which is right for the wire but wrong for a form: an
- * admin clearing a field to retype it would see the whole list rejected mid-edit. So the
- * form allows blanks and they are filtered on submit.
- */
-const benefitsFormSchema = z.object({
-  benefits: z.array(
-    z.object({ value: z.string().trim().max(BENEFIT_MAX_LENGTH) }),
-  ),
-});
-
-type BenefitsForm = z.infer<typeof benefitsFormSchema>;
+type BenefitsForm = z.infer<typeof membershipBenefitsFormSchema>;
 
 /**
  * What the app lists on the join and manage screens, in order.
@@ -62,7 +50,7 @@ export function MembershipBenefitsCard() {
   const [warnings] = api.settings.getSettingsWarnings.useSuspenseQuery({});
 
   const form = useForm<BenefitsForm>({
-    resolver: zodResolver(benefitsFormSchema),
+    resolver: zodResolver(membershipBenefitsFormSchema),
     values: { benefits: plan.benefits.map((value) => ({ value })) },
   });
 
@@ -85,16 +73,18 @@ export function MembershipBenefitsCard() {
     warnings.memberMultiplier,
   );
 
-  const { mutate, isPending } = api.settings.saveMembershipBenefits.useMutation({
-    onSuccess: async () => {
-      await utils.settings.invalidate();
-      toast({
-        title: language === "en" ? "Benefits saved" : "已保存",
-      });
+  const { mutate, isPending } = api.settings.saveMembershipBenefits.useMutation(
+    {
+      onSuccess: async () => {
+        await utils.settings.invalidate();
+        toast({
+          title: language === "en" ? "Benefits saved" : "已保存",
+        });
+      },
+      onError: (error) =>
+        toast({ variant: "destructive", description: error.message }),
     },
-    onError: (error) =>
-      toast({ variant: "destructive", description: error.message }),
-  });
+  );
 
   return (
     <Card>
@@ -131,12 +121,13 @@ export function MembershipBenefitsCard() {
             <p className="mt-2">
               {language === "en" ? (
                 <>
-                  Write <code>{MEMBER_RATE_TOKEN}</code> instead of the number and
-                  it will always match the rate.
+                  Write <code>{MEMBER_RATE_TOKEN}</code> instead of the number
+                  and it will always match the rate.
                 </>
               ) : (
                 <>
-                  使用 <code>{MEMBER_RATE_TOKEN}</code> 代替数字，即可始终与费率保持一致。
+                  使用 <code>{MEMBER_RATE_TOKEN}</code>{" "}
+                  代替数字，即可始终与费率保持一致。
                 </>
               )}
             </p>
@@ -171,7 +162,10 @@ export function MembershipBenefitsCard() {
                       {input.value?.includes(MEMBER_RATE_TOKEN) && (
                         <p className="text-xs text-muted-foreground">
                           {language === "en" ? "Shows as: " : "显示为："}
-                          {previewBenefit(input.value, warnings.memberMultiplier)}
+                          {previewBenefit(
+                            input.value,
+                            warnings.memberMultiplier,
+                          )}
                         </p>
                       )}
                       <FormMessage />

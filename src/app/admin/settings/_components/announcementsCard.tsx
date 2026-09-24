@@ -3,10 +3,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Trash2 } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
-import { z } from "zod";
+import type { z } from "zod";
 
 import DateField from "~/app/components/dateField";
 import { useLanguage } from "~/app/components/language";
+import { announcementsFormSchema } from "~/app/components/schemas";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -29,32 +30,10 @@ import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { useToast } from "~/hooks/use-toast";
 import { pickedDay } from "~/lib/aucklandDay";
-import {
-  ANNOUNCEMENT_TEXT_MAX_LENGTH,
-  ANNOUNCEMENT_TITLE_MAX_LENGTH,
-  MAX_ACTIVE_ANNOUNCEMENTS,
-} from "~/lib/shopSettings";
+import { MAX_ACTIVE_ANNOUNCEMENTS } from "~/lib/shopSettings";
 import { api } from "~/trpc/react";
 
-/**
- * The form holds the date as the calendar's `Date`, and `pickedDay` turns it into the day
- * the admin saw on submit. Reading the day on the server instead is a day early on Vercel,
- * which runs in UTC - the bug that made every offer end a day too soon.
- */
-const announcementFormSchema = z.object({
-  announcements: z.array(
-    z.object({
-      id: z.string().optional(),
-      title: z.string().trim().min(1).max(ANNOUNCEMENT_TITLE_MAX_LENGTH),
-      text1: z.string().trim().min(1).max(ANNOUNCEMENT_TEXT_MAX_LENGTH),
-      text2: z.string().trim().max(ANNOUNCEMENT_TEXT_MAX_LENGTH).optional(),
-      isActive: z.boolean(),
-      publishedAt: z.date(),
-    }),
-  ),
-});
-
-type AnnouncementsForm = z.infer<typeof announcementFormSchema>;
+type AnnouncementsForm = z.infer<typeof announcementsFormSchema>;
 
 /**
  * The messages the app shows in its launch pop-up.
@@ -72,7 +51,7 @@ export function AnnouncementsCard() {
   const [announcements] = api.settings.getAnnouncements.useSuspenseQuery();
 
   const form = useForm<AnnouncementsForm>({
-    resolver: zodResolver(announcementFormSchema),
+    resolver: zodResolver(announcementsFormSchema),
     values: {
       announcements: announcements.map((a) => ({
         id: a.id,
@@ -99,16 +78,12 @@ export function AnnouncementsCard() {
       toast({ variant: "destructive", description: error.message }),
   });
 
-  const showing = form
-    .watch("announcements")
-    .filter((a) => a.isActive).length;
+  const showing = form.watch("announcements").filter((a) => a.isActive).length;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          {language === "en" ? "Announcements" : "公告"}
-        </CardTitle>
+        <CardTitle>{language === "en" ? "Announcements" : "公告"}</CardTitle>
         <CardDescription>
           {language === "en"
             ? `Shown in the app's pop-up when it opens. ${showing} of ${MAX_ACTIVE_ANNOUNCEMENTS} showing.`

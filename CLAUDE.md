@@ -632,6 +632,23 @@ every render and loops until the tab freezes. See the comment in
 `src/app/components/schemas.tsx`. Controls come from `~/components/ui/form`
 (`FormInput` is a project wrapper that reddens the border on error).
 
+**A form whose shape differs from its mutation's gets both schemas there** — never a local
+copy in the component. Three pairs differ over a date alone: an offer's window, a prize's
+expiry and an announcement all hold the calendar control's `Date` on the form and send the
+day the admin saw. Those are written as a private `xFields` object plus
+`.omit({ theDate: true }).extend({ theDay: ... })`, so every other field is literally the
+same schema object and a bound cannot be raised in one of them without the other.
+
+The benefits pair cannot derive — the form wraps each row in an object because
+`useFieldArray` keys rows on identity, and the wire sends bare strings — so it shares the
+bound through `BENEFIT_MAX_LENGTH` instead. That is the weaker arrangement; prefer deriving
+where the shapes allow it.
+
+The announcements and benefits cards each declared their own copy first. `schemas.test.ts`
+asserts the derived pair's shared fields are the *same objects*, which is the only thing that
+catches a copy that agrees today and drifts later, and checks both members of each pair
+against the same bounds.
+
 **Dialogs reset on close** with a ref holding the previous open state and an effect that
 clears when it goes from open to closed. Who owns that open state depends on where the
 dialog is opened from:

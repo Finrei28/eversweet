@@ -313,21 +313,57 @@ export const membershipBenefitsSchema = z.object({
 });
 
 /**
- * One announcement. `publishedAt` is the calendar day the admin picked, read in the browser
- * so that Vercel's UTC clock cannot shift it, and pinned to an Auckland instant on the
- * server - the same arrangement as an offer's dates and a prize's expiry.
+ * The same benefits as the card's form holds them: one object per row, because
+ * `useFieldArray` tracks rows by object identity and cannot key an array of bare strings.
  *
- * It is separate from the row's own `updatedAt` on purpose: the app treats a later date as
- * a new announcement worth re-showing, so correcting a typo must not reach for it.
+ * Blank rows are allowed here and dropped on submit by the schema above. Resolving the form
+ * against that one instead would reject the whole list the moment an admin cleared a field
+ * to retype it, because its `min(1)` runs after the blanks are filtered out.
  */
-export const announcementSchema = z.object({
+export const membershipBenefitsFormSchema = z.object({
+  benefits: z.array(
+    z.object({ value: z.string().trim().max(BENEFIT_MAX_LENGTH) }),
+  ),
+});
+
+/**
+ * One announcement.
+ *
+ * `id` is present for rows that already exist and absent for one the admin just added, which
+ * is how `saveAnnouncements` tells an update from an insert.
+ *
+ * Split from the two schemas below because the form and the wire disagree about the date and
+ * about nothing else - the same split as an offer's dates and a prize's expiry.
+ */
+const announcementFields = z.object({
   id: z.string().min(1).optional(),
   title: z.string().trim().min(1).max(ANNOUNCEMENT_TITLE_MAX_LENGTH),
   text1: z.string().trim().min(1).max(ANNOUNCEMENT_TEXT_MAX_LENGTH),
   text2: z.string().trim().max(ANNOUNCEMENT_TEXT_MAX_LENGTH).optional(),
   isActive: z.boolean(),
-  publishedOn: z.string().date(),
+  publishedAt: z.date(),
 });
+
+/** The card's form, whose date is the calendar control's own `Date`. */
+export const announcementsFormSchema = z.object({
+  announcements: z.array(announcementFields),
+});
+
+/**
+ * One announcement as `saveAnnouncements` receives it: the form's row, with the date as the
+ * calendar day the admin saw ("2026-10-31") rather than the calendar's `Date`.
+ *
+ * `pickedDay` reads that day in the browser, because only the browser knows which day the
+ * control's midnight belonged to; the server then pins it to an Auckland instant. Reading it
+ * from the `Date` on the server is right in Auckland and a day early on Vercel, which runs
+ * in UTC - the bug that made every offer end a day too soon.
+ *
+ * The date is separate from the row's own `updatedAt` on purpose: the app treats a later one
+ * as a new announcement worth re-showing, so correcting a typo must not reach for it.
+ */
+export const announcementSchema = announcementFields
+  .omit({ publishedAt: true })
+  .extend({ publishedOn: z.string().date() });
 
 export const saveAnnouncementsSchema = z.object({
   /**
