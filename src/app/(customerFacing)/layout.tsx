@@ -25,8 +25,11 @@ export default function CustomerFacingLayout({
             .join(", ")} and ${format(daysOff[daysOff.length - 1]!, "dd/MM")}`
       : "";
 
+  // A full-height column with the page growing to fill it, so the footer's mt-auto has
+  // something to push against. Without it the footer sat wherever the content ended -
+  // under the navbar while the menu loaded, since the loader is `fixed` and takes no room.
   return (
-    <>
+    <div className="flex min-h-dvh flex-col">
       <Navbar>
         <NavbarLink href={"/menu"}>
           {language === "en" ? "Menu" : "菜单"}
@@ -42,7 +45,7 @@ export default function CustomerFacingLayout({
         </NavbarLink>
       </Navbar>
 
-      <div>{children}</div>
+      <div className="flex-1">{children}</div>
       <SiteFooter />
       {daysOff && daysOff.length > 0 && (
         <NotificationModal
@@ -55,6 +58,6 @@ export default function CustomerFacingLayout({
             : `我们将于 ${formattedDaysOffText} 休息。对于由此带来的不便，我们深表歉意！除上述日期外，我们将照常营业。感谢您的理解！`}
         </NotificationModal>
       )}
-    </>
+    </div>
   );
 }
