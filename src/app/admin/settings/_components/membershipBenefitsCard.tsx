@@ -28,6 +28,7 @@ import {
   MEMBER_RATE_TOKEN,
   benefitsClaimingOtherMultiplier,
   previewBenefit,
+  showsOnlyWhilePointsExpire,
 } from "~/lib/shopSettings";
 import { api } from "~/trpc/react";
 
@@ -159,13 +160,26 @@ export function MembershipBenefitsCard() {
                         />
                       </FormControl>
                       {/* What the app will actually print, so the token is not a guess. */}
-                      {input.value?.includes(MEMBER_RATE_TOKEN) && (
+                      {(input.value?.includes(MEMBER_RATE_TOKEN) ||
+                        showsOnlyWhilePointsExpire(input.value ?? "")) && (
                         <p className="text-xs text-muted-foreground">
                           {language === "en" ? "Shows as: " : "显示为："}
                           {previewBenefit(
                             input.value,
                             warnings.memberMultiplier,
                           )}
+                        </p>
+                      )}
+                      {/* Only true while other customers' points expire, so only shown then. */}
+                      {showsOnlyWhilePointsExpire(input.value ?? "") && (
+                        <p className="text-xs text-muted-foreground">
+                          {language === "en"
+                            ? warnings.pointsExpire
+                              ? "Shown only while points expiry is on. It is on, so customers see this."
+                              : "Shown only while points expiry is on. It is off, so customers do not see this."
+                            : warnings.pointsExpire
+                              ? "仅在积分过期开启时显示。目前已开启，顾客可以看到。"
+                              : "仅在积分过期开启时显示。目前已关闭，顾客看不到。"}
                         </p>
                       )}
                       <FormMessage />

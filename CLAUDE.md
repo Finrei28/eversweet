@@ -568,6 +568,16 @@ prize code, pushing a notification. Nothing here has an equivalent.
 - **The benefits are free text**, so nothing stops one claiming what the rates do not do -
   the list advertised "2x loyalty points" against a 1.5x rate for months. The screen checks
   the wording against the live multiplier and says so.
+- **Points expiry is a switch, not a number.** `setPointsExpiry` stamps
+  `LoyaltySetting.pointsExpireFrom` when turned on - only if it was off, so saving "on" twice
+  does not quietly give everyone a fresh month - and clears it when turned off. That moment is
+  every customer's launch grace on the order server (`lib/pointsExpiry` there), so it is
+  stamped server-side and never sent from the browser. Off is also the pause for a long
+  closure; turning it back on restarts everyone's month, as the Terms say.
+- **A benefit starting `{{whilePointsExpire}}` is shown only while expiry is on**, because
+  "points never expire while you're a member" is no advantage when nobody's expire. The
+  benefits card says whether it is currently live; `src/lib/shopSettings.test.ts` pins the
+  token spellings against the order server's.
 - **The legal text is deliberately not here.** See TODO.md item 5 in the other repo.
 
 ## Legal documents

@@ -284,6 +284,15 @@ export const loyaltyRatesSchema = z.object({
 });
 
 /**
+ * Switching points expiry on or off. Just the switch: the moment it went on is stamped by
+ * the server, never sent, because that moment is every customer's launch grace and a
+ * browser's clock is not one to count a month from.
+ */
+export const pointsExpirySchema = z.object({
+  enabled: z.boolean(),
+});
+
+/**
  * The shop's own details. Every field is required: these are served to the customer app as
  * one object and a blank address is worse than a stale one.
  */

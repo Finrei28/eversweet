@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import {
   loyaltyRatesSchema,
+  pointsExpirySchema,
   membershipBenefitsSchema,
   saveAnnouncementsSchema,
   shopProfileSchema,
@@ -80,6 +81,57 @@ export const settingsRouter = createTRPCRouter({
         });
       }
       return input;
+    }),
+
+  /**
+   * Whether Sweet Points expire after a month without an app order, and since when.
+   *
+   * `pointsExpireFrom` is also every customer's launch grace: the order server counts nobody's
+   * month from before it (`lib/pointsExpiry` there), so switching on gives everyone a full
+   * month, whatever they last ordered.
+   */
+  getPointsExpiry: protectedProcedure.query(async ({ ctx }) => {
+    const row = await ctx.db.loyaltySetting.findFirst({
+      select: { pointsExpireFrom: true },
+    });
+    return { expireFrom: row?.pointsExpireFrom ?? null };
+  }),
+
+  /**
+   * Switches expiry on or off.
+   *
+   * On stamps the moment, and only if it was off: saving "on" again must not quietly restart
+   * everyone's month. Off clears it, which is also the pause for a long closure - and turning
+   * it back on afterwards gives every customer a fresh month from that day, as the Terms say.
+   */
+  setPointsExpiry: protectedProcedure
+    .input(pointsExpirySchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!input.enabled) {
+        await ctx.db.loyaltySetting.updateMany({
+          data: { pointsExpireFrom: null },
+        });
+        return { expireFrom: null };
+      }
+
+      const now = new Date();
+      await ctx.db.loyaltySetting.updateMany({
+        where: { pointsExpireFrom: null },
+        data: { pointsExpireFrom: now },
+      });
+
+      // Unseeded: nothing for the update to match, on or off. Create the row switched on,
+      // the same fallback `saveLoyaltyRates` uses.
+      const row = await ctx.db.loyaltySetting.findFirst({
+        select: { pointsExpireFrom: true },
+      });
+      if (!row) {
+        await ctx.db.loyaltySetting.create({
+          data: { id: SINGLETON_ID, pointsExpireFrom: now },
+        });
+        return { expireFrom: now };
+      }
+      return { expireFrom: row.pointsExpireFrom };
     }),
 
   getShopProfile: protectedProcedure.query(async ({ ctx }) => {
@@ -201,7 +253,9 @@ export const settingsRouter = createTRPCRouter({
         // else added an announcement would delete it on save - silently, with no error and
         // nothing in the UI to suggest anything had gone. Comparing the whole set catches
         // a row added elsewhere and one deleted elsewhere alike.
-        const current = await tx.announcement.findMany({ select: { id: true } });
+        const current = await tx.announcement.findMany({
+          select: { id: true },
+        });
         const currentIds = new Set(current.map((a) => a.id));
         const knownIds = new Set(input.knownIds);
 
@@ -255,7 +309,7 @@ export const settingsRouter = createTRPCRouter({
     .query(async ({ ctx }) => {
       const [rates, plan] = await Promise.all([
         ctx.db.loyaltySetting.findFirst({
-          select: { memberBonusPercent: true },
+          select: { memberBonusPercent: true, pointsExpireFrom: true },
         }),
         ctx.db.membershipPlan.findFirst({
           where: { name: "Monthly_Membership" },
@@ -270,6 +324,8 @@ export const settingsRouter = createTRPCRouter({
       // published rather than after - which was the whole point of the warning.
       return {
         memberMultiplier,
+        // Whether a benefit marked {{whilePointsExpire}} is currently shown to customers.
+        pointsExpire: Boolean(rates?.pointsExpireFrom),
         claimsOtherMultiplier: benefitsClaimingOtherMultiplier(
           plan?.benefits ?? [],
           memberMultiplier,

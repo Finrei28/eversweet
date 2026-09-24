@@ -60,7 +60,10 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
 
       const rows = await db.loyaltySetting.findMany();
       expect(rows).toHaveLength(1);
-      expect(rows[0]).toMatchObject({ pointsPerDollar: 7, modifierPercent: 200 });
+      expect(rows[0]).toMatchObject({
+        pointsPerDollar: 7,
+        modifierPercent: 200,
+      });
     });
 
     /** The rates the order server falls back to, so an empty table edits from the truth. */
@@ -80,6 +83,87 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
           modifierPercent: 100,
         }),
       ).rejects.toThrow();
+    });
+  });
+
+  /**
+   * The switch's moment is every customer's launch grace on the order server, so the thing
+   * that must not happen by accident is that moment moving.
+   */
+  describe("points expiry", () => {
+    const seed = () => db.loyaltySetting.create({ data: { id: "default" } });
+    const expireFrom = async () =>
+      (await db.loyaltySetting.findFirstOrThrow()).pointsExpireFrom;
+
+    it("is off until switched on", async () => {
+      await seed();
+
+      await expect(adminCaller().settings.getPointsExpiry()).resolves.toEqual({
+        expireFrom: null,
+      });
+    });
+
+    it("stamps the moment it is switched on", async () => {
+      await seed();
+      const before = Date.now();
+
+      const result = await adminCaller().settings.setPointsExpiry({
+        enabled: true,
+      });
+
+      const stamped = await expireFrom();
+      expect(stamped).not.toBeNull();
+      expect(stamped!.getTime()).toBeGreaterThanOrEqual(before);
+      expect(result.expireFrom).toEqual(stamped);
+    });
+
+    /** Otherwise a second click would quietly give every customer a fresh month. */
+    it("keeps the original moment when switched on again", async () => {
+      await seed();
+      const caller = adminCaller();
+      await caller.settings.setPointsExpiry({ enabled: true });
+      const first = await expireFrom();
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await caller.settings.setPointsExpiry({ enabled: true });
+
+      expect(await expireFrom()).toEqual(first);
+    });
+
+    it("clears it when switched off, and restarts it when switched back on", async () => {
+      await seed();
+      const caller = adminCaller();
+      await caller.settings.setPointsExpiry({ enabled: true });
+      const first = await expireFrom();
+
+      await caller.settings.setPointsExpiry({ enabled: false });
+      expect(await expireFrom()).toBeNull();
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await caller.settings.setPointsExpiry({ enabled: true });
+      expect((await expireFrom())!.getTime()).toBeGreaterThan(first!.getTime());
+    });
+
+    it("creates the row when the table has never been seeded", async () => {
+      await adminCaller().settings.setPointsExpiry({ enabled: true });
+
+      const rows = await db.loyaltySetting.findMany();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.pointsExpireFrom).not.toBeNull();
+    });
+
+    /** The benefits card shows whether a {{whilePointsExpire}} line is live. */
+    it("tells the benefits card whether expiry is on", async () => {
+      await seed();
+      const caller = adminCaller();
+
+      expect((await caller.settings.getSettingsWarnings({})).pointsExpire).toBe(
+        false,
+      );
+      await caller.settings.setPointsExpiry({ enabled: true });
+      expect((await caller.settings.getSettingsWarnings({})).pointsExpire).toBe(
+        true,
+      );
     });
   });
 
@@ -147,7 +231,9 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
       const warnings = await adminCaller().settings.getSettingsWarnings({});
 
       expect(warnings.memberMultiplier).toBe(1.5);
-      expect(warnings.claimsOtherMultiplier).toEqual(["Earn 2x loyalty points"]);
+      expect(warnings.claimsOtherMultiplier).toEqual([
+        "Earn 2x loyalty points",
+      ]);
     });
 
     it("says nothing when the wording matches the rate", async () => {
@@ -169,13 +255,14 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
   });
 
   describe("announcements", () => {
-
     /**
      * The ids currently in the database. Saving replaces the whole list, so the mutation
      * takes the ids the form was opened with and refuses if they have changed since.
      */
     const currentIds = async () =>
-      (await db.announcement.findMany({ select: { id: true } })).map((a) => a.id);
+      (await db.announcement.findMany({ select: { id: true } })).map(
+        (a) => a.id,
+      );
 
     const one = (overrides: Record<string, unknown> = {}) => ({
       title: "Closed Tuesday",
@@ -224,7 +311,10 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
      */
     it("leaves the date alone when only the text is edited", async () => {
       const caller = adminCaller();
-      await caller.settings.saveAnnouncements({ knownIds: await currentIds(), announcements: [one()] });
+      await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [one()],
+      });
       const before = await db.announcement.findFirstOrThrow();
 
       await caller.settings.saveAnnouncements({
@@ -244,7 +334,10 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
 
     it("moves the date when the admin moves it, which re-shows the pop-up", async () => {
       const caller = adminCaller();
-      await caller.settings.saveAnnouncements({ knownIds: await currentIds(), announcements: [one()] });
+      await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [one()],
+      });
       const before = await db.announcement.findFirstOrThrow();
 
       await caller.settings.saveAnnouncements({

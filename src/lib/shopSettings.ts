@@ -118,9 +118,28 @@ export const benefitsClaimingOtherMultiplier = (
     return claim ? Number(claim[1]) !== memberMultiplier : false;
   });
 
+/**
+ * Marks a benefit shown only while points expiry is switched on.
+ *
+ * Mirrors `WHILE_POINTS_EXPIRE_TOKEN` in the order server's `lib/membership.ts`, which drops
+ * the line entirely while expiry is off. "Your Sweet Points never expire while you're a
+ * member" is an advantage only while everyone else's points expire; with expiry off it would
+ * claim something members do not get over anyone else.
+ */
+export const WHILE_POINTS_EXPIRE_TOKEN = "{{whilePointsExpire}}";
+
+/** Whether the app shows this benefit only while points expiry is on. */
+export const showsOnlyWhilePointsExpire = (benefit: string): boolean =>
+  benefit.includes(WHILE_POINTS_EXPIRE_TOKEN);
+
 /** A benefit as the app will render it, for the admin screen's preview. */
 export const previewBenefit = (
   benefit: string,
   memberMultiplier: number,
 ): string =>
-  benefit.split(MEMBER_RATE_TOKEN).join(String(memberMultiplier));
+  benefit
+    .split(WHILE_POINTS_EXPIRE_TOKEN)
+    .join("")
+    .split(MEMBER_RATE_TOKEN)
+    .join(String(memberMultiplier))
+    .trim();

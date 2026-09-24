@@ -26,6 +26,7 @@ export default async function SettingsPage() {
   // ones hydration computes. See the long note in src/app/admin/past-orders/page.tsx.
   await Promise.all([
     api.settings.getLoyaltyRates.prefetch(),
+    api.settings.getPointsExpiry.prefetch(),
     api.settings.getShopProfile.prefetch(),
     api.settings.getMembershipBenefits.prefetch(),
     // `{}` matches the card's useSuspenseQuery({}) exactly. A prefetch whose input differs
