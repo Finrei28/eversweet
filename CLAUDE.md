@@ -326,6 +326,15 @@ Consequently `protectedProcedure` *is* the admin gate — there is no `adminProc
 nothing reads `session.user.role` for authorisation. New admin routers should carry a comment
 saying so; if a customer login is ever added here, every protected procedure becomes an open
 door. Pages gate themselves with `const session = await auth(); if (!session?.user) return notFound();`.
+`src/app/admin/layout.tsx` gates as well, and the two checks are not redundant:
+
+- **The layout's check keeps the 404 a 404.** Each page sits behind its route's `loading.tsx`,
+  which starts the response streaming, status 200 and all, before the page runs. So a
+  signed-out request checked only by the page got a 200 with a 404 painted in afterwards.
+- **The page's check is the one that runs on navigation.** Moving between admin pages renders
+  only the page, never the layout again.
+
+`auth()` is `cache`d per request, so the second call is free.
 
 Note `product.ts`'s `getProductsForAdminByCategory` is a `publicProcedure` despite the name —
 "admin" in a procedure name is not a reliable signal.
