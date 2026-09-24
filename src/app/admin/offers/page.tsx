@@ -36,7 +36,11 @@ export default async function OffersPage() {
   return (
     <HydrateClient>
       <div className="container mx-auto py-10">
-        <Suspense fallback={<Loader text="Loading offers..." />}>
+        <Suspense
+          fallback={
+            <Loader text={{ en: "Loading offers...", zh: "正在加载优惠..." }} />
+          }
+        >
           <DataTable />
         </Suspense>
       </div>

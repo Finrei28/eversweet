@@ -20,7 +20,13 @@ export default async function FeedbackPage() {
   return (
     <HydrateClient>
       <div className="container mx-auto py-10">
-        <Suspense fallback={<Loader text="Loading past orders..." />}>
+        <Suspense
+          fallback={
+            <Loader
+              text={{ en: "Loading feedback...", zh: "正在加载反馈..." }}
+            />
+          }
+        >
           <DataTable />
         </Suspense>
       </div>

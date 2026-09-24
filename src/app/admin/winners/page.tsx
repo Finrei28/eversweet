@@ -22,7 +22,13 @@ export default async function WinnersPage() {
   return (
     <HydrateClient>
       <div className="container mx-auto py-10">
-        <Suspense fallback={<Loader text="Loading winners..." />}>
+        <Suspense
+          fallback={
+            <Loader
+              text={{ en: "Loading winners...", zh: "正在加载得奖者..." }}
+            />
+          }
+        >
           <DataTable />
         </Suspense>
       </div>

@@ -37,7 +37,13 @@ export default async function SettingsPage() {
   return (
     <HydrateClient>
       <div className="container mx-auto py-10">
-        <Suspense fallback={<Loader text="Loading settings..." />}>
+        <Suspense
+          fallback={
+            <Loader
+              text={{ en: "Loading settings...", zh: "正在加载设置..." }}
+            />
+          }
+        >
           <SettingsPanels />
         </Suspense>
       </div>
