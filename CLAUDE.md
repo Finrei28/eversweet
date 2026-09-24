@@ -626,12 +626,30 @@ Service" this site did not host.
 Read an existing page before writing a new one; these are load-bearing.
 
 **Page** — server component: `auth()` → `notFound()` → prefetch → `<HydrateClient>` →
-`<Suspense fallback={<Loader text="…" />}>`.
+`<Suspense fallback={<Loading />}>`, beside a `loading.tsx` that renders
+`<Loader text={{ en, zh }} />` and is what the page imports as `Loading`.
+
+**Every admin route needs its own `loading.tsx`.** The page awaits `auth()` and its prefetches
+before it returns anything, so without one a navigation leaves the old page on screen,
+unchanged, until the server has finished. The admin looked frozen for a second or more on every
+click. In production a link prefetches a dynamic route only as far as its nearest
+`loading.tsx`, so without one nothing is prefetched either.
+
+- The dashboard sits in the `(dashboard)` route group so its loading state wraps only itself.
+  At `src/app/admin/loading.tsx` it would wrap every admin route and flash "Loading
+  dashboard..." ahead of theirs.
+- `NavbarLink` also marks the pressed link at once (`useLinkStatus`), because until a link is
+  prefetched even the loading state is a round trip.
 
 **`await` the prefetch, never `void` it.** A pending dehydrated promise makes the Suspense
 boundary suspend on the server; its content then streams in after the shell, and React gives
 streamed-in content `useId` tree ids that do not match the ones hydration computes. Every
 Radix `useId` inside the boundary mismatches and React discards and re-renders the subtree.
+The page itself streaming in behind `loading.tsx` is fine, because what streams carries a
+resolved query. One case still client-renders: with Chinese saved, `LanguageProvider` switches
+from `"en"` in an effect, and that update reaches the streamed boundary before it hydrates, so
+React renders it on the client instead. It looks the same, since it re-renders for the language
+anyway, and it happens only on a full page load, never on navigation.
 Use `Promise.all` when a page prefetches several queries. `prefetch` and `useSuspenseQuery`
 must be called with **identical** inputs or the cache key misses.
 
@@ -700,7 +718,10 @@ Calendar + Button, and its Clear button matters because most dates here are null
 Adding an admin page means adding a `<NavbarLink>` in `src/app/admin/layout.tsx`. The desktop
 nav is `hidden xl:flex` inside a `max-w-7xl` container with the logo **absolutely positioned**
 — the link row centres across the full width without knowing the logo is there, so admin
-reserves the logo's width (`pl-64`) and tightens the gap. Check any new link at 1280px.
+reserves the logo's width (`pl-64`) and tightens the gap. The language button is absolutely
+positioned at the other end, so the row reserves that too (`pr-32`), and admin labels drop a
+size at `xl`. The eighth link, Settings, ran under that button until it did, and a click on it
+opened the language menu. Check any new link at 1280px, in both languages.
 
 ## Sharp edges
 

@@ -4,7 +4,7 @@ import { auth } from "~/server/auth";
 import { notFound } from "next/navigation";
 import { api, HydrateClient } from "~/trpc/server";
 import { Suspense } from "react";
-import Loader from "~/app/components/customLoading";
+import Loading from "./loading";
 
 export default async function ProductsPage() {
   const session = await auth();
@@ -35,13 +35,7 @@ export default async function ProductsPage() {
   return (
     <HydrateClient>
       <MaxWidthWapper>
-        <Suspense
-          fallback={
-            <Loader
-              text={{ en: "Loading products...", zh: "正在加载产品..." }}
-            />
-          }
-        >
+        <Suspense fallback={<Loading />}>
           <ProductCards />
         </Suspense>
       </MaxWidthWapper>

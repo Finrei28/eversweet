@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import Loader from "~/app/components/customLoading";
+import Loading from "./loading";
 import { auth } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
 import { DataTable } from "./data-table";
@@ -36,11 +36,7 @@ export default async function OffersPage() {
   return (
     <HydrateClient>
       <div className="container mx-auto py-10">
-        <Suspense
-          fallback={
-            <Loader text={{ en: "Loading offers...", zh: "正在加载优惠..." }} />
-          }
-        >
+        <Suspense fallback={<Loading />}>
           <DataTable />
         </Suspense>
       </div>
