@@ -22,7 +22,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "email": "cp .env ./node_modules/react-email && email dev --dir src/email --port 3001",
-    "postbuild": "next-sitemap"
+    "postbuild": "next-sitemap",
+    "verify:legal": "node scripts/verify-legal.mjs"
   },
   "overrides": {
     "@auth/core": "0.41.3",

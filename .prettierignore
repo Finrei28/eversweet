@@ -1,0 +1,12 @@
+# The legal documents are shared with the order server by being copied byte-for-byte
+# (see src/lib/legalDocuments.ts). That repo's Prettier omits semicolons and this one's
+# adds them, so no single file satisfies both formatters - and `format:write` rewriting
+# this copy is exactly the silent drift the arrangement exists to prevent.
+#
+# It is authored in the order server's style and copied here unchanged. `npm run
+# verify:legal` fails if the two stop matching.
+src/lib/legalDocuments.ts
+
+# Build output and dependencies.
+.next/
+node_modules/

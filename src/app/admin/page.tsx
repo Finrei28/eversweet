@@ -33,7 +33,13 @@ export default async function AdminDashboard() {
 
   return (
     <HydrateClient>
-      <Suspense fallback={<Loader text="Loading Dashboard" />}>
+      <Suspense
+        fallback={
+          <Loader
+            text={{ en: "Loading dashboard...", zh: "正在加载仪表板..." }}
+          />
+        }
+      >
         <DashBoardCards />
       </Suspense>
     </HydrateClient>

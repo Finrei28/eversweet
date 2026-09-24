@@ -21,10 +21,10 @@ jobs:
       SKIP_ENV_VALIDATION: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -42,3 +42,68 @@ jobs:
       # TEST_DATABASE_URL is unset, so no database is contacted. The unit suites run.
       - name: Test
         run: npm test
+
+  # The Terms and the Privacy Policy are one file, copied byte-for-byte between this repo
+  # and the order server. Nothing inside a single repository can prove the two copies match,
+  # so this job fetches the other one and compares. Both repos are public, so no token.
+  verify-legal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # A paired change lands on a branch of the same name in both repos, and that branch is
+      # tried first. Comparing only against the order server's main would deadlock the pair:
+      # each PR would be checked against a main that does not have the other half yet.
+      - name: Checkout the order server
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: Finrei28/eversweet_app
+          ref: ${{ github.head_ref || github.ref_name }}
+          path: .eversweet_app
+        continue-on-error: true
+
+      - name: Fall back to the order server's default branch
+        if: hashFiles('.eversweet_app/backend/src/legal/legalDocuments.ts') == ''
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: Finrei28/eversweet_app
+          path: .eversweet_app
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      # A paired legal change is pushed to two repos, one after the other, and each repo's CI
+      # compares against the other. Whichever runs first sees the other half's old copy and
+      # fails, though nothing has drifted - it happened on both sides of the same change.
+      # So a mismatch is retried: the other repo is fetched again every 30 seconds for about
+      # five minutes, same-named branch first, which also picks up a branch pushed after this
+      # job started. A real one-sided edit still fails, just not at once.
+      - name: Compare the legal documents
+        timeout-minutes: 7
+        env:
+          EVERSWEET_APP_REPO: .eversweet_app
+          SIBLING_DIR: .eversweet_app
+          SIBLING_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          attempts=10
+          for attempt in $(seq 1 "$attempts"); do
+            if node scripts/verify-legal.mjs; then
+              exit 0
+            fi
+            if [ "$attempt" -eq "$attempts" ]; then
+              echo "::error::Still different after $attempts attempts - one repo's copy was changed without the other."
+              exit 1
+            fi
+            echo "Attempt $attempt of $attempts: the other copy may not be pushed yet. Fetching it again in 30 seconds."
+            sleep 30
+            if git -C "$SIBLING_DIR" fetch --depth=1 origin "$SIBLING_BRANCH" 2>/dev/null; then
+              git -C "$SIBLING_DIR" checkout --quiet --force FETCH_HEAD
+            elif git -C "$SIBLING_DIR" fetch --depth=1 origin HEAD 2>/dev/null; then
+              git -C "$SIBLING_DIR" checkout --quiet --force FETCH_HEAD
+            else
+              echo "Could not fetch the other repo; comparing against what is already checked out."
+            fi
+          done

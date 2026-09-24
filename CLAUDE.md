@@ -534,6 +534,93 @@ The CHECK constraints refuse:
 The website sees a change within 5 minutes and the order server within 1, so change hours
 outside trading time. One-off closures stay in the admin app's days off.
 
+(The hours have no editor. The other shop settings do - see below - and that page is where
+one would go.)
+
+## Shop settings: `/admin/settings`
+
+Four things that used to be compiled into the order server, moved into the database by
+`20260919000000_shop_settings_from_code` and edited here: the loyalty earn rates
+(`LoyaltySetting`), the shop's own details (`ShopProfile`), the customer app's launch
+announcements (`Announcement`) and the membership benefits (`MembershipPlan.benefits`).
+
+**They are edited here rather than in the staff app on purpose.** Preparation times belong
+on the tablet, where the kitchen adjusts them as service speeds up or slows down. Nobody
+standing in the shop should be able to change what an order earns or reword a membership.
+
+`src/server/api/routers/settings.ts` writes the rows **directly**, unlike `/admin/winners`.
+That hop exists because the order server holds guards this repo cannot reproduce - minting a
+prize code, pushing a notification. Nothing here has an equivalent.
+
+- **The order server picks a change up within a minute, not at once.** It caches each of
+  these in memory (`lib/loyaltyRates`, `lib/storeInfo`, `lib/announcements`), because a
+  writer here cannot invalidate a cache in that process. Same caveat as the hours.
+- **This site's own reads go through `~/server/shopProfile`**, `unstable_cache`d with the
+  `shop-profile` tag, which `saveShopProfile` revalidates. The contact page, the JSON-LD and
+  the privacy policy's contact block all read it, so the address is no longer written out
+  four times in two formats.
+- **Rates are whole numbers.** `memberBonusPercent` 150 means 1.5x; the order server divides
+  at the edge. Bounds live in `~/lib/shopSettings` and are what both the zod schemas and the
+  CHECK constraints enforce - change one and change the other.
+- **Saving announcements takes turns** (`lockAnnouncements`, a transaction-scoped advisory
+  lock like `lockPayment`). The save checks the ids the form opened with, then replaces the
+  list; at READ COMMITTED two admins saving together both passed that check, and one's
+  deletion broke the other's update into a 500. A submitted id the list does not hold is
+  refused the same way, as a conflict.
+- **An announcement's `publishedAt` is what the app compares** against the last one it
+  showed. Leave it alone to fix a typo; move it forward to put the message back in front of
+  everyone. It is a picked calendar day, pinned with `startOfDayNZ`, like an offer's dates.
+- **The benefits are free text**, so nothing stops one claiming what the rates do not do -
+  the list advertised "2x loyalty points" against a 1.5x rate for months. The screen checks
+  the wording against the live multiplier and says so.
+- **Points expiry is a switch, not a number.** `setPointsExpiry` stamps
+  `LoyaltySetting.pointsExpireFrom` when turned on - only if it was off, so saving "on" twice
+  does not quietly give everyone a fresh month - and clears it when turned off. That moment is
+  every customer's launch grace on the order server (`lib/pointsExpiry` there), so it is
+  stamped server-side and never sent from the browser. Off is also the pause for a long
+  closure; turning it back on restarts everyone's month, as the Terms say.
+- **A benefit starting `{{whilePointsExpire}}` is shown only while expiry is on**, because
+  "points never expire while you're a member" is no advantage when nobody's expire. The
+  benefits card says whether it is currently live; `src/lib/shopSettings.test.ts` pins the
+  token spellings against the order server's.
+- **The legal text is deliberately not here.** See TODO.md item 5 in the other repo.
+
+## Legal documents
+
+`src/lib/legalDocuments.ts` holds the Terms and the Privacy Policy as data, and is copied
+**byte-for-byte** from the order server's `backend/src/legal/legalDocuments.ts`. It imports
+nothing, so copying it is all there is to it. `npm run verify:legal` compares the two and
+exits non-zero when they differ - run it after touching either.
+
+`/privacy-policy` and `/terms-and-conditions` both render it through
+`src/app/components/legalDocument.tsx`. The privacy policy used to be 234 lines of
+hand-written JSX that had drifted from the app's copy, and there was no terms page at all
+while the checkout told customers - in both languages - that they agreed to a "Terms of
+Service" this site did not host.
+
+- **CI waits for the other half.** Each repo's `verify-legal` job compares against the other
+  repo, so on a paired change whichever is pushed first briefly sees the old copy. The job
+  fetches the other repo again every 30 seconds for about five minutes before failing - a
+  slow legal check is waiting for the second push, not hung. A real one-sided edit fails
+  after that, with an error saying so.
+- **Both platforms render the same words.** Sections that apply to one channel carry
+  `appliesTo` and are labelled. Points, membership, offers, prizes and notifications are
+  app-only; cookies are website-only.
+- **The shop's details are tokens** resolved from `ShopProfile`, so an address in a policy
+  cannot drift from the one on the contact page.
+- **It is in `.prettierignore`.** This repo's Prettier adds semicolons and the order
+  server's does not, so `format:write` would rewrite the copy and break the byte-for-byte
+  match. That exemption is load-bearing.
+- **English only**, as the app is, while the rest of this site is bilingual. A translated
+  legal document raises which version governs when they disagree; that is a decision for a
+  translator working with whoever reviews the English.
+- `src/lib/legalDocuments.test.ts` is copied from the order server too and is the
+  specification for the content: no section may trail off in an ellipsis, headings are
+  numbered once and in order, and every token must resolve.
+- The footer (`src/app/components/siteFooter.tsx`) is the only route to either document. It
+  lives in `(customerFacing)/layout.tsx` so it renders on every page; it used to be inline
+  at the bottom of `homePageContent.tsx` and therefore appeared only on `/`.
+
 ## Admin UI conventions
 
 Read an existing page before writing a new one; these are load-bearing.
@@ -564,6 +651,23 @@ every render and loops until the tab freezes. See the comment in
 **Forms** — react-hook-form + `zodResolver`; schemas live centrally in
 `src/app/components/schemas.tsx`. Controls come from `~/components/ui/form`
 (`FormInput` is a project wrapper that reddens the border on error).
+
+**A form whose shape differs from its mutation's gets both schemas there** — never a local
+copy in the component. Three pairs differ over a date alone: an offer's window, a prize's
+expiry and an announcement all hold the calendar control's `Date` on the form and send the
+day the admin saw. Those are written as a private `xFields` object plus
+`.omit({ theDate: true }).extend({ theDay: ... })`, so every other field is literally the
+same schema object and a bound cannot be raised in one of them without the other.
+
+The benefits pair cannot derive — the form wraps each row in an object because
+`useFieldArray` keys rows on identity, and the wire sends bare strings — so it shares the
+bound through `BENEFIT_MAX_LENGTH` instead. That is the weaker arrangement; prefer deriving
+where the shapes allow it.
+
+The announcements and benefits cards each declared their own copy first. `schemas.test.ts`
+asserts the derived pair's shared fields are the *same objects*, which is the only thing that
+catches a copy that agrees today and drifts later, and checks both members of each pair
+against the same bounds.
 
 **Dialogs reset on close** with a ref holding the previous open state and an effect that
 clears when it goes from open to closed. Who owns that open state depends on where the

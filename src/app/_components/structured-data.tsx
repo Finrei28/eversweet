@@ -1,17 +1,9 @@
 // app/components/structured-data.tsx
 
-const organizationSchema = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "Eversweet",
-  url: "https://www.eversweet.co.nz",
-  logo: "https://res.cloudinary.com/dlqjgl6ju/image/upload/v1743833655/eversweetTransLogo_qz1kmg.png",
-  contactPoint: {
-    "@type": "ContactPoint",
-    telephone: "09 949 1050",
-    contactType: "customer service",
-  },
-};
+import { getShopProfile } from "~/server/shopProfile";
+
+const LOGO_URL =
+  "https://res.cloudinary.com/dlqjgl6ju/image/upload/v1743833655/eversweetTransLogo_qz1kmg.png";
 
 /**
  * Rendered as a plain <script> rather than next/script.
@@ -23,7 +15,24 @@ const organizationSchema = {
  * page. JSON-LD is inert data, so it can simply be part of the HTML, which is
  * also where crawlers expect to find it.
  */
-export default function StructuredData() {
+export default async function StructuredData() {
+  // The shop's details come from the table the order server also reads, so the number a
+  // crawler publishes and the one the app shows cannot drift.
+  const profile = await getShopProfile();
+
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: profile.name,
+    url: profile.website,
+    logo: LOGO_URL,
+    contactPoint: {
+      "@type": "ContactPoint",
+      telephone: profile.phone,
+      contactType: "customer service",
+    },
+  };
+
   return (
     <script
       type="application/ld+json"

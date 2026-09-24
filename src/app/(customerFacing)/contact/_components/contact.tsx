@@ -7,16 +7,15 @@ import { Button } from "~/components/ui/button";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 import Link from "next/link";
+import { oneLineAddress, type ShopProfile } from "~/lib/shopSettings";
 
-export default function ContactComponent() {
+export default function ContactComponent({ profile }: { profile: ShopProfile }) {
   const { language } = useLanguage();
   const storeLocation = useMemo(() => {
     return {
-      address: "Eversweet, 5D/119 Meadowland Drive, Somerville, Auckland 2014",
-      lat: -36.8894, // Replace with actual latitude
-      lng: 174.9112, // Replace with actual longitude
+      address: `${profile.name}, ${oneLineAddress(profile)}`,
     };
-  }, []);
+  }, [profile]);
 
   // Google Maps URL
   const googleMapsUrl = `https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(storeLocation.address)}&zoom=16`;
@@ -90,7 +89,7 @@ export default function ContactComponent() {
                     : "我们在营业时间内可以接听您的电话。"}
                 </p>
                 <p className="font-mono text-lg font-semibold text-primary">
-                  09 949 1050
+                  {profile.phone}
                 </p>
               </div>
             </motion.div>
@@ -117,7 +116,7 @@ export default function ContactComponent() {
                     : "给我们发送电子邮件，我们会尽快回复您。"}
                 </p>
                 <p className="font-mono text-lg font-semibold text-primary">
-                  eversweet@eversweet.co.nz
+                  {profile.email}
                 </p>
               </div>
             </motion.div>
@@ -144,7 +143,7 @@ export default function ContactComponent() {
                     : "来我们的商店，享受我们手工制作的甜点。"}
                 </p>
                 <p className="mb-3 font-medium text-gray-700">
-                  5D/119 Meadowland Drive, Somerville, Auckland 2014
+                  {oneLineAddress(profile)}
                 </p>
                 <Link
                   href={`https://www.google.com/maps/place/EVERSWEET/@-36.9125301,174.9266263,17z/data=!4m14!1m7!3m6!1s0x6d0d4b005804e6ff:0x6884c715c4f2b74f!2sEVERSWEET!8m2!3d-36.9125301!4d174.9292012!16s%2Fg%2F11mcysftnm!3m5!1s0x6d0d4b005804e6ff:0x6884c715c4f2b74f!8m2!3d-36.9125301!4d174.9292012!16s%2Fg%2F11mcysftnm?entry=ttu&g_ep=EgoyMDI2MDcyNi4wIKXMDSoASAFQAw%3D%3D`}
