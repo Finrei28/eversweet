@@ -9,6 +9,7 @@ vi.mock("next/cache", () => ({
 }));
 
 import { db } from "~/server/db";
+import { lockAnnouncements } from "~/server/api/routers/settings";
 import { adminCaller } from "~/test/caller";
 import { describeIfDb, resetDatabase } from "~/test/db";
 
@@ -270,6 +271,71 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
       isActive: true,
       publishedOn: "2026-07-01",
       ...overrides,
+    });
+
+    /**
+     * Two admins saving together. The check and the writes are separate moments, so without
+     * taking turns both passed the check against the same rows.
+     *
+     * Deterministic rather than two saves fired together, which rarely interleave on a local
+     * database: another admin's save is held open - its row written, not committed - while
+     * this stale save runs. Taking turns, the stale save waits, then sees the new row and is
+     * refused. Without the lock it cannot see an uncommitted row, passes, and succeeds.
+     */
+    it("makes a save wait for one in progress, then refuses it as stale", async () => {
+      const stale = await currentIds();
+
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      let written!: () => void;
+      const rowWritten = new Promise<void>((resolve) => (written = resolve));
+
+      const otherAdmin = db.$transaction(
+        async (tx) => {
+          await lockAnnouncements(tx);
+          await tx.announcement.create({
+            data: {
+              title: "Added elsewhere",
+              text1: "By another admin.",
+              isActive: true,
+              position: 0,
+              publishedAt: new Date("2026-07-01T00:00:00.000Z"),
+            },
+          });
+          written();
+          await held;
+        },
+        { timeout: 20_000 },
+      );
+      await rowWritten;
+
+      const save = adminCaller().settings.saveAnnouncements({
+        knownIds: stale,
+        announcements: [one()],
+      });
+      const outcome = save.then(
+        () => "saved",
+        (error: Error) => error.message,
+      );
+      await Promise.race([
+        outcome,
+        new Promise((resolve) => setTimeout(resolve, 1_500)),
+      ]);
+      release();
+      await otherAdmin;
+
+      expect(await outcome).toMatch(/changed the announcements/i);
+      expect(await db.announcement.count()).toBe(1);
+    });
+
+    /** Otherwise it reached `update` and answered a 500. */
+    it("refuses an id the list does not hold, as a conflict", async () => {
+      await expect(
+        adminCaller().settings.saveAnnouncements({
+          knownIds: await currentIds(),
+          announcements: [one({ id: "not-a-real-announcement" })],
+        }),
+      ).rejects.toThrow(/changed the announcements/i);
     });
 
     it("writes the picked day as an Auckland instant, not a UTC one", async () => {

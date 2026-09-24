@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
@@ -41,6 +42,20 @@ import { SHOP_PROFILE_TAG } from "~/server/shopProfile";
 
 /** The singleton id both settings rows are seeded with, as PrepTimeSetting is. */
 const SINGLETON_ID = "default";
+
+/**
+ * Takes turns on saving the announcements, for the rest of `tx`.
+ *
+ * The save checks the list it was opened from against what is there, then replaces it. At
+ * READ COMMITTED those are two separate moments, so two admins saving together both passed
+ * the check against the same rows: one's deletion then broke the other's update, which
+ * answered a 500 rather than the "reload" the check exists to give. Holding this, the
+ * second save waits for the first to commit, then sees its changes and is refused cleanly.
+ *
+ * Exported so a test can hold it. Same form as `lockPayment`.
+ */
+export const lockAnnouncements = (tx: Prisma.TransactionClient) =>
+  tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('settings:announcements', 0))`;
 
 export const settingsRouter = createTRPCRouter({
   /**
@@ -248,6 +263,8 @@ export const settingsRouter = createTRPCRouter({
       // Interactive rather than the array form, because the check below has to happen
       // inside the same transaction as the writes it guards.
       await ctx.db.$transaction(async (tx) => {
+        await lockAnnouncements(tx);
+
         // Refuse a submission built from a list that has since changed. Saving replaces
         // the whole collection, so without this an admin whose form loaded before someone
         // else added an announcement would delete it on save - silently, with no error and
@@ -261,7 +278,10 @@ export const settingsRouter = createTRPCRouter({
 
         const unchanged =
           currentIds.size === knownIds.size &&
-          [...currentIds].every((id) => knownIds.has(id));
+          [...currentIds].every((id) => knownIds.has(id)) &&
+          // An id the list does not hold - a row deleted since, or one this form never
+          // loaded - would otherwise reach `update` and fail there as a 500.
+          keep.every((id) => currentIds.has(id));
 
         if (!unchanged) {
           throw new TRPCError({

@@ -562,6 +562,11 @@ prize code, pushing a notification. Nothing here has an equivalent.
 - **Rates are whole numbers.** `memberBonusPercent` 150 means 1.5x; the order server divides
   at the edge. Bounds live in `~/lib/shopSettings` and are what both the zod schemas and the
   CHECK constraints enforce - change one and change the other.
+- **Saving announcements takes turns** (`lockAnnouncements`, a transaction-scoped advisory
+  lock like `lockPayment`). The save checks the ids the form opened with, then replaces the
+  list; at READ COMMITTED two admins saving together both passed that check, and one's
+  deletion broke the other's update into a 500. A submitted id the list does not hold is
+  refused the same way, as a conflict.
 - **An announcement's `publishedAt` is what the app compares** against the last one it
   showed. Leave it alone to fix a typo; move it forward to put the message back in front of
   everyone. It is a picked calendar day, pinned with `startOfDayNZ`, like an offer's dates.
