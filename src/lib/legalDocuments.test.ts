@@ -343,10 +343,10 @@ describe("the claims that were wrong before", () => {
     );
   });
 
-  /** Points returning from a cart after expiry are taken by the next run, so say so. */
-  it("says points returning from the cart after expiry expire too", () => {
+  /** Points held in a cart past the deadline are not handed back, so say so. */
+  it("says points held in the cart expire with the balance", () => {
     expect(termsText).toMatch(
-      /come back to your balance from your cart after it has expired/,
+      /Points in your cart when your balance expires expire with it/,
     );
   });
 
