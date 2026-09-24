@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { ComponentProps, useContext, useEffect, useRef, useState } from "react";
 import { cn } from "~/lib/utils";
@@ -213,8 +213,14 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                  * which is capped at max-w-7xl and so never gets roomier on a wider
                  * screen. Admin only - the customer nav has fewer links and should stay
                  * centred on the full width.
+                 *
+                 * The eighth, Settings, then ran under the language button at 1280px,
+                 * which sits absolutely at the right just as the logo does at the left:
+                 * a click on "Settings" opened the language menu instead. pr-32 reserves
+                 * the button's side the same way, and NavbarLink sets the admin labels
+                 * a size smaller so all eight still fit between the two.
                  */
-                pathName.startsWith("/admin") ? "gap-4 pl-64" : "gap-8",
+                pathName.startsWith("/admin") ? "gap-2 pl-64 pr-32" : "gap-8",
               )}
             >
               {children}
@@ -521,22 +527,61 @@ export function Navbar({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function NavbarLink(
-  props: Omit<ComponentProps<typeof Link>, "className">,
-) {
+export function NavbarLink({
+  children,
+  ...props
+}: Omit<ComponentProps<typeof Link>, "className">) {
   const pathName = usePathname();
   return (
     <Link
       {...props}
       className={cn(
+        // `isolate` keeps the pending pill's -z-10 inside the link, rather than
+        // behind whatever the nav happens to sit on.
+        "relative isolate",
         // Hover used to fade the label to the pale secondary, which all but
         // erased it. Underline keeps the affordance without losing contrast.
         "p-3 text-base hover:underline md:p-4 md:text-lg lg:text-xl",
+        // Desktop admin row only (the mobile menu is xl:hidden): eight links have
+        // to fit between the logo and the language button. See the row above.
+        pathName.startsWith("/admin") &&
+          "whitespace-nowrap xl:px-2.5 xl:text-lg",
         // The current-page pill was caramel on pale peach (3.51:1); inverting
         // it reads more clearly as "you are here" and measures 4.86:1.
         pathName === props.href &&
           "rounded-full bg-primary text-primary-foreground hover:no-underline",
       )}
-    ></Link>
+    >
+      <PendingPill />
+      {children}
+    </Link>
+  );
+}
+
+/**
+ * Answers the click while the next page is on its way.
+ *
+ * A route's loading.tsx covers most of the wait, but not all of it: the loading
+ * state itself comes from the server unless the link was prefetched, which dev
+ * never does. Until then nothing on screen changed, so the admin looked frozen.
+ *
+ * Absolutely positioned so it takes no room - the admin row is already packed
+ * tight around the logo. The delay keeps it from flashing on a navigation that
+ * is effectively instant.
+ */
+function PendingPill() {
+  const { pending } = useLinkStatus();
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        // Faded with opacity rather than bg-primary/30: --primary is written with
+        // commas, which Tailwind's `hsl(... / alpha)` cannot take, so any
+        // bg-primary/NN comes out invalid and the browser drops it.
+        "pointer-events-none absolute inset-0 -z-10 rounded-full bg-primary",
+        "opacity-0 transition-opacity",
+        pending && "animate-pulse opacity-30 delay-100",
+      )}
+    />
   );
 }

@@ -3,7 +3,7 @@ import { auth } from "~/server/auth";
 import { notFound } from "next/navigation";
 import { api, HydrateClient } from "~/trpc/server";
 import { Suspense } from "react";
-import Loader from "~/app/components/customLoading";
+import Loading from "./loading";
 
 export default async function PastOrdersPage() {
   const session = await auth();
@@ -20,25 +20,17 @@ export default async function PastOrdersPage() {
    * table - the row-action DropdownMenu triggers - mismatched, and React responded by
    * throwing the subtree away and re-rendering it on the client.
    *
-   * Awaiting resolves the promise before the shell renders, so the boundary never
-   * suspends and the table hydrates. The trade is this page no longer streams; the
-   * Suspense fallback stays as a safety net for client-side navigation.
+   * Awaiting resolves the promise before this page renders, so the boundary below never
+   * suspends and the table hydrates. The page as a whole still streams in behind
+   * `loading.tsx`, which is what shows while a navigation waits on this await - that
+   * is safe because what streams carries a resolved query, not a pending one.
    */
   await api.order.getAllPastOrders.prefetch();
 
   return (
     <HydrateClient>
       <div className="container mx-auto py-10">
-        <Suspense
-          fallback={
-            <Loader
-              text={{
-                en: "Loading past orders...",
-                zh: "正在加载过去的订单...",
-              }}
-            />
-          }
-        >
+        <Suspense fallback={<Loading />}>
           <DataTable />
         </Suspense>
       </div>

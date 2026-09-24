@@ -1,41 +1,26 @@
-"use client";
+import { notFound } from "next/navigation";
 
-import { useLanguage } from "../components/language";
-import { Navbar, NavbarLink } from "../components/navbar";
+import { auth } from "~/server/auth";
+import { AdminNavbar } from "./_components/adminNavbar";
 
-export default function AdminLayout({
+/**
+ * Gates every admin route before anything is sent.
+ *
+ * The pages still check for themselves, and must: a navigation between admin pages
+ * renders only the page, never this layout again. But each page now sits behind its
+ * route's loading.tsx, which the response starts streaming - status 200 and all - before
+ * the page runs. A signed-out visitor was answered 200 with a 404 painted in afterwards,
+ * where it used to be a 404. Checking here, above those boundaries, keeps it one.
+ *
+ * `auth()` is wrapped in React's `cache`, so the page's own check costs nothing more.
+ */
+export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { language } = useLanguage();
-  return (
-    <>
-      <Navbar>
-        <NavbarLink href={"/admin"}>
-          {language === "en" ? "Dashboard" : "仪表板"}
-        </NavbarLink>
-        <NavbarLink href={"/admin/products"}>
-          {language === "en" ? "Products" : "我们的产品"}
-        </NavbarLink>
-        <NavbarLink href={"/admin/orders"}>
-          {language === "en" ? "Orders" : "当前的订单"}
-        </NavbarLink>
-        <NavbarLink href={"/admin/past-orders"}>
-          {language === "en" ? "Past Orders" : "过去的订单"}
-        </NavbarLink>
-        <NavbarLink href={"/admin/feedback"}>
-          {language === "en" ? "Feedbacks" : "反馈"}
-        </NavbarLink>
-        <NavbarLink href={"/admin/offers"}>
-          {language === "en" ? "Offers" : "优惠"}
-        </NavbarLink>
-        <NavbarLink href={"/admin/winners"}>
-          {language === "en" ? "Winners" : "得奖者"}
-        </NavbarLink>
-        <NavbarLink href={"/admin/settings"}>
-          {language === "en" ? "Settings" : "设置"}
-        </NavbarLink>
-      </Navbar>
-      <div className="my-6">{children}</div>
-    </>
-  );
+  const session = await auth();
+  if (!session?.user) {
+    return notFound();
+  }
+
+  return <AdminNavbar>{children}</AdminNavbar>;
 }

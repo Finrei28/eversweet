@@ -3,7 +3,7 @@ import { auth } from "~/server/auth";
 import { notFound } from "next/navigation";
 import { api, HydrateClient } from "~/trpc/server";
 import { Suspense } from "react";
-import Loader from "~/app/components/customLoading";
+import Loading from "./loading";
 
 export default async function PastOrdersPage() {
   const session = await auth();
@@ -21,11 +21,7 @@ export default async function PastOrdersPage() {
   return (
     <HydrateClient>
       <div className="container mx-auto py-10">
-        <Suspense
-          fallback={
-            <Loader text={{ en: "Loading orders...", zh: "正在加载订单..." }} />
-          }
-        >
+        <Suspense fallback={<Loading />}>
           <DataTable />
         </Suspense>
       </div>

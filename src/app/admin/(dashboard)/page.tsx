@@ -3,7 +3,7 @@ import { auth } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
 import DashBoardCards from "./_components/dashboardCard";
 import { Suspense } from "react";
-import Loader from "../components/customLoading";
+import Loading from "./loading";
 
 // localhost:3000/api/auth/signin for sign in page
 export default async function AdminDashboard() {
@@ -33,13 +33,7 @@ export default async function AdminDashboard() {
 
   return (
     <HydrateClient>
-      <Suspense
-        fallback={
-          <Loader
-            text={{ en: "Loading dashboard...", zh: "正在加载仪表板..." }}
-          />
-        }
-      >
+      <Suspense fallback={<Loading />}>
         <DashBoardCards />
       </Suspense>
     </HydrateClient>
