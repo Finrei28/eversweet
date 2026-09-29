@@ -171,6 +171,18 @@ export default function RequirementsField({
         );
       })}
 
+      {/* The rules the order server's unlock applies, which nothing here said. Offer
+          descriptions are free text, so an admin writing "Buy any 4 Mochi Bowls…" had no way
+          to know that four across two orders, or four paid with points, unlock nothing. The
+          Terms (section 15) and the app's hint say the same. */}
+      {fields.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {language === "en"
+            ? "Customers unlock this offer by ordering everything above in one app order, paid at least partly by card. An order paid only with Sweet Points does not count, and nor do items from another offer. One item can count towards more than one line."
+            : "顾客需在同一笔应用程序订单中购买以上全部商品，并至少部分以银行卡付款，才能解锁此优惠。仅用积分支付的订单不计入，其他优惠中的商品也不计入。同一件商品可同时计入多行条件。"}
+        </p>
+      )}
+
       <Button
         type="button"
         variant="outline"
