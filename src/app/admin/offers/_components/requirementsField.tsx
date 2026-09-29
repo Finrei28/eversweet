@@ -2,7 +2,13 @@
 
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
-import { type Control, useFieldArray, useWatch } from "react-hook-form";
+import {
+  type Control,
+  useFieldArray,
+  useFormContext,
+  useFormState,
+  useWatch,
+} from "react-hook-form";
 import { type z } from "zod";
 
 import { useLanguage } from "~/app/components/language";
@@ -43,7 +49,12 @@ export default function RequirementsField({
   categories,
 }: RequirementsFieldProps) {
   const { language } = useLanguage();
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "requirements",
+  });
+  const { setValue, trigger } = useFormContext<OfferForm>();
+  const { errors, isSubmitted } = useFormState({
     control,
     name: "requirements",
   });
@@ -51,6 +62,33 @@ export default function RequirementsField({
   // The live array values. `fields` holds the values from first render only, so reading
   // the current selection back out of it would show stale ids after an edit.
   const requirements = useWatch({ control, name: "requirements" });
+
+  /**
+   * Edits go through `setValue` on the row's own fields, never the field array's
+   * `update`. `update` gives the row a new `field.id`, which is its React key and the
+   * key of `kindOverrides`: every pick remounted the row, the quantity box lost focus
+   * after each keystroke, and switching to "Category" forgot the switch at once and
+   * snapped back to "Dessert" - the whole row looked unresponsive.
+   */
+  const setRow = (
+    index: number,
+    values: {
+      dessertId?: string | null;
+      categoryId?: string | null;
+      quantity?: number;
+    },
+  ) => {
+    const options = { shouldDirty: true };
+    if (values.dessertId !== undefined)
+      setValue(`requirements.${index}.dessertId`, values.dessertId, options);
+    if (values.categoryId !== undefined)
+      setValue(`requirements.${index}.categoryId`, values.categoryId, options);
+    if (values.quantity !== undefined)
+      setValue(`requirements.${index}.quantity`, values.quantity, options);
+    // Once a save has been refused, re-check as the admin fixes the rows, so the
+    // message clears when the row is complete rather than on the next save.
+    if (isSubmitted) void trigger("requirements");
+  };
 
   /**
    * Which kind of target each row is pointing at.
@@ -82,6 +120,10 @@ export default function RequirementsField({
           (row?.categoryId != null ? "category" : "dessert");
         const options = kind === "dessert" ? desserts : categories;
         const selected = kind === "dessert" ? row?.dessertId : row?.categoryId;
+        // The schema's refine is on the row, not a field, so zod reports it at the row's
+        // own path. Nothing showed it, and Save on a row with nothing picked did nothing.
+        const rowError = errors.requirements?.[index];
+        const rowErrorMessage = rowError?.message ?? rowError?.root?.message;
 
         return (
           <div
@@ -97,12 +139,7 @@ export default function RequirementsField({
                 }));
                 // A dessert id is meaningless in the category column, and the schema
                 // refines that exactly one of the two is set.
-                update(index, {
-                  ...row,
-                  quantity: row?.quantity ?? 1,
-                  dessertId: null,
-                  categoryId: null,
-                });
+                setRow(index, { dessertId: null, categoryId: null });
               }}
             >
               <SelectTrigger className="w-28">
@@ -121,9 +158,7 @@ export default function RequirementsField({
             <Select
               value={selected ?? undefined}
               onValueChange={(value) =>
-                update(index, {
-                  ...row,
-                  quantity: row?.quantity ?? 1,
+                setRow(index, {
                   dessertId: kind === "dessert" ? value : null,
                   categoryId: kind === "category" ? value : null,
                 })
@@ -149,12 +184,7 @@ export default function RequirementsField({
               className="w-20"
               value={row?.quantity ?? 1}
               onChange={(event) =>
-                update(index, {
-                  ...row,
-                  dessertId: row?.dessertId ?? null,
-                  categoryId: row?.categoryId ?? null,
-                  quantity: Number(event.target.value),
-                })
+                setRow(index, { quantity: Number(event.target.value) })
               }
             />
 
@@ -167,6 +197,14 @@ export default function RequirementsField({
             >
               <X className="h-4 w-4" />
             </Button>
+
+            {rowErrorMessage && (
+              <p className="w-full text-sm text-destructive">
+                {language === "en"
+                  ? "Pick a dessert or a category."
+                  : "请选择一个甜品或分类。"}
+              </p>
+            )}
           </div>
         );
       })}
