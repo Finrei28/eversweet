@@ -360,7 +360,7 @@ describe("the claims that were wrong before", () => {
   /** Resend is listed with exactly what it sends, so a new email has to be added here. */
   it("names every email Resend sends", () => {
     expect(privacyText).toMatch(
-      /your order confirmation, and a welcome email when you join the membership/,
+      /your order confirmation, a welcome email when you join the membership, and an email when you ask for your account to be deleted/,
     );
   });
 
@@ -397,10 +397,39 @@ describe("the claims that were wrong before", () => {
     expect(privacyText).not.toContain("Google Analytics");
   });
 
-  it("does not promise an erasure button that does not exist", () => {
-    expect(privacyText).toMatch(
-      /no button in the app that deletes an account/i,
+  /**
+   * There was no button, and both documents said so. There is one now in the app (TODO item 8,
+   * entry 58 in eversweet_app), and what they say about it is what the order server's
+   * `requestAccountDeletion` and `lib/accountDeletion` do.
+   */
+  it("describes the deletion the app offers, as the code carries it out", () => {
+    expect(termsText).not.toMatch(/no button/i);
+    expect(privacyText).not.toMatch(/no button/i);
+    expect(termsText).toMatch(/delete your account in the app/);
+    expect(privacyText).toMatch(/tap Delete account. We ask for your password/);
+    expect(privacyText).toMatch(/deleted seven days later/);
+    expect(privacyText).toMatch(/cancel the deletion in the app/);
+    expect(termsText).toMatch(
+      /your membership stops renewing straight away and ends when the account is deleted, with no refund/,
     );
+    expect(privacyText).toMatch(/still being made or waiting to be collected/);
+    expect(privacyText).toMatch(
+      /with your name, email address and phone number removed/,
+    );
+    expect(privacyText).toMatch(
+      /your customer record with Stripe, which holds your saved cards/,
+    );
+  });
+
+  /** The order server sends only the initial on the public board and banner (entry 41). */
+  it("says the public leaderboard shows only the initial of the last name", () => {
+    expect(privacyText).toMatch(
+      /your first name and the initial of your last name are shown/,
+    );
+    expect(termsText).toMatch(
+      /Your first name and the initial of your last name are shown publicly/,
+    );
+    expect(privacyText).not.toMatch(/your first and last name are shown/);
   });
 
   it("preserves Consumer Guarantees Act rights alongside the liability cap", () => {

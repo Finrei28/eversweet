@@ -92,7 +92,7 @@ export const LEGAL_TOKENS = [
  * Written the long way round because it is rendered raw by the app, and "12-06-2026" reads
  * as 12 June to a New Zealander and 6 December to an American with equal confidence.
  */
-export const LEGAL_LAST_UPDATED = "29 September 2026"
+export const LEGAL_LAST_UPDATED = "1 October 2026"
 
 const fill = (text: string, contact: LegalContact): string =>
   text.replace(/\{\{(\w+)\}\}/g, (whole, token: string) =>
@@ -168,7 +168,7 @@ export const termAndConditions: LegalDocument = {
         "Keep your password to yourself. You are responsible for what happens under your account.",
         "The name on your account is printed on the kitchen receipt and may be shown on the public leaderboard, so please use your real name and nothing offensive.",
         "You can change your first name, last name and phone number yourself in the app. Changing the email address on an account needs us to do it, so that nobody can move an account to an inbox they do not own.",
-        "There is no button that deletes an account. Ask us and we will do it by hand - what we can and cannot remove is set out in our Privacy Policy.",
+        "You can delete your account in the app, from Account details. It is deleted seven days after you ask; until then it works as normal and you can cancel the deletion. What is deleted and what is kept is set out in our Privacy Policy.",
         "We may suspend or close an account that is being misused.",
       ],
     },
@@ -269,7 +269,7 @@ export const termAndConditions: LegalDocument = {
       heading: "13. The monthly leaderboard and prizes",
       appliesTo: ["app"],
       content:
-        "Each calendar month we rank customers by the Sweet Points they earned that month, on New Zealand time, and the top three win a prize. Your name is shown publicly on the leaderboard unless you turn that off - our Privacy Policy explains how.",
+        "Each calendar month we rank customers by the Sweet Points they earned that month, on New Zealand time, and the top three win a prize. Your first name and the initial of your last name are shown publicly on the leaderboard unless you turn that off - our Privacy Policy explains how.",
       list: [
         "The top three are recorded at midnight on the first of the following month, New Zealand time. That record is final: a later refund or adjustment does not reopen a month that has closed.",
         "Only points earned on orders count towards the ranking. Points returned to you - when you remove a reward item, for example - do not.",
@@ -297,6 +297,7 @@ export const termAndConditions: LegalDocument = {
         "Your discount starts again at the first step only once the subscription itself has ended - either you let a cancellation run its course, or a renewal went unpaid until it was cancelled. Joining after that is a new subscription, and it begins again at the first step however long you were a member before.",
         "You cannot remove the card your membership renews on until you have chosen another one for it.",
         "A membership belongs to one account and cannot be shared or transferred.",
+        "If you ask for your account to be deleted, your membership stops renewing straight away and ends when the account is deleted, with no refund for the rest of that month. While the deletion is pending you cannot join again or resume it. Cancelling the deletion leaves the membership cancelled, and you can resume it from the membership screen before it ends.",
         "We can change the price or the benefits. A price change takes effect from your next renewal, never the one you have already paid.",
       ],
     },
@@ -433,7 +434,7 @@ export const privacyPolicy: LegalDocument = {
       content:
         "This is the one place where we show personal information publicly, so please read it. Each month we publish a leaderboard of customers by the Sweet Points they earned, and the previous month's top three appear in the app. That top-three list is served publicly: it can be read by anyone on the internet, not only by people signed in to the app.",
       list: [
-        "By default your first and last name are shown. New accounts start this way.",
+        "By default your first name and the initial of your last name are shown - \"Aroha N.\", for example. New accounts start this way.",
         "You can turn this off. Turn off \"Show my name\" on the leaderboard screen, or turn on \"Anonymous Status\" in your account details - they are the same setting - and your name is replaced with \"Anonymous\" everywhere customers can see it.",
         "The choice is applied on our servers, so once it is on, your name is not sent to anyone's device at all.",
         "Copies of the public list are held briefly to keep the app quick, so your name can linger in one for a few minutes after you switch anonymity on, and on the screen of someone who already has the app open until the app next refreshes it.",
@@ -466,7 +467,7 @@ export const privacyPolicy: LegalDocument = {
         "We use other companies to run parts of the service. They are allowed to use your information only to do the job we have given them:",
       list: [
         "Stripe - payments, saved cards and memberships. Stripe receives your name, email address, phone number and the amount, and handles your card details directly.",
-        "Resend - sends our emails: the code that confirms your email address, the code that resets your password, your order confirmation, and a welcome email when you join the membership.",
+        "Resend - sends our emails: the code that confirms your email address, the code that resets your password, your order confirmation, a welcome email when you join the membership, and an email when you ask for your account to be deleted.",
         "Expo - delivers notifications to your phone, receiving the notification text and your device's token.",
         "Supabase - hosts the database that everything is stored in.",
         "Render - runs the servers behind the app.",
@@ -504,7 +505,7 @@ export const privacyPolicy: LegalDocument = {
         "Feedback is kept indefinitely.",
         "A cart you abandon is deleted 12 hours after you last touched it, and any points spent in it are returned to you.",
         "Verification and reset codes are removed when used and in any case expire within 15 minutes.",
-        "If that is longer than you would like, ask us and see the next section.",
+        "If that is longer than you would like, you can delete your account - see section 16.",
       ],
     },
     {
@@ -523,12 +524,15 @@ export const privacyPolicy: LegalDocument = {
     {
       heading: "16. Deleting your information",
       content:
-        "There is no button in the app that deletes an account, and we would rather say so than imply otherwise. If you want your information removed, email {{email}} and we will do it by hand.",
+        "You can delete your account in the app: open Account details and tap Delete account. We ask for your password, and the account is deleted seven days later, in the early hours of the day the app shows. Until then it works as normal and you can cancel the deletion in the app. We email you when you ask, so that you would know if someone else had.",
       list: [
-        "We can remove your account and its details, your Sweet Points and their history, your cart, your saved card references and your notification token.",
-        "We cannot remove the record of orders you have placed. We are required to keep records of our sales for tax purposes. We can unlink them from your account so that they are no longer identifiable as yours, and we will.",
+        "When it is deleted we remove your account and its details, your Sweet Points and their history, your cart, your offers, your notification token, and your customer record with Stripe, which holds your saved cards.",
+        "A membership stops renewing as soon as you ask, and ends when the account is deleted. The rest of that month is not refunded.",
+        "If an order of yours is still being made or waiting to be collected on the day, the account is deleted the night after it is finished.",
+        "We cannot remove the record of orders you have placed. We are required to keep records of our sales for tax purposes. We keep them with your name, email address and phone number removed and no longer linked to an account, so they are no longer identifiable as yours.",
         "Where you have appeared in a past month's leaderboard results, the placing stays on record but is no longer linked to you. Any prize not yet collected can no longer be claimed.",
-        "Ask Stripe about the customer record they hold for your payments; we will also ask them on your behalf if you prefer.",
+        "Stripe keeps its own record of the payments you have already made, as payment providers have to. Ask Stripe about it; we will also ask them on your behalf if you prefer.",
+        "If you ordered on the website as a guest there is no account to delete. Email {{email}} and we will remove what we can by hand, within the limits above.",
         "New Zealand law gives you a right to ask for correction rather than a general right to erasure, but we will honour a deletion request as far as the records above allow.",
       ],
     },
