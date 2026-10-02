@@ -312,7 +312,11 @@ export const settingsRouter = createTRPCRouter({
             position,
             publishedAt: startOfDayNZ(a.publishedOn),
             // The last instant of the day, as an offer's end is, so it shows through it.
-            endsAt: a.endsOn === null ? null : endOfDayNZ(a.endsOn),
+            // Left out when the form sent no end at all (a tab from before end dates), so
+            // an update keeps the stored one rather than clearing it.
+            ...(a.endsOn === undefined
+              ? {}
+              : { endsAt: a.endsOn === null ? null : endOfDayNZ(a.endsOn) }),
           };
 
           if (a.id) {

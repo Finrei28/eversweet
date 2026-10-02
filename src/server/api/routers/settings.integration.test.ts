@@ -581,6 +581,38 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
       ]);
     });
 
+    /**
+     * A tab opened before end dates existed sends rows with no `endsOn`. That read as "no
+     * end" and the whole-list save erased an end set from a newer tab meanwhile. Absent now
+     * keeps the stored end, and only an explicit null clears it.
+     */
+    it("keeps a stored end when the save sends none, and clears it on null", async () => {
+      const caller = adminCaller();
+      await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [one({ endsOn: "2026-10-05" })],
+      });
+      const [saved] = await db.announcement.findMany({ select: { id: true } });
+      // No `endsOn` key at all, as the old form sends it.
+      const fromAnOldTab = one({ id: saved!.id, text1: "Edited." });
+
+      await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [fromAnOldTab],
+      });
+      const kept = await db.announcement.findFirst();
+
+      await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [one({ id: saved!.id, endsOn: null })],
+      });
+      const cleared = await db.announcement.findFirst();
+
+      expect(kept?.text1).toBe("Edited.");
+      expect(kept?.endsAt?.toISOString()).toBe("2026-10-05T10:59:59.999Z");
+      expect(cleared?.endsAt).toBeNull();
+    });
+
     it("refuses an end before the announcement's date", async () => {
       await expect(
         adminCaller().settings.saveAnnouncements({

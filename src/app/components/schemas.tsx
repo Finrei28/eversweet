@@ -404,9 +404,13 @@ export const announcementSchema = announcementFields
   .omit({ publishedAt: true, endsAt: true })
   .extend({
     publishedOn: z.string().date(),
-    endsOn: z.string().date().nullable().default(null),
+    /**
+     * Null clears the end. Absent keeps whatever is stored: an admin tab opened before end
+     * dates existed sends no field, and reading that as null erased an end set since.
+     */
+    endsOn: z.string().date().nullable().optional(),
   })
-  .refine((a) => a.endsOn === null || a.endsOn >= a.publishedOn, {
+  .refine((a) => a.endsOn == null || a.endsOn >= a.publishedOn, {
     message: END_BEFORE_DATE,
     path: ["endsOn"],
   });
@@ -425,7 +429,12 @@ export const saveAnnouncementsSchema = z.object({
     // One that has ended is no more showing than one switched off.
     .refine(
       (list) =>
-        list.filter((a) => isAnnouncementShowing(a, todayNZ())).length <=
+        list.filter((a) =>
+          isAnnouncementShowing(
+            { isActive: a.isActive, endsOn: a.endsOn ?? null },
+            todayNZ(),
+          ),
+        ).length <=
         MAX_ACTIVE_ANNOUNCEMENTS,
       `At most ${MAX_ACTIVE_ANNOUNCEMENTS} announcements can be showing at once`,
     ),
