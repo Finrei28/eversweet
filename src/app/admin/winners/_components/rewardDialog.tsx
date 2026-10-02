@@ -28,8 +28,9 @@ import {
 } from "~/components/ui/form";
 import { Textarea } from "~/components/ui/textarea";
 import { toast } from "~/hooks/use-toast";
-import { pickedDay } from "~/lib/aucklandDay";
+import { endOfDayNZ, pickedDay } from "~/lib/aucklandDay";
 import {
+  collectionWarning,
   defaultRewardExpiry,
   formatPrizeCode,
   monthLabel,
@@ -114,6 +115,17 @@ export default function RewardDialog({
   if (!winner) return null;
 
   const reward = winner.reward;
+
+  // The deadline this save would leave, read the way the submit below sends it: an untouched
+  // edit keeps the stored one, anything else ends with the Auckland day picked.
+  const pickedExpiry = form.watch("expiresAt");
+  const deadline =
+    reward && pickedExpiry.getTime() === reward.expiresAt.getTime()
+      ? reward.expiresAt
+      : endOfDayNZ(pickedDay(pickedExpiry));
+  // A late prize keeps its fixed deadline by design, so one assigned at 5:21 PM on its last
+  // day gave the winner hours with nothing said (eversweet_app TODO item 8, entry 41).
+  const warning = collectionWarning(deadline, language);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -211,6 +223,14 @@ export default function RewardDialog({
                       ? "Defaults to the end of the month after the one that was won."
                       : "默认为获奖月份次月的月底。"}
                   </p>
+                  {warning && (
+                    <p
+                      role="status"
+                      className="mt-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm"
+                    >
+                      {warning}
+                    </p>
+                  )}
                   <FormMessage />
                 </div>
               )}

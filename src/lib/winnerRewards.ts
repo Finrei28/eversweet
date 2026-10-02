@@ -26,6 +26,50 @@ export const defaultRewardExpiry = (month: number, year: number): Date =>
     .toJSDate();
 
 /**
+ * Auckland days a winner has to collect a prize, today included: 1 on the last day, 0 once
+ * the deadline has passed.
+ *
+ * The last day is read a millisecond before the deadline, so both shapes of deadline name
+ * the same day: this site stores the last instant of a day, the staff app the first instant
+ * of the next one.
+ */
+export const daysToCollect = (deadline: Date, now: Date = new Date()): number => {
+  if (deadline <= now) return 0;
+  const today = DateTime.fromJSDate(now).setZone(ZONE).startOf("day");
+  const lastDay = DateTime.fromMillis(deadline.getTime() - 1)
+    .setZone(ZONE)
+    .startOf("day");
+  // Rounded: a week across a daylight-time change is an hour long or short.
+  return Math.round(lastDay.diff(today, "days").days) + 1;
+};
+
+/**
+ * The assign screen's warning when a winner would have under a week to collect, or null.
+ *
+ * A late prize keeps its fixed deadline by design, so one assigned at 5:21 PM on its last
+ * day gave the winner hours and nothing said so (eversweet_app TODO item 8, entry 41).
+ */
+export const collectionWarning = (
+  deadline: Date,
+  language: "en" | "zh",
+  now: Date = new Date(),
+): string | null => {
+  const days = daysToCollect(deadline, now);
+  if (days >= 7) return null;
+  if (days === 0)
+    return language === "en"
+      ? "This date has passed, so the winner can no longer collect this."
+      : "此日期已过，得奖者无法再领取。";
+  if (days === 1)
+    return language === "en"
+      ? "The winner will have only today to collect this."
+      : "得奖者只有今天可以领取。";
+  return language === "en"
+    ? `The winner will have ${days} days to collect this.`
+    : `得奖者只有 ${days} 天可以领取。`;
+};
+
+/**
  * How a prize code is shown: two groups of four, the way the order server returns it and
  * the customer's app displays it. Codes are stored bare, and the counter accepts either.
  */
