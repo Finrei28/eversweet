@@ -579,6 +579,14 @@ prize code, pushing a notification. Nothing here has an equivalent.
 - **An announcement's `publishedAt` is what the app compares** against the last one it
   showed. Leave it alone to fix a typo; move it forward to put the message back in front of
   everyone. It is a picked calendar day, pinned with `startOfDayNZ`, like an offer's dates.
+- **An announcement can end** (`endsAt`, `20261002000000_shop_data_columns`): the last instant
+  of the picked Auckland day (`endOfDayNZ`), which the order server stops serving after. One
+  that has ended stays in the list, like one switched off, and neither counts towards the five
+  showing (`isAnnouncementShowing` in `lib/shopSettings`, read against `todayNZ()`). An end
+  before the announcement's own date is refused, on the form by the day each shows.
+- **`ShopProfile.about`** is the customer app's "About Eversweet" paragraph. Optional, unlike
+  the other details: a blank is saved as null, and the app then shows the text it was built
+  with.
 - **The benefits are free text**, so nothing stops one claiming what the rates do not do -
   the list advertised "2x loyalty points" against a 1.5x rate for months. The screen checks
   the wording against the live multiplier and says so.
@@ -684,7 +692,9 @@ copy in the component. Three pairs differ over a date alone: an offer's window, 
 expiry and an announcement all hold the calendar control's `Date` on the form and send the
 day the admin saw. Those are written as a private `xFields` object plus
 `.omit({ theDate: true }).extend({ theDay: ... })`, so every other field is literally the
-same schema object and a bound cannot be raised in one of them without the other.
+same schema object and a bound cannot be raised in one of them without the other. (An
+announcement differs over two dates, its own and its end, and each of its row schemas is
+refined, so `schemas.test.ts` reaches the shared fields through `innerType()`.)
 
 The benefits pair cannot derive — the form wraps each row in an object because
 `useFieldArray` keys rows on identity, and the wire sends bare strings — so it shares the
