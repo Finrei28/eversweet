@@ -8,6 +8,7 @@ vi.mock("next/cache", () => ({
   unstable_cache: (fn: unknown) => fn,
 }));
 
+import { todayNZ } from "~/lib/aucklandDay";
 import { db } from "~/server/db";
 import { lockAnnouncements } from "~/server/api/routers/settings";
 import { adminCaller } from "~/test/caller";
@@ -255,6 +256,65 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
     });
   });
 
+  describe("shop profile", () => {
+    const profile = {
+      name: "Eversweet",
+      address: "5D/119 Meadowland Drive, Somerville",
+      city: "Auckland",
+      state: "Auckland",
+      postal: "2014",
+      phone: "09 949 1050",
+      email: "eversweet@eversweet.co.nz",
+      website: "https://eversweet.co.nz",
+    };
+
+    /**
+     * The app's "About Eversweet" paragraph was written into the app (its TODO item 8, entry
+     * 11). Blank is stored as null, which the app reads as "show the text you were built
+     * with", rather than as an empty paragraph under the heading.
+     */
+    it("saves the About text, and stores a blank one as null", async () => {
+      const caller = adminCaller();
+      await caller.settings.saveShopProfile({
+        ...profile,
+        about: "Desserts made by hand.",
+      });
+      const written = await db.shopProfile.findFirst({ select: { about: true } });
+
+      await caller.settings.saveShopProfile({ ...profile, about: "   " });
+      const blanked = await db.shopProfile.findFirst({ select: { about: true } });
+
+      expect(written?.about).toBe("Desserts made by hand.");
+      expect(blanked?.about).toBeNull();
+      await expect(caller.settings.getShopProfile()).resolves.toMatchObject({
+        about: null,
+      });
+    });
+
+    /** A tab opened before the field existed saves the details with no `about` at all. */
+    it("keeps the About text when the save sends none", async () => {
+      const caller = adminCaller();
+      await caller.settings.saveShopProfile({
+        ...profile,
+        about: "Desserts made by hand.",
+      });
+
+      await caller.settings.saveShopProfile({ ...profile, phone: "09 000 0000" });
+
+      await expect(
+        db.shopProfile.findFirst({ select: { about: true, phone: true } }),
+      ).resolves.toEqual({ about: "Desserts made by hand.", phone: "09 000 0000" });
+    });
+
+    it("reads back no About text when nothing is stored", async () => {
+      await db.shopProfile.deleteMany();
+
+      await expect(
+        adminCaller().settings.getShopProfile(),
+      ).resolves.toMatchObject({ ...profile, about: null });
+    });
+  });
+
   describe("announcements", () => {
     /**
      * The ids currently in the database. Saving replaces the whole list, so the mutation
@@ -496,6 +556,140 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
           announcements: [one({ id: stale[0] })],
         }),
       ).rejects.toThrow(/changed the announcements/i);
+    });
+
+    /**
+     * The end date, so a promotion's message stops with the promotion (the app's TODO item
+     * 8, entry 1). Stored as the last instant of the Auckland day, as an offer's end is: the
+     * order server compares inclusively, so it shows through 5 October.
+     */
+    it("stores the end as the last instant of the Auckland day, and reads that day back", async () => {
+      await adminCaller().settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [
+          one({ title: "Ends", publishedOn: "2026-10-01", endsOn: "2026-10-05" }),
+          one({ title: "Runs on", position: 1 }),
+        ],
+      });
+
+      const saved = await db.announcement.findMany({
+        orderBy: { position: "asc" },
+        select: { endsAt: true },
+      });
+      // 5 October is in daylight time (NZDT, UTC+13).
+      expect(saved.map((a) => a.endsAt?.toISOString() ?? null)).toEqual([
+        "2026-10-05T10:59:59.999Z",
+        null,
+      ]);
+
+      // The stored instants, untouched: the card converts them in the browser. Converted
+      // here, on a server in UTC, they reached a browser west of UTC as the day before.
+      const read = await adminCaller().settings.getAnnouncements();
+      expect(
+        read.map((a) => [
+          a.publishedAt.toISOString(),
+          a.endsAt?.toISOString() ?? null,
+        ]),
+      ).toEqual([
+        ["2026-09-30T11:00:00.000Z", "2026-10-05T10:59:59.999Z"],
+        ["2026-06-30T12:00:00.000Z", null],
+      ]);
+    });
+
+    /**
+     * A tab opened before end dates existed sends rows with no `endsOn`. That read as "no
+     * end" and the whole-list save erased an end set from a newer tab meanwhile. Absent now
+     * keeps the stored end, and only an explicit null clears it.
+     */
+    it("keeps a stored end when the save sends none, and clears it on null", async () => {
+      const caller = adminCaller();
+      await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [one({ endsOn: "2026-10-05" })],
+      });
+      const [saved] = await db.announcement.findMany({ select: { id: true } });
+      // No `endsOn` key at all, as the old form sends it.
+      const fromAnOldTab = one({ id: saved!.id, text1: "Edited." });
+
+      await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [fromAnOldTab],
+      });
+      const kept = await db.announcement.findFirst();
+
+      await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [one({ id: saved!.id, endsOn: null })],
+      });
+      const cleared = await db.announcement.findFirst();
+
+      expect(kept?.text1).toBe("Edited.");
+      expect(kept?.endsAt?.toISOString()).toBe("2026-10-05T10:59:59.999Z");
+      expect(cleared?.endsAt).toBeNull();
+    });
+
+    /**
+     * The end that save keeps is invisible to the schema's date check. An older tab moving
+     * the date past it would save an announcement that never shows.
+     */
+    it("refuses a date moved past an end the save keeps", async () => {
+      const caller = adminCaller();
+      await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [one({ publishedOn: "2026-10-01", endsOn: "2026-10-05" })],
+      });
+      const [saved] = await db.announcement.findMany({ select: { id: true } });
+
+      const moved = caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        // No `endsOn`, as a tab from before end dates sends it.
+        announcements: [one({ id: saved!.id, publishedOn: "2026-10-06" })],
+      });
+
+      await expect(moved).rejects.toThrow(/ends before the date you gave it/);
+      const after = await db.announcement.findFirst();
+      expect(after?.publishedAt.toISOString()).toBe("2026-09-30T11:00:00.000Z");
+    });
+
+    it("refuses an end before the announcement's date", async () => {
+      await expect(
+        adminCaller().settings.saveAnnouncements({
+          knownIds: await currentIds(),
+          announcements: [
+            one({ publishedOn: "2026-10-05", endsOn: "2026-10-04" }),
+          ],
+        }),
+      ).rejects.toThrow();
+
+      expect(await db.announcement.count()).toBe(0);
+    });
+
+    /**
+     * One past its last day is no longer in the pop-up, so it no more takes a place than
+     * one switched off. One ending today still does.
+     */
+    it("counts an ended one as not showing, and one ending today as showing", async () => {
+      const six = (lastEndsOn: string) =>
+        Array.from({ length: 6 }, (_, i) =>
+          one({
+            title: `Announcement ${i}`,
+            publishedOn: "2020-01-01",
+            endsOn: i === 5 ? lastEndsOn : null,
+          }),
+        );
+
+      await expect(
+        adminCaller().settings.saveAnnouncements({
+          knownIds: await currentIds(),
+          announcements: six(todayNZ()),
+        }),
+      ).rejects.toThrow();
+
+      await adminCaller().settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: six("2020-01-31"),
+      });
+      expect(await db.announcement.count()).toBe(6);
     });
 
     /** A retired announcement is kept, so it can be brought back without retyping it. */

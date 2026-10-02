@@ -7,6 +7,7 @@ import {
   membershipBenefitsSchema,
   saveAnnouncementsSchema,
 } from "./schemas";
+import { todayNZ } from "~/lib/aucklandDay";
 import {
   ANNOUNCEMENT_TEXT_MAX_LENGTH,
   ANNOUNCEMENT_TITLE_MAX_LENGTH,
@@ -34,12 +35,17 @@ describe("announcement schemas", () => {
    * The load-bearing assertion. Both schemas are built from one `announcementFields`, so
    * every field they share is the *same* schema object, not a copy that happens to agree
    * today. A field added to only one of them fails here.
+   *
+   * `innerType()` because each row is refined, so that an end date before the
+   * announcement's own is refused.
    */
-  it("shares every field but the date", () => {
-    const formRow = announcementsFormSchema.shape.announcements.element.shape;
-    const wireRow = announcementSchema.shape;
+  it("shares every field but the dates", () => {
+    const formRow =
+      announcementsFormSchema.shape.announcements.element.innerType().shape;
+    const wireRow = announcementSchema.innerType().shape;
 
     expect(Object.keys(formRow).sort()).toEqual([
+      "endsAt",
       "id",
       "isActive",
       "publishedAt",
@@ -48,6 +54,7 @@ describe("announcement schemas", () => {
       "title",
     ]);
     expect(Object.keys(wireRow).sort()).toEqual([
+      "endsOn",
       "id",
       "isActive",
       "publishedOn",
@@ -88,6 +95,33 @@ describe("announcement schemas", () => {
       announcementSchema.safeParse({ ...row, publishedOn: new Date(day) })
         .success,
     ).toBe(false);
+  });
+
+  /**
+   * An end before the announcement's own date would never show, and saving it would say
+   * nothing (the app's TODO item 8, entry 1). The same day is fine: it shows for that day.
+   *
+   * The form compares days, not instants. A new row's date is the moment it was added, so
+   * an end picked for that same day is an earlier instant.
+   */
+  it("refuses an end before the announcement's date, on both", () => {
+    const afternoon = new Date(2026, 9, 31, 15, 30);
+    const formWith = (endsAt: Date) =>
+      announcementsFormSchema.safeParse({
+        announcements: [{ ...row, publishedAt: afternoon, endsAt }],
+      });
+    const wireWith = (endsOn: string) =>
+      announcementSchema.safeParse({ ...row, publishedOn: day, endsOn });
+
+    expect(formWith(new Date(2026, 9, 30)).success).toBe(false);
+    expect(formWith(new Date(2026, 9, 31)).success).toBe(true);
+    expect(wireWith("2026-10-30").success).toBe(false);
+    expect(wireWith(day).success).toBe(true);
+    // And none at all, which is accepted and left absent: the save then keeps the stored
+    // end, so a tab from before end dates cannot clear one.
+    const none = announcementSchema.safeParse({ ...row, publishedOn: day });
+    expect(none.success).toBe(true);
+    expect(none.data).not.toHaveProperty("endsOn");
   });
 
   /** A day, not an instant: "2026-10-31T00:00:00Z" is the bug this whole split avoids. */

@@ -10,7 +10,7 @@ import {
   saveAnnouncementsSchema,
   shopProfileSchema,
 } from "~/app/components/schemas";
-import { calendarDate, startOfDayNZ } from "~/lib/aucklandDay";
+import { endOfDayNZ, startOfDayNZ } from "~/lib/aucklandDay";
 import { benefitsClaimingOtherMultiplier } from "~/lib/shopSettings";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { SHOP_PROFILE_TAG } from "~/server/shopProfile";
@@ -160,6 +160,7 @@ export const settingsRouter = createTRPCRouter({
         phone: true,
         email: true,
         website: true,
+        about: true,
       },
     });
 
@@ -173,6 +174,7 @@ export const settingsRouter = createTRPCRouter({
         phone: "09 949 1050",
         email: "eversweet@eversweet.co.nz",
         website: "https://eversweet.co.nz",
+        about: null,
       }
     );
   }),
@@ -180,10 +182,18 @@ export const settingsRouter = createTRPCRouter({
   saveShopProfile: protectedProcedure
     .input(shopProfileSchema)
     .mutation(async ({ ctx, input }) => {
-      const { count } = await ctx.db.shopProfile.updateMany({ data: input });
+      // A blank About is stored as null, which the app reads as "show the text you were
+      // built with", rather than as an empty paragraph under the heading. An absent one is
+      // left alone: a tab opened before the field existed sends none, and reading that as
+      // blank erased the paragraph whenever it saved the address.
+      const data = {
+        ...input,
+        about: input.about === undefined ? undefined : input.about || null,
+      };
+      const { count } = await ctx.db.shopProfile.updateMany({ data });
       if (count === 0) {
         await ctx.db.shopProfile.create({
-          data: { id: SINGLETON_ID, ...input },
+          data: { id: SINGLETON_ID, ...data },
         });
       }
 
@@ -234,15 +244,15 @@ export const settingsRouter = createTRPCRouter({
         text2: true,
         isActive: true,
         publishedAt: true,
+        endsAt: true,
       },
     });
 
-    // The stored instant back to the calendar day it falls on in Auckland, so the picker
-    // shows the day that was chosen rather than the browser's reading of the instant.
-    return rows.map((row) => ({
-      ...row,
-      publishedAt: calendarDate(row.publishedAt),
-    }));
+    // The stored instants, as they are. The card turns them into the calendar days they
+    // fall on in Auckland with `calendarDate`, which only works in the browser: run here, on
+    // a server in UTC, it sent midnight UTC, which a browser west of UTC shows - and saves -
+    // as the day before. The offer dialog already converts in the browser.
+    return rows;
   }),
 
   /**
@@ -271,7 +281,7 @@ export const settingsRouter = createTRPCRouter({
         // nothing in the UI to suggest anything had gone. Comparing the whole set catches
         // a row added elsewhere and one deleted elsewhere alike.
         const current = await tx.announcement.findMany({
-          select: { id: true },
+          select: { id: true, endsAt: true },
         });
         const currentIds = new Set(current.map((a) => a.id));
         const knownIds = new Set(input.knownIds);
@@ -291,6 +301,22 @@ export const settingsRouter = createTRPCRouter({
           });
         }
 
+        // A row sent with no end keeps the stored one (a tab from before end dates), so the
+        // schema's check that the end is not before the date cannot see it. Moving the date
+        // past that end would save an announcement that never shows, with nothing said.
+        const storedEnds = new Map(current.map((a) => [a.id, a.endsAt]));
+        const endsBeforeItsDate = input.announcements.some((a) => {
+          const storedEnd = a.id && a.endsOn === undefined && storedEnds.get(a.id);
+          return storedEnd ? storedEnd < startOfDayNZ(a.publishedOn) : false;
+        });
+        if (endsBeforeItsDate) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "An announcement now ends before the date you gave it. Reload the page to see its end date, then save again.",
+          });
+        }
+
         // Anything the admin removed from the list. Deleting is safe here in a way it is
         // not for an offer: nothing references an announcement, so there is no history to
         // take with it.
@@ -306,6 +332,12 @@ export const settingsRouter = createTRPCRouter({
             isActive: a.isActive,
             position,
             publishedAt: startOfDayNZ(a.publishedOn),
+            // The last instant of the day, as an offer's end is, so it shows through it.
+            // Left out when the form sent no end at all (a tab from before end dates), so
+            // an update keeps the stored one rather than clearing it.
+            ...(a.endsOn === undefined
+              ? {}
+              : { endsAt: a.endsOn === null ? null : endOfDayNZ(a.endsOn) }),
           };
 
           if (a.id) {

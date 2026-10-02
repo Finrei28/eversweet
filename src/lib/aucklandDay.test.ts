@@ -6,6 +6,7 @@ import {
   endOfDayNZ,
   pickedDay,
   startOfDayNZ,
+  todayNZ,
 } from "./aucklandDay";
 
 /**
@@ -130,5 +131,17 @@ describe("endOfDayNZ", () => {
     expect(inNZ(endOfDayNZ("2026-09-27"))).toBe(
       "2026-09-27T23:59:59.999+13:00",
     );
+  });
+});
+
+/**
+ * Today in Auckland, read on a server that runs in UTC: that is where the announcements'
+ * limit reads it, and where the UTC date is a day behind every morning until 1 PM.
+ */
+describe("todayNZ", () => {
+  it("is Auckland's day, not the host's", () => {
+    // 11:30 UTC on 5 October is 12:30 AM on 6 October in daylight time (UTC+13).
+    expect(todayNZ(new Date("2026-10-05T11:30:00Z"))).toBe("2026-10-06");
+    expect(todayNZ(new Date("2026-10-05T10:59:59.999Z"))).toBe("2026-10-05");
   });
 });

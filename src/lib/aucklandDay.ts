@@ -38,6 +38,13 @@ export const calendarDate = (instant: Date): Date =>
     "yyyy-LL-dd",
   ).toJSDate();
 
+/**
+ * Today on the Auckland calendar, "2026-10-31", wherever this runs. Unlike `pickedDay`, safe
+ * on the server: it reads an instant in Auckland's zone, not a calendar control's midnight.
+ */
+export const todayNZ = (now: Date = new Date()): string =>
+  DateTime.fromJSDate(now).setZone(ZONE).toFormat("yyyy-LL-dd");
+
 /** The first instant of a day in Auckland: when something dated from that day starts. */
 export const startOfDayNZ = (day: string): Date =>
   DateTime.fromISO(day, { zone: ZONE }).startOf("day").toJSDate();

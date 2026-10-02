@@ -29,8 +29,11 @@ import {
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { useToast } from "~/hooks/use-toast";
-import { pickedDay } from "~/lib/aucklandDay";
-import { MAX_ACTIVE_ANNOUNCEMENTS } from "~/lib/shopSettings";
+import { calendarDate, pickedDay, todayNZ } from "~/lib/aucklandDay";
+import {
+  isAnnouncementShowing,
+  MAX_ACTIVE_ANNOUNCEMENTS,
+} from "~/lib/shopSettings";
 import { api } from "~/trpc/react";
 
 type AnnouncementsForm = z.infer<typeof announcementsFormSchema>;
@@ -42,6 +45,9 @@ type AnnouncementsForm = z.infer<typeof announcementsFormSchema>;
  * forward is how an announcement is put back in front of everyone who has already dismissed
  * one. Leaving it alone while fixing a typo is the point of it being separate from the
  * row's own updatedAt.
+ *
+ * The end date is the last day it shows. Without one a promotion's message ran until
+ * someone remembered to switch it off (the app's TODO item 8, entry 1).
  */
 export function AnnouncementsCard() {
   const { language } = useLanguage();
@@ -59,7 +65,10 @@ export function AnnouncementsCard() {
         text1: a.text1,
         text2: a.text2 ?? "",
         isActive: a.isActive,
-        publishedAt: a.publishedAt,
+        // The stored instants as the Auckland days they fall on, which the pickers show.
+        // Here, in the browser, because that is the only place `calendarDate` is right.
+        publishedAt: calendarDate(a.publishedAt),
+        endsAt: a.endsAt && calendarDate(a.endsAt),
       })),
     },
   });
@@ -78,7 +87,16 @@ export function AnnouncementsCard() {
       toast({ variant: "destructive", description: error.message }),
   });
 
-  const showing = form.watch("announcements").filter((a) => a.isActive).length;
+  // As the save counts them: one past its last day is no longer in the pop-up.
+  const today = todayNZ();
+  const showing = form
+    .watch("announcements")
+    .filter((a) =>
+      isAnnouncementShowing(
+        { isActive: a.isActive, endsOn: a.endsAt && pickedDay(a.endsAt) },
+        today,
+      ),
+    ).length;
 
   return (
     <Card>
@@ -105,6 +123,7 @@ export function AnnouncementsCard() {
                   text2: a.text2?.length ? a.text2 : undefined,
                   isActive: a.isActive,
                   publishedOn: pickedDay(a.publishedAt),
+                  endsOn: a.endsAt && pickedDay(a.endsAt),
                 })),
               }),
             )}
@@ -210,6 +229,35 @@ export function AnnouncementsCard() {
 
                   <FormField
                     control={form.control}
+                    name={`announcements.${index}.endsAt`}
+                    render={({ field: input }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {language === "en" ? "Ends" : "结束"}
+                        </FormLabel>
+                        <DateField
+                          value={input.value}
+                          onChange={input.onChange}
+                          placeholder={
+                            language === "en" ? "No end" : "无结束日期"
+                          }
+                        />
+                        <FormDescription>
+                          {input.value && pickedDay(input.value) < today
+                            ? language === "en"
+                              ? "Ended. The app no longer shows it."
+                              : "已结束，应用程序不再显示。"
+                            : language === "en"
+                              ? "The last day it shows. Empty shows it until it's switched off."
+                              : "显示的最后一天。留空则一直显示，直到关闭。"}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
                     name={`announcements.${index}.isActive`}
                     render={({ field: input }) => (
                       <FormItem className="flex items-center gap-2 pb-2">
@@ -240,6 +288,7 @@ export function AnnouncementsCard() {
                     text2: "",
                     isActive: true,
                     publishedAt: new Date(),
+                    endsAt: null,
                   })
                 }
               >

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { pickedDay, todayNZ } from "~/lib/aucklandDay";
 import {
   DISCOUNT_MAX_PERCENT,
   DISCOUNT_MIN_PERCENT,
@@ -9,6 +10,7 @@ import {
   ANNOUNCEMENT_TEXT_MAX_LENGTH,
   ANNOUNCEMENT_TITLE_MAX_LENGTH,
   BENEFIT_MAX_LENGTH,
+  isAnnouncementShowing,
   MAX_ACTIVE_ANNOUNCEMENTS,
   MEMBER_BONUS_PERCENT_MAX,
   MEMBER_BONUS_PERCENT_MIN,
@@ -16,6 +18,7 @@ import {
   MODIFIER_PERCENT_MIN,
   POINTS_PER_DOLLAR_MAX,
   POINTS_PER_DOLLAR_MIN,
+  SHOP_ABOUT_MAX_LENGTH,
 } from "~/lib/shopSettings";
 
 const fileSchema = z.instanceof(File, { message: "File is required" });
@@ -305,6 +308,11 @@ export const shopProfileSchema = z.object({
   phone: z.string().trim().min(1).max(30),
   email: z.string().trim().email().max(254),
   website: z.string().trim().url().max(200),
+  /**
+   * Optional, unlike the rest: the app shows the paragraph it was built with until the shop
+   * writes one, and `saveShopProfile` stores a blank as null to hand it back to that text.
+   */
+  about: z.string().trim().max(SHOP_ABOUT_MAX_LENGTH).optional(),
 });
 
 /**
@@ -351,11 +359,33 @@ const announcementFields = z.object({
   text2: z.string().trim().max(ANNOUNCEMENT_TEXT_MAX_LENGTH).optional(),
   isActive: z.boolean(),
   publishedAt: z.date(),
+  /** The last day it shows. Null shows it until it is switched off. */
+  endsAt: z.date().nullable().default(null),
 });
 
-/** The card's form, whose date is the calendar control's own `Date`. */
+const END_BEFORE_DATE =
+  "The end date is before the announcement's date, so it would never show.";
+
+/**
+ * The card's form, whose dates are the calendar controls' own `Date`s.
+ *
+ * The end is checked against the date by the day each shows, through `pickedDay`, rather
+ * than as instants: a new row's date is the moment it was added, so an end picked for that
+ * same day is an earlier instant and would be refused. The form runs in the browser, which
+ * is where `pickedDay` is right.
+ */
 export const announcementsFormSchema = z.object({
-  announcements: z.array(announcementFields),
+  announcements: z.array(
+    announcementFields.superRefine((a, ctx) => {
+      if (a.endsAt && pickedDay(a.endsAt) < pickedDay(a.publishedAt)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["endsAt"],
+          message: END_BEFORE_DATE,
+        });
+      }
+    }),
+  ),
 });
 
 /**
@@ -371,8 +401,19 @@ export const announcementsFormSchema = z.object({
  * as a new announcement worth re-showing, so correcting a typo must not reach for it.
  */
 export const announcementSchema = announcementFields
-  .omit({ publishedAt: true })
-  .extend({ publishedOn: z.string().date() });
+  .omit({ publishedAt: true, endsAt: true })
+  .extend({
+    publishedOn: z.string().date(),
+    /**
+     * Null clears the end. Absent keeps whatever is stored: an admin tab opened before end
+     * dates existed sends no field, and reading that as null erased an end set since.
+     */
+    endsOn: z.string().date().nullable().optional(),
+  })
+  .refine((a) => a.endsOn == null || a.endsOn >= a.publishedOn, {
+    message: END_BEFORE_DATE,
+    path: ["endsOn"],
+  });
 
 export const saveAnnouncementsSchema = z.object({
   /**
@@ -385,9 +426,16 @@ export const saveAnnouncementsSchema = z.object({
   knownIds: z.array(z.string().min(1)),
   announcements: z
     .array(announcementSchema)
+    // One that has ended is no more showing than one switched off.
     .refine(
       (list) =>
-        list.filter((a) => a.isActive).length <= MAX_ACTIVE_ANNOUNCEMENTS,
+        list.filter((a) =>
+          isAnnouncementShowing(
+            { isActive: a.isActive, endsOn: a.endsOn ?? null },
+            todayNZ(),
+          ),
+        ).length <=
+        MAX_ACTIVE_ANNOUNCEMENTS,
       `At most ${MAX_ACTIVE_ANNOUNCEMENTS} announcements can be showing at once`,
     ),
 });

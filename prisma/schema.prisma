@@ -37,14 +37,14 @@ model Session {
 }
 
 model User {
-  id                        String          @id @default(cuid())
-  username                  String?         @unique
+  id                        String            @id @default(cuid())
+  username                  String?           @unique
   password                  String
-  email                     String          @unique
+  email                     String            @unique
   emailVerified             DateTime?
   image                     String?
   role                      Role
-  anonymousEnabled          Boolean         @default(false)
+  anonymousEnabled          Boolean           @default(false)
   requires2FAExpiresAt      DateTime?
   otp                       String?
   otpExpiresAt              DateTime?
@@ -72,7 +72,7 @@ model User {
   /// scheduled; cancelling clears both. The account works as normal until then.
   deletionRequestedAt       DateTime?
   deletionScheduledFor      DateTime?
-  createdAt                 DateTime        @default(now())
+  createdAt                 DateTime          @default(now())
   accounts                  Account[]
   Authenticator             Authenticator[]
   cart                      Cart?
@@ -85,37 +85,37 @@ model User {
 }
 
 model Membership {
-  id                    String            @id @default(cuid())
-  userId                String            @unique
+  id                    String         @id @default(cuid())
+  userId                String         @unique
   planId                String
-  startDate             DateTime          @default(now())
+  startDate             DateTime       @default(now())
   endDate               DateTime
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  isActive              Boolean           @default(false)
-  cancel                Boolean           @default(false)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  isActive              Boolean        @default(false)
+  cancel                Boolean        @default(false)
   stripePaymentMethodId String?
-  stripeSubscriptionId  String?           @unique
-  paymentStatus         PaymentStatus     @default(PENDING)
+  stripeSubscriptionId  String?        @unique
+  paymentStatus         PaymentStatus  @default(PENDING)
   paymentFailureCode    String?
   paymentFailureMessage String?
   /// Monthly invoices paid in a row on the current subscription, and the input to the member
   /// discount. Written by the order server from Stripe's own invoices, and put back to 0 when
   /// the subscription ends: a rejoin is a new subscription that starts the run again. The
   /// name is older than `lifetimeMonths` and is kept because installed app builds read it.
-  totalMonths           Int               @default(0)
+  totalMonths           Int            @default(0)
   /// Every month of membership ever paid for, breaks included, across all of the member's
   /// subscriptions. Never goes down. Points expiry reads it as "this membership was paid
   /// for", which `totalMonths` could only answer while it was never reset.
-  lifetimeMonths        Int               @default(0)
+  lifetimeMonths        Int            @default(0)
   /// The end date a "your membership ends soon" reminder has already been claimed for. Cron
   /// runs in every order server instance, so the push needs a claim; keyed on the date rather
   /// than a flag, so resuming and cancelling again in a later period makes the next reminder
   /// due with nothing to reset, while cancel-resume-cancel within one period keeps the same
   /// end date and is not reminded twice.
   endWarnedFor          DateTime?
-  plan                  MembershipPlan    @relation(fields: [planId], references: [id])
-  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                  MembershipPlan @relation(fields: [planId], references: [id])
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model MembershipPlan {
@@ -329,12 +329,12 @@ model TempOrderCounter {
 }
 
 model Order {
-  id                      String         @id @default(cuid())
+  id                      String          @id @default(cuid())
   tempOrderId             String
   priceInCents            Int
-  discountedAmountInCents Int            @default(0)
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @updatedAt
+  discountedAmountInCents Int             @default(0)
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
   customerFirstName       String
   customerLastName        String
   customerEmail           String
@@ -342,19 +342,20 @@ model Order {
   completedAt             DateTime?
   pickedUpAt              DateTime?
   status                  Status
-  dineIn                  Boolean        @default(false)
-  pickUpTime              DateTime       @default(now())
+  dineIn                  Boolean         @default(false)
+  pickUpTime              DateTime        @default(now())
   GST                     Int
   appUserId               String?
-  source                  OrderSource    @default(WEBSITE)
+  source                  OrderSource     @default(WEBSITE)
   // Unique so a retried createOrder can never produce a second order for a
   // charge that was only made once. Postgres treats NULLs as distinct, so
   // orders paid entirely in loyalty points are unaffected.
-  paymentIntentId         String?        @unique
+  paymentIntentId         String?         @unique
   paymentMethodId         String?
-  notified                Boolean        @default(false)
-  appUser                 User?          @relation("UserOrders", fields: [appUserId], references: [id])
+  notified                Boolean         @default(false)
+  appUser                 User?           @relation("UserOrders", fields: [appUserId], references: [id])
   desserts                OrderDessert[]
+  loyaltyRecords          LoyaltyRecord[]
 
   @@index([status])
   // Serves the repeat-order check createPaymentIntent runs before charging.
@@ -421,6 +422,13 @@ model LoyaltyRecord {
 
   loyaltyId String
   loyalty   Loyalty @relation(fields: [loyaltyId], references: [id])
+
+  // The order that earned an EARNED record, so the app can say what each order earned.
+  // Null for every other reason, and for records written before 20261002000000.
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
 }
 
 model LoyaltyWinner {
@@ -619,6 +627,8 @@ model ShopProfile {
   phone     String
   email     String
   website   String
+  // The app's "About Eversweet" paragraph. Null shows the text the app was built with.
+  about     String?
   updatedAt DateTime @updatedAt
 }
 
@@ -629,15 +639,18 @@ model ShopProfile {
 /// for every customer again. `position` orders the pop-up's pages; `isActive` retires a
 /// message without losing it.
 model Announcement {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   text1       String
   text2       String?
-  publishedAt DateTime @default(now())
-  isActive    Boolean  @default(true)
-  position    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  publishedAt DateTime  @default(now())
+  // The last instant of the last Auckland day it shows, like an offer's endsAt. Null runs
+  // until it is switched off: a promotion's message used to outlive the promotion.
+  endsAt      DateTime?
+  isActive    Boolean   @default(true)
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 enum OfferStatus {
