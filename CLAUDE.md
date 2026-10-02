@@ -583,7 +583,11 @@ prize code, pushing a notification. Nothing here has an equivalent.
   of the picked Auckland day (`endOfDayNZ`), which the order server stops serving after. One
   that has ended stays in the list, like one switched off, and neither counts towards the five
   showing (`isAnnouncementShowing` in `lib/shopSettings`, read against `todayNZ()`). An end
-  before the announcement's own date is refused, on the form by the day each shows.
+  before the announcement's own date is refused, on the form by the day each shows. A row
+  sent with no `endsOn` keeps its stored end (only null clears it), so a tab opened before end
+  dates existed cannot erase one; `about` is kept the same way. `getAnnouncements` sends both
+  dates as stored instants and the card applies `calendarDate`, which is browser-only: run on
+  the server it showed an admin west of UTC the day before.
 - **`ShopProfile.about`** is the customer app's "About Eversweet" paragraph. Optional, unlike
   the other details: a blank is saved as null, and the app then shows the text it was built
   with.
