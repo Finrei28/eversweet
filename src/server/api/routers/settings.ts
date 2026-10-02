@@ -281,7 +281,7 @@ export const settingsRouter = createTRPCRouter({
         // nothing in the UI to suggest anything had gone. Comparing the whole set catches
         // a row added elsewhere and one deleted elsewhere alike.
         const current = await tx.announcement.findMany({
-          select: { id: true },
+          select: { id: true, endsAt: true },
         });
         const currentIds = new Set(current.map((a) => a.id));
         const knownIds = new Set(input.knownIds);
@@ -298,6 +298,22 @@ export const settingsRouter = createTRPCRouter({
             code: "CONFLICT",
             message:
               "Someone else changed the announcements while this page was open. Reload and make your change again.",
+          });
+        }
+
+        // A row sent with no end keeps the stored one (a tab from before end dates), so the
+        // schema's check that the end is not before the date cannot see it. Moving the date
+        // past that end would save an announcement that never shows, with nothing said.
+        const storedEnds = new Map(current.map((a) => [a.id, a.endsAt]));
+        const endsBeforeItsDate = input.announcements.some((a) => {
+          const storedEnd = a.id && a.endsOn === undefined && storedEnds.get(a.id);
+          return storedEnd ? storedEnd < startOfDayNZ(a.publishedOn) : false;
+        });
+        if (endsBeforeItsDate) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "An announcement now ends before the date you gave it. Reload the page to see its end date, then save again.",
           });
         }
 

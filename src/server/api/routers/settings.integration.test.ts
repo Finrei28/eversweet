@@ -628,6 +628,29 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
       expect(cleared?.endsAt).toBeNull();
     });
 
+    /**
+     * The end that save keeps is invisible to the schema's date check. An older tab moving
+     * the date past it would save an announcement that never shows.
+     */
+    it("refuses a date moved past an end the save keeps", async () => {
+      const caller = adminCaller();
+      await caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [one({ publishedOn: "2026-10-01", endsOn: "2026-10-05" })],
+      });
+      const [saved] = await db.announcement.findMany({ select: { id: true } });
+
+      const moved = caller.settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        // No `endsOn`, as a tab from before end dates sends it.
+        announcements: [one({ id: saved!.id, publishedOn: "2026-10-06" })],
+      });
+
+      await expect(moved).rejects.toThrow(/ends before the date you gave it/);
+      const after = await db.announcement.findFirst();
+      expect(after?.publishedAt.toISOString()).toBe("2026-09-30T11:00:00.000Z");
+    });
+
     it("refuses an end before the announcement's date", async () => {
       await expect(
         adminCaller().settings.saveAnnouncements({
