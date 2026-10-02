@@ -117,10 +117,11 @@ describe("announcement schemas", () => {
     expect(formWith(new Date(2026, 9, 31)).success).toBe(true);
     expect(wireWith("2026-10-30").success).toBe(false);
     expect(wireWith(day).success).toBe(true);
-    // And none at all, which runs until it is switched off.
-    expect(
-      announcementSchema.safeParse({ ...row, publishedOn: day }).data?.endsOn,
-    ).toBeNull();
+    // And none at all, which is accepted and left absent: the save then keeps the stored
+    // end, so a tab from before end dates cannot clear one.
+    const none = announcementSchema.safeParse({ ...row, publishedOn: day });
+    expect(none.success).toBe(true);
+    expect(none.data).not.toHaveProperty("endsOn");
   });
 
   /** A day, not an instant: "2026-10-31T00:00:00Z" is the bug this whole split avoids. */
