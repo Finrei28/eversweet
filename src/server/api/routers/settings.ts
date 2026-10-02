@@ -160,6 +160,7 @@ export const settingsRouter = createTRPCRouter({
         phone: true,
         email: true,
         website: true,
+        about: true,
       },
     });
 
@@ -173,6 +174,7 @@ export const settingsRouter = createTRPCRouter({
         phone: "09 949 1050",
         email: "eversweet@eversweet.co.nz",
         website: "https://eversweet.co.nz",
+        about: null,
       }
     );
   }),
@@ -180,10 +182,13 @@ export const settingsRouter = createTRPCRouter({
   saveShopProfile: protectedProcedure
     .input(shopProfileSchema)
     .mutation(async ({ ctx, input }) => {
-      const { count } = await ctx.db.shopProfile.updateMany({ data: input });
+      // A blank About is stored as null, which the app reads as "show the text you were
+      // built with", rather than as an empty paragraph under the heading.
+      const data = { ...input, about: input.about ? input.about : null };
+      const { count } = await ctx.db.shopProfile.updateMany({ data });
       if (count === 0) {
         await ctx.db.shopProfile.create({
-          data: { id: SINGLETON_ID, ...input },
+          data: { id: SINGLETON_ID, ...data },
         });
       }
 

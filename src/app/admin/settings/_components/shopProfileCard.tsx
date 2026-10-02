@@ -17,19 +17,21 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormInput,
   FormItem,
   FormLabel,
   FormMessage,
 } from "~/components/ui/form";
+import { Textarea } from "~/components/ui/textarea";
 import { useToast } from "~/hooks/use-toast";
 import { api } from "~/trpc/react";
 
 type ShopProfileForm = z.infer<typeof shopProfileSchema>;
 
 const FIELDS: {
-  name: keyof ShopProfileForm;
+  name: Exclude<keyof ShopProfileForm, "about">;
   en: string;
   zh: string;
 }[] = [
@@ -61,7 +63,8 @@ export function ShopProfileCard() {
 
   const form = useForm<ShopProfileForm>({
     resolver: zodResolver(shopProfileSchema),
-    values: profile,
+    // Null until the shop writes one; the textarea edits a string.
+    values: { ...profile, about: profile.about ?? "" },
   });
 
   const { mutate, isPending } = api.settings.saveShopProfile.useMutation({
@@ -109,6 +112,29 @@ export function ShopProfileCard() {
                 />
               ))}
             </div>
+
+            {/* The app's "About Eversweet" paragraph, which was written into the app and
+                could not be changed from here (the app's TODO item 8, entry 11). */}
+            <FormField
+              control={form.control}
+              name="about"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {language === "en" ? "About the shop" : "关于本店"}
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea rows={3} {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    {language === "en"
+                      ? "Shown under \"About Eversweet\" on the app's store screen. Empty shows the app's own text."
+                      : "显示在应用程序店铺页面的“关于永玖甜”下。留空则显示应用程序自带的文字。"}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <Button
               type="submit"

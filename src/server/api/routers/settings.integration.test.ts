@@ -256,6 +256,50 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
     });
   });
 
+  describe("shop profile", () => {
+    const profile = {
+      name: "Eversweet",
+      address: "5D/119 Meadowland Drive, Somerville",
+      city: "Auckland",
+      state: "Auckland",
+      postal: "2014",
+      phone: "09 949 1050",
+      email: "eversweet@eversweet.co.nz",
+      website: "https://eversweet.co.nz",
+    };
+
+    /**
+     * The app's "About Eversweet" paragraph was written into the app (its TODO item 8, entry
+     * 11). Blank is stored as null, which the app reads as "show the text you were built
+     * with", rather than as an empty paragraph under the heading.
+     */
+    it("saves the About text, and stores a blank one as null", async () => {
+      const caller = adminCaller();
+      await caller.settings.saveShopProfile({
+        ...profile,
+        about: "Desserts made by hand.",
+      });
+      const written = await db.shopProfile.findFirst({ select: { about: true } });
+
+      await caller.settings.saveShopProfile({ ...profile, about: "   " });
+      const blanked = await db.shopProfile.findFirst({ select: { about: true } });
+
+      expect(written?.about).toBe("Desserts made by hand.");
+      expect(blanked?.about).toBeNull();
+      await expect(caller.settings.getShopProfile()).resolves.toMatchObject({
+        about: null,
+      });
+    });
+
+    it("reads back no About text when nothing is stored", async () => {
+      await db.shopProfile.deleteMany();
+
+      await expect(
+        adminCaller().settings.getShopProfile(),
+      ).resolves.toMatchObject({ ...profile, about: null });
+    });
+  });
+
   describe("announcements", () => {
     /**
      * The ids currently in the database. Saving replaces the whole list, so the mutation

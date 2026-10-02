@@ -61,6 +61,12 @@ export const isAnnouncementShowing = (
   (announcement.endsOn === null || announcement.endsOn >= today);
 
 /**
+ * The app's "About Eversweet" paragraph on its store screen. A few sentences rather than a
+ * page: it sits above the shop's contact rows.
+ */
+export const SHOP_ABOUT_MAX_LENGTH = 600;
+
+/**
  * The shop's own details, as the `ShopProfile` table holds them and the order server serves
  * them from `/api/getStoreInfo`.
  *

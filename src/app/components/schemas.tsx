@@ -18,6 +18,7 @@ import {
   MODIFIER_PERCENT_MIN,
   POINTS_PER_DOLLAR_MAX,
   POINTS_PER_DOLLAR_MIN,
+  SHOP_ABOUT_MAX_LENGTH,
 } from "~/lib/shopSettings";
 
 const fileSchema = z.instanceof(File, { message: "File is required" });
@@ -307,6 +308,11 @@ export const shopProfileSchema = z.object({
   phone: z.string().trim().min(1).max(30),
   email: z.string().trim().email().max(254),
   website: z.string().trim().url().max(200),
+  /**
+   * Optional, unlike the rest: the app shows the paragraph it was built with until the shop
+   * writes one, and `saveShopProfile` stores a blank as null to hand it back to that text.
+   */
+  about: z.string().trim().max(SHOP_ABOUT_MAX_LENGTH).optional(),
 });
 
 /**
