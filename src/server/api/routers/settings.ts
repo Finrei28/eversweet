@@ -10,7 +10,7 @@ import {
   saveAnnouncementsSchema,
   shopProfileSchema,
 } from "~/app/components/schemas";
-import { calendarDate, endOfDayNZ, startOfDayNZ } from "~/lib/aucklandDay";
+import { endOfDayNZ, startOfDayNZ } from "~/lib/aucklandDay";
 import { benefitsClaimingOtherMultiplier } from "~/lib/shopSettings";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { SHOP_PROFILE_TAG } from "~/server/shopProfile";
@@ -243,13 +243,11 @@ export const settingsRouter = createTRPCRouter({
       },
     });
 
-    // The stored instants back to the calendar days they fall on in Auckland, so the
-    // pickers show the days that were chosen rather than the browser's reading of them.
-    return rows.map((row) => ({
-      ...row,
-      publishedAt: calendarDate(row.publishedAt),
-      endsAt: row.endsAt && calendarDate(row.endsAt),
-    }));
+    // The stored instants, as they are. The card turns them into the calendar days they
+    // fall on in Auckland with `calendarDate`, which only works in the browser: run here, on
+    // a server in UTC, it sent midnight UTC, which a browser west of UTC shows - and saves -
+    // as the day before. The offer dialog already converts in the browser.
+    return rows;
   }),
 
   /**

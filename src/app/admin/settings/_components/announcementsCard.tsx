@@ -29,7 +29,7 @@ import {
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { useToast } from "~/hooks/use-toast";
-import { pickedDay, todayNZ } from "~/lib/aucklandDay";
+import { calendarDate, pickedDay, todayNZ } from "~/lib/aucklandDay";
 import {
   isAnnouncementShowing,
   MAX_ACTIVE_ANNOUNCEMENTS,
@@ -65,8 +65,10 @@ export function AnnouncementsCard() {
         text1: a.text1,
         text2: a.text2 ?? "",
         isActive: a.isActive,
-        publishedAt: a.publishedAt,
-        endsAt: a.endsAt,
+        // The stored instants as the Auckland days they fall on, which the pickers show.
+        // Here, in the browser, because that is the only place `calendarDate` is right.
+        publishedAt: calendarDate(a.publishedAt),
+        endsAt: a.endsAt && calendarDate(a.endsAt),
       })),
     },
   });

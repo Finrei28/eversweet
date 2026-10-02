@@ -8,7 +8,7 @@ vi.mock("next/cache", () => ({
   unstable_cache: (fn: unknown) => fn,
 }));
 
-import { pickedDay, todayNZ } from "~/lib/aucklandDay";
+import { todayNZ } from "~/lib/aucklandDay";
 import { db } from "~/server/db";
 import { lockAnnouncements } from "~/server/api/routers/settings";
 import { adminCaller } from "~/test/caller";
@@ -567,10 +567,17 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
         null,
       ]);
 
+      // The stored instants, untouched: the card converts them in the browser. Converted
+      // here, on a server in UTC, they reached a browser west of UTC as the day before.
       const read = await adminCaller().settings.getAnnouncements();
-      expect(read.map((a) => a.endsAt && pickedDay(a.endsAt))).toEqual([
-        "2026-10-05",
-        null,
+      expect(
+        read.map((a) => [
+          a.publishedAt.toISOString(),
+          a.endsAt?.toISOString() ?? null,
+        ]),
+      ).toEqual([
+        ["2026-09-30T11:00:00.000Z", "2026-10-05T10:59:59.999Z"],
+        ["2026-06-30T12:00:00.000Z", null],
       ]);
     });
 
