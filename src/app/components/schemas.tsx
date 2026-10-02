@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { pickedDay, todayNZ } from "~/lib/aucklandDay";
 import {
   DISCOUNT_MAX_PERCENT,
   DISCOUNT_MIN_PERCENT,
@@ -9,6 +10,7 @@ import {
   ANNOUNCEMENT_TEXT_MAX_LENGTH,
   ANNOUNCEMENT_TITLE_MAX_LENGTH,
   BENEFIT_MAX_LENGTH,
+  isAnnouncementShowing,
   MAX_ACTIVE_ANNOUNCEMENTS,
   MEMBER_BONUS_PERCENT_MAX,
   MEMBER_BONUS_PERCENT_MIN,
@@ -351,11 +353,33 @@ const announcementFields = z.object({
   text2: z.string().trim().max(ANNOUNCEMENT_TEXT_MAX_LENGTH).optional(),
   isActive: z.boolean(),
   publishedAt: z.date(),
+  /** The last day it shows. Null shows it until it is switched off. */
+  endsAt: z.date().nullable().default(null),
 });
 
-/** The card's form, whose date is the calendar control's own `Date`. */
+const END_BEFORE_DATE =
+  "The end date is before the announcement's date, so it would never show.";
+
+/**
+ * The card's form, whose dates are the calendar controls' own `Date`s.
+ *
+ * The end is checked against the date by the day each shows, through `pickedDay`, rather
+ * than as instants: a new row's date is the moment it was added, so an end picked for that
+ * same day is an earlier instant and would be refused. The form runs in the browser, which
+ * is where `pickedDay` is right.
+ */
 export const announcementsFormSchema = z.object({
-  announcements: z.array(announcementFields),
+  announcements: z.array(
+    announcementFields.superRefine((a, ctx) => {
+      if (a.endsAt && pickedDay(a.endsAt) < pickedDay(a.publishedAt)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["endsAt"],
+          message: END_BEFORE_DATE,
+        });
+      }
+    }),
+  ),
 });
 
 /**
@@ -371,8 +395,15 @@ export const announcementsFormSchema = z.object({
  * as a new announcement worth re-showing, so correcting a typo must not reach for it.
  */
 export const announcementSchema = announcementFields
-  .omit({ publishedAt: true })
-  .extend({ publishedOn: z.string().date() });
+  .omit({ publishedAt: true, endsAt: true })
+  .extend({
+    publishedOn: z.string().date(),
+    endsOn: z.string().date().nullable().default(null),
+  })
+  .refine((a) => a.endsOn === null || a.endsOn >= a.publishedOn, {
+    message: END_BEFORE_DATE,
+    path: ["endsOn"],
+  });
 
 export const saveAnnouncementsSchema = z.object({
   /**
@@ -385,9 +416,11 @@ export const saveAnnouncementsSchema = z.object({
   knownIds: z.array(z.string().min(1)),
   announcements: z
     .array(announcementSchema)
+    // One that has ended is no more showing than one switched off.
     .refine(
       (list) =>
-        list.filter((a) => a.isActive).length <= MAX_ACTIVE_ANNOUNCEMENTS,
+        list.filter((a) => isAnnouncementShowing(a, todayNZ())).length <=
+        MAX_ACTIVE_ANNOUNCEMENTS,
       `At most ${MAX_ACTIVE_ANNOUNCEMENTS} announcements can be showing at once`,
     ),
 });

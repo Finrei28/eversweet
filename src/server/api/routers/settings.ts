@@ -10,7 +10,7 @@ import {
   saveAnnouncementsSchema,
   shopProfileSchema,
 } from "~/app/components/schemas";
-import { calendarDate, startOfDayNZ } from "~/lib/aucklandDay";
+import { calendarDate, endOfDayNZ, startOfDayNZ } from "~/lib/aucklandDay";
 import { benefitsClaimingOtherMultiplier } from "~/lib/shopSettings";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { SHOP_PROFILE_TAG } from "~/server/shopProfile";
@@ -234,14 +234,16 @@ export const settingsRouter = createTRPCRouter({
         text2: true,
         isActive: true,
         publishedAt: true,
+        endsAt: true,
       },
     });
 
-    // The stored instant back to the calendar day it falls on in Auckland, so the picker
-    // shows the day that was chosen rather than the browser's reading of the instant.
+    // The stored instants back to the calendar days they fall on in Auckland, so the
+    // pickers show the days that were chosen rather than the browser's reading of them.
     return rows.map((row) => ({
       ...row,
       publishedAt: calendarDate(row.publishedAt),
+      endsAt: row.endsAt && calendarDate(row.endsAt),
     }));
   }),
 
@@ -306,6 +308,8 @@ export const settingsRouter = createTRPCRouter({
             isActive: a.isActive,
             position,
             publishedAt: startOfDayNZ(a.publishedOn),
+            // The last instant of the day, as an offer's end is, so it shows through it.
+            endsAt: a.endsOn === null ? null : endOfDayNZ(a.endsOn),
           };
 
           if (a.id) {

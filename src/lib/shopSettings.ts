@@ -47,6 +47,20 @@ export const ANNOUNCEMENT_TEXT_MAX_LENGTH = 300;
 export const MAX_ACTIVE_ANNOUNCEMENTS = 5;
 
 /**
+ * Whether an announcement is in the app's pop-up: switched on, and not past its last day.
+ *
+ * `endsOn` and `today` are Auckland calendar days ("2026-10-31"), which compare as strings.
+ * One that has ended stays in the list, like one switched off, so it can be brought back
+ * without retyping it, and neither counts towards `MAX_ACTIVE_ANNOUNCEMENTS`.
+ */
+export const isAnnouncementShowing = (
+  announcement: { isActive: boolean; endsOn: string | null },
+  today: string,
+): boolean =>
+  announcement.isActive &&
+  (announcement.endsOn === null || announcement.endsOn >= today);
+
+/**
  * The shop's own details, as the `ShopProfile` table holds them and the order server serves
  * them from `/api/getStoreInfo`.
  *

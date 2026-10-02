@@ -8,6 +8,7 @@ vi.mock("next/cache", () => ({
   unstable_cache: (fn: unknown) => fn,
 }));
 
+import { pickedDay, todayNZ } from "~/lib/aucklandDay";
 import { db } from "~/server/db";
 import { lockAnnouncements } from "~/server/api/routers/settings";
 import { adminCaller } from "~/test/caller";
@@ -496,6 +497,78 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
           announcements: [one({ id: stale[0] })],
         }),
       ).rejects.toThrow(/changed the announcements/i);
+    });
+
+    /**
+     * The end date, so a promotion's message stops with the promotion (the app's TODO item
+     * 8, entry 1). Stored as the last instant of the Auckland day, as an offer's end is: the
+     * order server compares inclusively, so it shows through 5 October.
+     */
+    it("stores the end as the last instant of the Auckland day, and reads that day back", async () => {
+      await adminCaller().settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: [
+          one({ title: "Ends", publishedOn: "2026-10-01", endsOn: "2026-10-05" }),
+          one({ title: "Runs on", position: 1 }),
+        ],
+      });
+
+      const saved = await db.announcement.findMany({
+        orderBy: { position: "asc" },
+        select: { endsAt: true },
+      });
+      // 5 October is in daylight time (NZDT, UTC+13).
+      expect(saved.map((a) => a.endsAt?.toISOString() ?? null)).toEqual([
+        "2026-10-05T10:59:59.999Z",
+        null,
+      ]);
+
+      const read = await adminCaller().settings.getAnnouncements();
+      expect(read.map((a) => a.endsAt && pickedDay(a.endsAt))).toEqual([
+        "2026-10-05",
+        null,
+      ]);
+    });
+
+    it("refuses an end before the announcement's date", async () => {
+      await expect(
+        adminCaller().settings.saveAnnouncements({
+          knownIds: await currentIds(),
+          announcements: [
+            one({ publishedOn: "2026-10-05", endsOn: "2026-10-04" }),
+          ],
+        }),
+      ).rejects.toThrow();
+
+      expect(await db.announcement.count()).toBe(0);
+    });
+
+    /**
+     * One past its last day is no longer in the pop-up, so it no more takes a place than
+     * one switched off. One ending today still does.
+     */
+    it("counts an ended one as not showing, and one ending today as showing", async () => {
+      const six = (lastEndsOn: string) =>
+        Array.from({ length: 6 }, (_, i) =>
+          one({
+            title: `Announcement ${i}`,
+            publishedOn: "2020-01-01",
+            endsOn: i === 5 ? lastEndsOn : null,
+          }),
+        );
+
+      await expect(
+        adminCaller().settings.saveAnnouncements({
+          knownIds: await currentIds(),
+          announcements: six(todayNZ()),
+        }),
+      ).rejects.toThrow();
+
+      await adminCaller().settings.saveAnnouncements({
+        knownIds: await currentIds(),
+        announcements: six("2020-01-31"),
+      });
+      expect(await db.announcement.count()).toBe(6);
     });
 
     /** A retired announcement is kept, so it can be brought back without retyping it. */
