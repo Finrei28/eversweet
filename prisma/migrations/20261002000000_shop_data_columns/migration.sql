@@ -15,6 +15,9 @@
 --   came from, and matching records to orders by time would be a guess written down as a
 --   fact. Orders from before this migration show no points earned.
 --
+-- Purely additive, so there is nothing to assert against: no existing value is moved,
+-- rewritten or dropped.
+--
 -- `orderId` is SET NULL on delete: the record is the customer's points history and outlives
 -- the order. The index serves the order list, which reads each order's EARNED record through
 -- this relation in the same query.
