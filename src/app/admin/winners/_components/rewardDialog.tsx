@@ -28,11 +28,13 @@ import {
 } from "~/components/ui/form";
 import { Textarea } from "~/components/ui/textarea";
 import { toast } from "~/hooks/use-toast";
-import { pickedDay } from "~/lib/aucklandDay";
+import { endOfDayNZ, pickedDay } from "~/lib/aucklandDay";
 import {
+  collectionWarning,
   defaultRewardExpiry,
   formatPrizeCode,
   monthLabel,
+  nextCollectionChange,
 } from "~/lib/winnerRewards";
 import { api } from "~/trpc/react";
 import { type WinnerRow } from "../columns";
@@ -111,9 +113,38 @@ export default function RewardDialog({
     prevOpen.current = open;
   }, [open, form]);
 
-  if (!winner) return null;
+  // The deadline this save would leave, read the way the submit below sends it: an untouched
+  // edit keeps the stored one, anything else ends with the Auckland day picked.
+  const pickedExpiry = form.watch("expiresAt");
+  const storedExpiry = winner?.reward?.expiresAt;
+  const deadlineTime = !winner
+    ? null
+    : storedExpiry && pickedExpiry.getTime() === storedExpiry.getTime()
+      ? storedExpiry.getTime()
+      : endOfDayNZ(pickedDay(pickedExpiry)).getTime();
+
+  // Re-read the warning when its words would change - at Auckland midnight, or at the
+  // deadline. Nothing else re-renders an open dialog as the clock moves, so one left open
+  // overnight said "only today" for a prize that had expired (Greptile on eversweet#34).
+  const [clockTick, setClockTick] = useState(0);
+  useEffect(() => {
+    if (!open || deadlineTime === null) return;
+    const change = nextCollectionChange(new Date(deadlineTime));
+    if (!change) return;
+    const timer = setTimeout(
+      () => setClockTick((tick) => tick + 1),
+      change.getTime() - Date.now() + 50,
+    );
+    return () => clearTimeout(timer);
+  }, [open, deadlineTime, clockTick]);
+
+  if (!winner || deadlineTime === null) return null;
 
   const reward = winner.reward;
+
+  // A late prize keeps its fixed deadline by design, so one assigned at 5:21 PM on its last
+  // day gave the winner hours with nothing said (eversweet_app TODO item 8, entry 41).
+  const warning = collectionWarning(new Date(deadlineTime), language);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -211,6 +242,14 @@ export default function RewardDialog({
                       ? "Defaults to the end of the month after the one that was won."
                       : "默认为获奖月份次月的月底。"}
                   </p>
+                  {warning && (
+                    <p
+                      role="status"
+                      className="mt-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm"
+                    >
+                      {warning}
+                    </p>
+                  )}
                   <FormMessage />
                 </div>
               )}

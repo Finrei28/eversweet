@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import { endOfDayNZ } from "./aucklandDay";
 import {
+  collectionWarning,
+  daysToCollect,
   defaultRewardExpiry,
   finishedMonths,
   formatPrizeCode,
   monthLabel,
+  nextCollectionChange,
   rewardStatus,
 } from "./winnerRewards";
 
@@ -163,5 +166,114 @@ describe("finishedMonths", () => {
 
   it("offers a year of months by default", () => {
     expect(finishedMonths()).toHaveLength(12);
+  });
+});
+
+/**
+ * TODO item 8 (eversweet_app), entry 41: a prize assigned at 5:21 PM on its last day gave the
+ * winner hours, and the assign screen said nothing. It now warns under a week.
+ */
+describe("daysToCollect", () => {
+  const at = (iso: string) =>
+    DateTime.fromISO(iso, { zone: "Pacific/Auckland" }).toJSDate();
+  const lastDay = endOfDayNZ("2026-10-31");
+
+  it("counts today, so the last day itself is one", () => {
+    expect(daysToCollect(lastDay, at("2026-10-31T17:21"))).toBe(1);
+    expect(daysToCollect(lastDay, at("2026-10-28T09:00"))).toBe(4);
+  });
+
+  it("is whole Auckland days, whatever the hour", () => {
+    expect(daysToCollect(lastDay, at("2026-10-25T00:00"))).toBe(7);
+    expect(daysToCollect(lastDay, at("2026-10-25T23:59"))).toBe(7);
+  });
+
+  // The staff app's deadlines are midnight at the start of the next day; that day is not one.
+  it("reads a midnight deadline as ending the day before", () => {
+    expect(
+      daysToCollect(at("2026-11-01T00:00"), at("2026-10-31T17:21")),
+    ).toBe(1);
+  });
+
+  // Daylight time began on 27 September 2026, so that week is an hour short.
+  it("counts across the change to daylight time", () => {
+    expect(
+      daysToCollect(endOfDayNZ("2026-09-30"), at("2026-09-25T10:00")),
+    ).toBe(6);
+  });
+
+  it("is none once the deadline has passed", () => {
+    expect(daysToCollect(lastDay, at("2026-11-01T08:00"))).toBe(0);
+  });
+});
+
+describe("collectionWarning", () => {
+  const at = (iso: string) =>
+    DateTime.fromISO(iso, { zone: "Pacific/Auckland" }).toJSDate();
+  const lastDay = endOfDayNZ("2026-10-31");
+
+  it("says nothing with a week or more to go", () => {
+    expect(collectionWarning(lastDay, "en", at("2026-10-25T09:00"))).toBeNull();
+  });
+
+  it("says how many days the winner will have, under a week", () => {
+    expect(collectionWarning(lastDay, "en", at("2026-10-28T09:00"))).toBe(
+      "The winner will have 4 days to collect this.",
+    );
+    expect(collectionWarning(lastDay, "zh", at("2026-10-28T09:00"))).toBe(
+      "得奖者只有 4 天可以领取。",
+    );
+  });
+
+  it("says only today on the last day", () => {
+    expect(collectionWarning(lastDay, "en", at("2026-10-31T17:21"))).toBe(
+      "The winner will have only today to collect this.",
+    );
+  });
+
+  it("says the date has passed once it has", () => {
+    expect(collectionWarning(lastDay, "en", at("2026-11-02T09:00"))).toBe(
+      "This date has passed, so the winner can no longer collect this.",
+    );
+  });
+});
+
+/**
+ * Greptile on eversweet#34: the dialog worked the warning out once, so one left open past
+ * midnight still said "only today" for a prize that had expired. It re-reads at this instant.
+ */
+describe("nextCollectionChange", () => {
+  const at = (iso: string) =>
+    DateTime.fromISO(iso, { zone: "Pacific/Auckland" }).toJSDate();
+  const lastDay = endOfDayNZ("2026-10-31");
+
+  it("is the next Auckland midnight, when the day count drops", () => {
+    expect(nextCollectionChange(lastDay, at("2026-10-28T17:00"))).toEqual(
+      at("2026-10-29T00:00"),
+    );
+  });
+
+  it("is the deadline itself on the last day", () => {
+    expect(nextCollectionChange(lastDay, at("2026-10-31T17:21"))).toEqual(
+      lastDay,
+    );
+  });
+
+  // A midnight deadline is the same instant as the midnight it ends on.
+  it("is the deadline when it falls at midnight", () => {
+    expect(
+      nextCollectionChange(at("2026-11-01T00:00"), at("2026-10-31T17:21")),
+    ).toEqual(at("2026-11-01T00:00"));
+  });
+
+  it("is none once the deadline has passed, as the wording never changes again", () => {
+    expect(nextCollectionChange(lastDay, at("2026-11-01T08:00"))).toBeNull();
+  });
+
+  it("reads the words differently either side of it", () => {
+    const now = at("2026-10-31T17:21");
+    const change = nextCollectionChange(lastDay, now)!;
+    expect(collectionWarning(lastDay, "en", now)).toContain("only today");
+    expect(collectionWarning(lastDay, "en", change)).toContain("has passed");
   });
 });
