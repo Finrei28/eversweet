@@ -9,6 +9,7 @@ import {
   finishedMonths,
   formatPrizeCode,
   monthLabel,
+  nextCollectionChange,
   rewardStatus,
 } from "./winnerRewards";
 
@@ -234,5 +235,45 @@ describe("collectionWarning", () => {
     expect(collectionWarning(lastDay, "en", at("2026-11-02T09:00"))).toBe(
       "This date has passed, so the winner can no longer collect this.",
     );
+  });
+});
+
+/**
+ * Greptile on eversweet#34: the dialog worked the warning out once, so one left open past
+ * midnight still said "only today" for a prize that had expired. It re-reads at this instant.
+ */
+describe("nextCollectionChange", () => {
+  const at = (iso: string) =>
+    DateTime.fromISO(iso, { zone: "Pacific/Auckland" }).toJSDate();
+  const lastDay = endOfDayNZ("2026-10-31");
+
+  it("is the next Auckland midnight, when the day count drops", () => {
+    expect(nextCollectionChange(lastDay, at("2026-10-28T17:00"))).toEqual(
+      at("2026-10-29T00:00"),
+    );
+  });
+
+  it("is the deadline itself on the last day", () => {
+    expect(nextCollectionChange(lastDay, at("2026-10-31T17:21"))).toEqual(
+      lastDay,
+    );
+  });
+
+  // A midnight deadline is the same instant as the midnight it ends on.
+  it("is the deadline when it falls at midnight", () => {
+    expect(
+      nextCollectionChange(at("2026-11-01T00:00"), at("2026-10-31T17:21")),
+    ).toEqual(at("2026-11-01T00:00"));
+  });
+
+  it("is none once the deadline has passed, as the wording never changes again", () => {
+    expect(nextCollectionChange(lastDay, at("2026-11-01T08:00"))).toBeNull();
+  });
+
+  it("reads the words differently either side of it", () => {
+    const now = at("2026-10-31T17:21");
+    const change = nextCollectionChange(lastDay, now)!;
+    expect(collectionWarning(lastDay, "en", now)).toContain("only today");
+    expect(collectionWarning(lastDay, "en", change)).toContain("has passed");
   });
 });

@@ -70,6 +70,27 @@ export const collectionWarning = (
 };
 
 /**
+ * When `collectionWarning` next changes its words: the next Auckland midnight, when the day
+ * count drops, or the deadline if that comes first. Null once the deadline has passed, after
+ * which they never change again.
+ *
+ * Nothing else re-renders an open dialog as the clock moves, so one left open past midnight
+ * still said "only today" for a prize that had expired (Greptile on eversweet#34).
+ */
+export const nextCollectionChange = (
+  deadline: Date,
+  now: Date = new Date(),
+): Date | null => {
+  if (deadline <= now) return null;
+  const midnight = DateTime.fromJSDate(now)
+    .setZone(ZONE)
+    .plus({ days: 1 })
+    .startOf("day")
+    .toJSDate();
+  return midnight < deadline ? midnight : deadline;
+};
+
+/**
  * How a prize code is shown: two groups of four, the way the order server returns it and
  * the customer's app displays it. Codes are stored bare, and the counter accepts either.
  */
