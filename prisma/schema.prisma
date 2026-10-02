@@ -67,6 +67,11 @@ model User {
   /// record. Nullable for exactly those accounts.
   acceptedLegalVersion      String?
   acceptedLegalAt           DateTime?
+  /// A deletion the customer asked for in the app: when they asked, and when the order
+  /// server's nightly sweep is due to carry it out (seven days later). Both NULL when none is
+  /// scheduled; cancelling clears both. The account works as normal until then.
+  deletionRequestedAt       DateTime?
+  deletionScheduledFor      DateTime?
   createdAt                 DateTime        @default(now())
   accounts                  Account[]
   Authenticator             Authenticator[]
