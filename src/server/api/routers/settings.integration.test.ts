@@ -291,6 +291,21 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
       });
     });
 
+    /** A tab opened before the field existed saves the details with no `about` at all. */
+    it("keeps the About text when the save sends none", async () => {
+      const caller = adminCaller();
+      await caller.settings.saveShopProfile({
+        ...profile,
+        about: "Desserts made by hand.",
+      });
+
+      await caller.settings.saveShopProfile({ ...profile, phone: "09 000 0000" });
+
+      await expect(
+        db.shopProfile.findFirst({ select: { about: true, phone: true } }),
+      ).resolves.toEqual({ about: "Desserts made by hand.", phone: "09 000 0000" });
+    });
+
     it("reads back no About text when nothing is stored", async () => {
       await db.shopProfile.deleteMany();
 

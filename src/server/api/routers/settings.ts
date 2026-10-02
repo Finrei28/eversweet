@@ -183,8 +183,13 @@ export const settingsRouter = createTRPCRouter({
     .input(shopProfileSchema)
     .mutation(async ({ ctx, input }) => {
       // A blank About is stored as null, which the app reads as "show the text you were
-      // built with", rather than as an empty paragraph under the heading.
-      const data = { ...input, about: input.about ? input.about : null };
+      // built with", rather than as an empty paragraph under the heading. An absent one is
+      // left alone: a tab opened before the field existed sends none, and reading that as
+      // blank erased the paragraph whenever it saved the address.
+      const data = {
+        ...input,
+        about: input.about === undefined ? undefined : input.about || null,
+      };
       const { count } = await ctx.db.shopProfile.updateMany({ data });
       if (count === 0) {
         await ctx.db.shopProfile.create({
