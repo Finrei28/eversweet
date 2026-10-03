@@ -92,7 +92,7 @@ export const LEGAL_TOKENS = [
  * Written the long way round because it is rendered raw by the app, and "12-06-2026" reads
  * as 12 June to a New Zealander and 6 December to an American with equal confidence.
  */
-export const LEGAL_LAST_UPDATED = "1 October 2026"
+export const LEGAL_LAST_UPDATED = "3 October 2026"
 
 const fill = (text: string, contact: LegalContact): string =>
   text.replace(/\{\{(\w+)\}\}/g, (whole, token: string) =>
@@ -435,9 +435,9 @@ export const privacyPolicy: LegalDocument = {
         "This is the one place where we show personal information publicly, so please read it. Each month we publish a leaderboard of customers by the Sweet Points they earned, and the previous month's top three appear in the app. That top-three list is served publicly: it can be read by anyone on the internet, not only by people signed in to the app.",
       list: [
         "By default your first name and the initial of your last name are shown - \"Aroha N.\", for example. New accounts start this way.",
-        "You can turn this off. Turn off \"Show my name\" on the leaderboard screen, or turn on \"Anonymous Status\" in your account details - they are the same setting - and your name is replaced with \"Anonymous\" everywhere customers can see it.",
-        "The choice is applied on our servers, so once it is on, your name is not sent to anyone's device at all.",
-        "Copies of the public list are held briefly to keep the app quick, so your name can linger in one for a few minutes after you switch anonymity on, and on the screen of someone who already has the app open until the app next refreshes it.",
+        "You can turn this off. Turn off \"Show my name\", on the leaderboard screen or in your account details - it is one setting, shown in both places - and your name is replaced with \"Anonymous\" everywhere customers can see it.",
+        "The choice is applied on our servers, so while your name is hidden it is not sent to anyone's device at all.",
+        "Copies of the public list are held briefly to keep the app quick, so your name can linger in one for a few minutes after you hide it, and on the screen of someone who already has the app open until the app next refreshes it.",
         "Our own staff still see real names, because somebody has to hand the right prize to the right person.",
         "Turning anonymity on does not affect your points, your ranking or your prize.",
       ],
