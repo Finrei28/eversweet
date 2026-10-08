@@ -52,6 +52,10 @@ export function GetOrderColumns({
             : `单号 ${data.orderId} 状态已更改${data.status === "READY" ? "已完成" : data.status === "PENDING" ? "待处理" : "已取货"}`,
       });
     },
+    onError: (error) => {
+      // A cancelled order refuses any change - say so rather than nothing.
+      toast({ variant: "destructive", title: error.message });
+    },
   });
 
   const handleOrderStatusChange = useCallback(
