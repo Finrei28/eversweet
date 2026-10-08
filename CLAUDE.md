@@ -600,6 +600,12 @@ prize code, pushing a notification. Nothing here has an equivalent.
   every customer's launch grace on the order server (`lib/pointsExpiry` there), so it is
   stamped server-side and never sent from the browser. Off is also the pause for a long
   closure; turning it back on restarts everyone's month, as the Terms say.
+- **The leaderboard switch hides it from the app; it does not pause it.**
+  `setLeaderboardVisibility` stamps `LoyaltySetting.leaderboardHiddenAt` (only if shown, so the
+  card's "Hidden since" keeps its date) and clears it to show. The order server then hides the
+  board, the podium and a placing with no prize yet, and holds back the prize push; ranking,
+  settling and assigning carry on, and a prize already assigned stays in the app. `/admin/winners`
+  says so above the table, and the reward toast says when a winner was not notified for it.
 - **A benefit starting `{{whilePointsExpire}}` is shown only while expiry is on**, because
   "points never expire while you're a member" is no advantage when nobody's expire. The
   benefits card says whether it is currently live; `src/lib/shopSettings.test.ts` pins the
