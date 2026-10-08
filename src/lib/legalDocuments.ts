@@ -92,7 +92,7 @@ export const LEGAL_TOKENS = [
  * Written the long way round because it is rendered raw by the app, and "12-06-2026" reads
  * as 12 June to a New Zealander and 6 December to an American with equal confidence.
  */
-export const LEGAL_LAST_UPDATED = "3 October 2026"
+export const LEGAL_LAST_UPDATED = "9 October 2026"
 
 const fill = (text: string, contact: LegalContact): string =>
   text.replace(/\{\{(\w+)\}\}/g, (whole, token: string) =>
@@ -278,6 +278,7 @@ export const termAndConditions: LegalDocument = {
         "A prize code lasts until the end of the month after the one you won in. A prize won in September can be collected through October and expires at the start of November.",
         "If the winning account is closed before the prize is collected, the prize cannot be claimed.",
         "We can withhold a prize where we think the ranking was reached by misusing an account.",
+        "We can pause the leaderboard in the app. While it is paused the board and last month's top three are not shown, but points earned still count towards the month and the top three are still recorded. A prize we have given you can still be collected, and its code stays in the app.",
       ],
     },
     {

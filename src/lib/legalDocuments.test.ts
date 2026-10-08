@@ -383,6 +383,16 @@ describe("the claims that were wrong before", () => {
     expect(termsText).toMatch(/website do not earn Sweet Points/i);
   });
 
+  /**
+   * The settings page can hide the leaderboard from the app. The order server keeps ranking and
+   * settling, and keeps an assigned prize's code in the app, so say exactly that.
+   */
+  it("says the leaderboard can be paused, and what carries on while it is", () => {
+    expect(termsText).toMatch(/We can pause the leaderboard in the app/);
+    expect(termsText).toMatch(/the top three are still recorded/);
+    expect(termsText).toMatch(/its code stays in the app/);
+  });
+
   it("discloses the public leaderboard", () => {
     expect(privacyText).toMatch(/read by anyone on the internet/i);
   });
