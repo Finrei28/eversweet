@@ -2,6 +2,7 @@
 
 import { useLanguage } from "~/app/components/language";
 import { AnnouncementsCard } from "./announcementsCard";
+import { LeaderboardCard } from "./leaderboardCard";
 import { LoyaltyRatesCard } from "./loyaltyRatesCard";
 import { MembershipBenefitsCard } from "./membershipBenefitsCard";
 import { PointsExpiryCard } from "./pointsExpiryCard";
@@ -31,6 +32,7 @@ export function SettingsPanels() {
 
       <LoyaltyRatesCard />
       <PointsExpiryCard />
+      <LeaderboardCard />
       <MembershipBenefitsCard />
       <AnnouncementsCard />
       <ShopProfileCard />

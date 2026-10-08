@@ -89,6 +89,61 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
   });
 
   /**
+   * The order server hides the board, the podium and the prize push on this row. What must not
+   * happen is the switch silently doing nothing on an unseeded table.
+   */
+  describe("leaderboard visibility", () => {
+    const seed = () => db.loyaltySetting.create({ data: { id: "default" } });
+    const hiddenAt = async () =>
+      (await db.loyaltySetting.findFirstOrThrow()).leaderboardHiddenAt;
+
+    it("is shown until hidden", async () => {
+      await seed();
+
+      await expect(
+        adminCaller().settings.getLeaderboardVisibility(),
+      ).resolves.toEqual({ hiddenAt: null });
+    });
+
+    it("stamps the moment it is hidden, and clears it when shown again", async () => {
+      await seed();
+      const caller = adminCaller();
+      const before = Date.now();
+
+      const hidden = await caller.settings.setLeaderboardVisibility({
+        shown: false,
+      });
+      const stamped = await hiddenAt();
+      expect(stamped!.getTime()).toBeGreaterThanOrEqual(before);
+      expect(hidden.hiddenAt).toEqual(stamped);
+
+      await caller.settings.setLeaderboardVisibility({ shown: true });
+      expect(await hiddenAt()).toBeNull();
+    });
+
+    /** So the card's "Hidden since" keeps the day it was really hidden. */
+    it("keeps the original moment when hidden again", async () => {
+      await seed();
+      const caller = adminCaller();
+      await caller.settings.setLeaderboardVisibility({ shown: false });
+      const first = await hiddenAt();
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await caller.settings.setLeaderboardVisibility({ shown: false });
+
+      expect(await hiddenAt()).toEqual(first);
+    });
+
+    it("creates the row hidden when the table has never been seeded", async () => {
+      await adminCaller().settings.setLeaderboardVisibility({ shown: false });
+
+      const rows = await db.loyaltySetting.findMany();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.leaderboardHiddenAt).not.toBeNull();
+    });
+  });
+
+  /**
    * The switch's moment is every customer's launch grace on the order server, so the thing
    * that must not happen by accident is that moment moving.
    */
