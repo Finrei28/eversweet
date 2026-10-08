@@ -79,8 +79,8 @@ function OrderDetails() {
             </CardTitle>
             <CardDescription className="text-center">
               {language === "en"
-                ? "This order was cancelled by the shop. Any card payment is refunded to your card. Please contact us with any questions."
-                : "此订单已被店家取消。如已刷卡付款，款项将退回您的卡。如有疑问，请联系我们。"}
+                ? "Cancelled by the shop due to something wrong with the order or has been refunded already"
+                : "订单出现问题或已退款，已被店家取消"}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
