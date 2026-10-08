@@ -27,6 +27,7 @@ export default async function SettingsPage() {
   await Promise.all([
     api.settings.getLoyaltyRates.prefetch(),
     api.settings.getPointsExpiry.prefetch(),
+    api.settings.getLeaderboardVisibility.prefetch(),
     api.settings.getShopProfile.prefetch(),
     api.settings.getMembershipBenefits.prefetch(),
     // `{}` matches the card's useSuspenseQuery({}) exactly. A prefetch whose input differs

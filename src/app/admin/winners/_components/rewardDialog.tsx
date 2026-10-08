@@ -77,7 +77,11 @@ export default function RewardDialog({
         ? language === "en"
           ? " The winner has been notified."
           : " 已通知得奖者。"
-        : "";
+        : data.leaderboardHidden
+          ? language === "en"
+            ? " The leaderboard is hidden in the app, so the winner was not notified."
+            : " 排行榜已在应用程序中隐藏，因此未通知得奖者。"
+          : "";
       toast({
         title: language === "en" ? "Reward saved" : "奖品已保存",
         description:

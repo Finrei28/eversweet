@@ -4,6 +4,7 @@ import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
 import {
+  leaderboardVisibilitySchema,
   loyaltyRatesSchema,
   pointsExpirySchema,
   membershipBenefitsSchema,
@@ -147,6 +148,54 @@ export const settingsRouter = createTRPCRouter({
         return { expireFrom: now };
       }
       return { expireFrom: row.pointsExpireFrom };
+    }),
+
+  /**
+   * Whether the customer app shows the monthly leaderboard, and since when it has been hidden.
+   *
+   * Hiding takes the board, last month's podium, the "prize being prepared" cards and the
+   * prize push out of the app (the order server reads this with the loyalty rates). The
+   * ranking, settling the month, assigning prizes here and collecting them carry on, so
+   * showing it again picks up where it was. A prize already assigned stays in the app.
+   */
+  getLeaderboardVisibility: protectedProcedure.query(async ({ ctx }) => {
+    const row = await ctx.db.loyaltySetting.findFirst({
+      select: { leaderboardHiddenAt: true },
+    });
+    return { hiddenAt: row?.leaderboardHiddenAt ?? null };
+  }),
+
+  /**
+   * Hides or shows it. Hiding stamps the moment only if it was shown, so a second click keeps
+   * the date the card reports; showing clears it. Same shape as `setPointsExpiry`.
+   */
+  setLeaderboardVisibility: protectedProcedure
+    .input(leaderboardVisibilitySchema)
+    .mutation(async ({ ctx, input }) => {
+      if (input.shown) {
+        await ctx.db.loyaltySetting.updateMany({
+          data: { leaderboardHiddenAt: null },
+        });
+        return { hiddenAt: null };
+      }
+
+      const now = new Date();
+      await ctx.db.loyaltySetting.updateMany({
+        where: { leaderboardHiddenAt: null },
+        data: { leaderboardHiddenAt: now },
+      });
+
+      // Unseeded: create the row hidden, the same fallback `setPointsExpiry` uses.
+      const row = await ctx.db.loyaltySetting.findFirst({
+        select: { leaderboardHiddenAt: true },
+      });
+      if (!row) {
+        await ctx.db.loyaltySetting.create({
+          data: { id: SINGLETON_ID, leaderboardHiddenAt: now },
+        });
+        return { hiddenAt: now };
+      }
+      return { hiddenAt: row.leaderboardHiddenAt };
     }),
 
   getShopProfile: protectedProcedure.query(async ({ ctx }) => {

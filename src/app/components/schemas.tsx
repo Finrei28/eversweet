@@ -295,6 +295,11 @@ export const pointsExpirySchema = z.object({
   enabled: z.boolean(),
 });
 
+/** Showing or hiding the leaderboard in the customer app. The moment is stamped by the server. */
+export const leaderboardVisibilitySchema = z.object({
+  shown: z.boolean(),
+});
+
 /**
  * The shop's own details. Every field is required: these are served to the customer app as
  * one object and a blank address is worse than a stale one.

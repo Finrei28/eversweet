@@ -600,18 +600,22 @@ model DaysOff {
 /// CHECK constraints the schema cannot express (see 20260919000000_shop_settings_from_code):
 /// points and modifier not negative, and a member never earning less than a non-member.
 model LoyaltySetting {
-  id                 String    @id @default(cuid())
+  id                  String    @id @default(cuid())
   /// Points per dollar of net spend. Served as `rate`.
-  pointsPerDollar    Int       @default(6)
+  pointsPerDollar     Int       @default(6)
   /// An active member's multiplier, in whole percent: 150 is 1.5x. Served as `memberRate`.
-  memberBonusPercent Int       @default(150)
+  memberBonusPercent  Int       @default(150)
   /// Applied to every earn, member or not. 200 is a double-points weekend. Served as `modifier`.
-  modifierPercent    Int       @default(100)
+  modifierPercent     Int       @default(100)
   /// When points expiry was switched on. NULL means off: nothing expires. It is also the
   /// launch grace - nobody's month is counted from before this - so switching it on gives
   /// every customer a full month, whatever they last ordered.
-  pointsExpireFrom   DateTime?
-  updatedAt          DateTime  @updatedAt
+  pointsExpireFrom    DateTime?
+  /// When the leaderboard was hidden from the customer app. NULL means shown. Hiding takes
+  /// the board, last month's podium and the prize push out of the app; ranking, settling the
+  /// month and assigning prizes carry on, so showing it again picks up where it was.
+  leaderboardHiddenAt DateTime?
+  updatedAt           DateTime  @updatedAt
 }
 
 /// The shop's fixed details, as `/api/getStoreInfo` serves them. One row.
