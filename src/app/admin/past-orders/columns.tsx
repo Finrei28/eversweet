@@ -167,7 +167,12 @@ export function GetPastOrderColumns({
         },
       },
       {
-        accessorKey: "completedAt",
+        // Sorted by the date it shows. With `accessorKey: "completedAt"` a cancelled order
+        // showed its cancellation but sorted by a completion date it may never have had
+        // (Greptile on #37). The id stays `completedAt`, so anything keyed on it still finds it.
+        id: "completedAt",
+        accessorFn: (order) =>
+          order.status === "CANCELLED" ? order.cancelledAt : order.completedAt,
         header: ({ column }) => {
           return (
             <Button
