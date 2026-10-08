@@ -79,6 +79,7 @@ export type OrderType = {
   customerPhoneNumber: string | null;
   completedAt: Date | null;
   pickedUpAt: Date | null;
+  cancelledAt: Date | null;
   status: $Enums.Status; // Assuming $Enums.Status refers to an enum for order status
   desserts: {
     id: string;

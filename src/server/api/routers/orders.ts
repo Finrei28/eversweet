@@ -171,13 +171,13 @@ export const orderRouter = createTRPCRouter({
             { status: "CANCELLED" },
           ],
         },
-        orderBy: [
-          {
-            // Newest first, so `take` keeps the most recent orders rather than
-            // the oldest ones.
-            completedAt: "desc",
-          },
-        ],
+        // Newest first, so `take` keeps the most recent orders rather than
+        // the oldest ones - by when they were placed, which every order has.
+        // This was `completedAt`, which an order cancelled before it was ready
+        // never gets: Postgres sorts NULL first in descending order, so old
+        // cancellations sat at the top and crowded newer orders out of the
+        // window (Greptile on #37).
+        orderBy: [{ createdAt: "desc" }],
         include: {
           desserts: {
             include: {
