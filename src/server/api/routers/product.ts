@@ -40,6 +40,8 @@ const getMostPopularProductsCached = unstable_cache(
   async () => {
     const popularDesserts = await db.orderDessert.groupBy({
       by: ["dessertId"],
+      // What people actually bought: a cancelled order's desserts were never had.
+      where: { order: { status: { not: "CANCELLED" } } },
       _sum: {
         quantity: true, // Sum up the quantity of each dessert
       },

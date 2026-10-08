@@ -147,7 +147,9 @@ export function GetOrderColumns({
               ? "待处理"
               : status === "READY"
                 ? "已完成"
-                : "已取货";
+                : status === "CANCELLED"
+                  ? "已取消"
+                  : "已取货";
           return (
             <div className="font-medium">
               {language === "en" ? status : chineseStatus}

@@ -1,4 +1,5 @@
-import { Status } from "@prisma/client";
+import { Prisma, Status } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createOrderSchema } from "~/app/components/schemas";
 import EmailOrderConfirmation from "~/email/orderConfirmation";
@@ -166,6 +167,8 @@ export const orderRouter = createTRPCRouter({
           OR: [
             { completedAt: { lt: new Date(Date.now() - 12 * 60 * 60 * 1000) } }, // Only include orders that have been completed more than 12 hours ago
             { pickedUpAt: { not: null } },
+            // Cancelled from the staff app: finished with, as a collected order is.
+            { status: "CANCELLED" },
           ],
         },
         orderBy: [
@@ -197,19 +200,41 @@ export const orderRouter = createTRPCRouter({
   changeStatus: protectedProcedure
     .input(z.object({ id: z.string(), status: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const order = await ctx.db.order.update({
-        where: { id: input.id },
-        data: {
-          status: input.status as Status,
-          pickedUpAt: input.status === "PICKED_UP" ? new Date() : null,
-          completedAt:
-            input.status === "READY" || input.status === "PICKED_UP"
-              ? new Date()
-              : input.status === "PENDING"
-                ? null
-                : undefined,
-        },
-      });
+      // Cancelling belongs to the order server, through the staff app: it takes back the
+      // points the order earned and returns the ones it spent, which this does not. And a
+      // cancelled order is final, so nothing here moves one on either.
+      if (input.status === "CANCELLED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cancel orders from the staff app",
+        });
+      }
+      const order = await ctx.db.order
+        .update({
+          where: { id: input.id, status: { not: "CANCELLED" } },
+          data: {
+            status: input.status as Status,
+            pickedUpAt: input.status === "PICKED_UP" ? new Date() : null,
+            completedAt:
+              input.status === "READY" || input.status === "PICKED_UP"
+                ? new Date()
+                : input.status === "PENDING"
+                  ? null
+                  : undefined,
+          },
+        })
+        .catch((error: unknown) => {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2025"
+          ) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "This order has been cancelled",
+            });
+          }
+          throw error;
+        });
       return { orderId: order.tempOrderId, status: order.status };
     }),
 
@@ -272,12 +297,14 @@ export const orderRouter = createTRPCRouter({
     return Currentorders;
   }),
 
+  // None of these count a cancelled order: it is not a sale, whatever it was paid.
   getCompletedOrders: protectedProcedure.query(async ({ ctx }) => {
     const CompletedOrders = await ctx.db.order.count({
       where: {
         completedAt: {
           not: null,
         },
+        status: { not: "CANCELLED" },
       },
     });
     return CompletedOrders;
@@ -298,6 +325,7 @@ export const orderRouter = createTRPCRouter({
           gte: startOfToday, // Orders from today 00:00:00 onwards
           lt: endOfToday, // Orders before tomorrow 00:00:00
         },
+        status: { not: "CANCELLED" },
       },
     });
 
@@ -311,6 +339,7 @@ export const orderRouter = createTRPCRouter({
     const totalSales = await ctx.db.order.aggregate({
       _sum: { priceInCents: true },
       _count: true,
+      where: { status: { not: "CANCELLED" } },
     });
 
     return {

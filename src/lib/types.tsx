@@ -116,7 +116,9 @@ export type FullOrderType = {
   customerPhoneNumber: string | null;
   pickedUpAt: Date | null;
   pickUpTime: Date;
-  status: "PENDING" | "ACCEPTED" | "MAKING" | "READY" | "PICKED_UP"; // Assuming $Enums.Status refers to an enum for order status
+  // The enum itself, so a status added to the schema reaches this type with it. A copy of the
+  // list stopped compiling against the client the day CANCELLED was added.
+  status: $Enums.Status;
   desserts: {
     id: string;
     orderId: string;
