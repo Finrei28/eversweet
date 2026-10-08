@@ -56,6 +56,11 @@ const savedRewardSchema = z.object({
   }),
   /** Whether a push went out. Only ever true on the first assign, never on an edit. */
   notified: z.boolean(),
+  /**
+   * Sent, as true, only when the push was held back because the leaderboard is hidden from
+   * the app (/admin/settings). Optional: an order server from before the switch never sends it.
+   */
+  leaderboardHidden: z.boolean().optional(),
 });
 
 /**
@@ -113,7 +118,7 @@ export const winnerRouter = createTRPCRouter({
   upsertReward: protectedProcedure
     .input(upsertRewardInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const { reward, notified } = await callOrderServer(
+      const { reward, notified, leaderboardHidden } = await callOrderServer(
         "PUT",
         "/api/internal/winners/reward",
         {
@@ -128,7 +133,11 @@ export const winnerRouter = createTRPCRouter({
         savedRewardSchema,
       );
 
-      return { ...reward, notified };
+      return {
+        ...reward,
+        notified,
+        leaderboardHidden: leaderboardHidden ?? false,
+      };
     }),
 
   /**

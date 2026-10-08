@@ -164,7 +164,23 @@ describe("winner.upsertReward", { timeout: 30_000 }, () => {
       code: "ABCD-2345",
       expiresAt: new Date("2026-10-31T10:59:59.999Z"),
       notified: true,
+      leaderboardHidden: false,
     });
+  });
+
+  /** The order server holds the push back while the leaderboard is hidden, and says so. */
+  it("passes on that the push was held back for a hidden leaderboard", async () => {
+    fetchMock.mockResolvedValue(
+      savedReward({ notified: false, leaderboardHidden: true }),
+    );
+
+    const saved = await adminCaller().winner.upsertReward({
+      winnerId: "winner-1",
+      title: "One free dessert",
+      expiresOn: "2026-10-31",
+    });
+
+    expect(saved).toMatchObject({ notified: false, leaderboardHidden: true });
   });
 
   it("sends a missing description as null rather than leaving it out", async () => {

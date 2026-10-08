@@ -17,7 +17,11 @@ export default async function WinnersPage() {
   // in after the shell, and streamed-in content gets `useId` tree ids that do not match
   // the ones hydration computes - which broke every Radix id inside the table. See the
   // long note in src/app/admin/past-orders/page.tsx.
-  await api.winner.getWinners.prefetch();
+  await Promise.all([
+    api.winner.getWinners.prefetch(),
+    // The notice above the table, while the leaderboard is hidden from the app.
+    api.settings.getLeaderboardVisibility.prefetch(),
+  ]);
 
   return (
     <HydrateClient>

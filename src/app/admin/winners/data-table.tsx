@@ -48,6 +48,8 @@ export function DataTable() {
   const [settling, setSettling] = useState(false);
 
   const [winners] = api.winner.getWinners.useSuspenseQuery();
+  const [{ hiddenAt: leaderboardHiddenAt }] =
+    api.settings.getLeaderboardVisibility.useSuspenseQuery();
 
   // Stable, so the memoised column definitions actually stay memoised - setEditing is
   // a setState dispatcher and never changes identity.
@@ -72,6 +74,15 @@ export function DataTable() {
 
   return (
     <div>
+      {/* Settling and assigning carry on while it is hidden, so this page works as ever; what
+          staff need to know is that the winner hears nothing. */}
+      {leaderboardHiddenAt && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          {language === "en"
+            ? "The leaderboard is hidden in the app (Settings). Months are still settled and you can still assign prizes, but a winner is not notified of a prize assigned while it is hidden. Prizes already assigned stay in the app."
+            : "排行榜已在应用程序中隐藏（设置）。月份照常结算，您仍可分配奖品，但隐藏期间分配的奖品不会通知得奖者。已分配的奖品仍保留在应用程序中。"}
+        </p>
+      )}
       <div className="flex items-center py-4">
         <Input
           placeholder={
