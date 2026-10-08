@@ -92,7 +92,7 @@ export const LEGAL_TOKENS = [
  * Written the long way round because it is rendered raw by the app, and "12-06-2026" reads
  * as 12 June to a New Zealander and 6 December to an American with equal confidence.
  */
-export const LEGAL_LAST_UPDATED = "9 October 2026"
+export const LEGAL_LAST_UPDATED = "10 October 2026"
 
 const fill = (text: string, contact: LegalContact): string =>
   text.replace(/\{\{(\w+)\}\}/g, (whole, token: string) =>
@@ -167,7 +167,7 @@ export const termAndConditions: LegalDocument = {
         "Creating an account means accepting these terms and our Privacy Policy. We do not create an account without that, and we keep a record of which version you accepted and when.",
         "Keep your password to yourself. You are responsible for what happens under your account.",
         "The name on your account is printed on the kitchen receipt and may be shown on the public leaderboard, so please use your real name and nothing offensive.",
-        "You can change your first name, last name and phone number yourself in the app. Changing the email address on an account needs us to do it, so that nobody can move an account to an inbox they do not own.",
+        "You can change your name, phone number and email address yourself in the app. A new email address only takes effect once you enter a code we send to it, so that nobody can move an account to an inbox they do not own, and we tell the old address when it changes.",
         "You can delete your account in the app, from Account details. It is deleted seven days after you ask; until then it works as normal and you can cancel the deletion. What is deleted and what is kept is set out in our Privacy Policy.",
         "We may suspend or close an account that is being misused.",
       ],
@@ -515,8 +515,8 @@ export const privacyPolicy: LegalDocument = {
         "Under the Privacy Act 2020 you can ask to see the personal information we hold about you, and ask us to correct it if it is wrong.",
       list: [
         "In the app you can already see your account details, your order history, your Sweet Points balance, your membership and your saved cards.",
-        "In the app you can change your first name, last name and phone number yourself.",
-        "Changing the email address on an account has to be done by us, so that an account cannot be moved to an inbox its owner has never seen. Ask us and we will do it.",
+        "In the app you can change your first name, last name, phone number and email address yourself.",
+        "A new email address only takes effect once you enter the code we send to it, so that an account cannot be moved to an inbox its owner has never seen. We then email the old address to say it has changed.",
         "Corrections apply from then on. The name and contact details recorded against orders you have already placed stay as they were, because they are part of the record of that sale.",
         "If you ordered on the website as a guest, there is no account to look in - contact us with the order details and we will tell you what we hold.",
         "To ask for anything above, email {{email}}. We will reply within 20 working days, as the Act requires.",
