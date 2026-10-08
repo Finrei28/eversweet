@@ -68,6 +68,34 @@ function OrderDetails() {
     window.print();
   };
 
+  // Cancelled by the shop: no live receipt for an order that is not going ahead.
+  if (order?.status === "CANCELLED") {
+    return (
+      <div className="fixed inset-0 mx-auto flex max-w-3xl items-center justify-center">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center text-red-500">
+              {language === "en" ? "Order cancelled" : "订单已取消"}
+            </CardTitle>
+            <CardDescription className="text-center">
+              {language === "en"
+                ? "Cancelled by the shop due to something wrong with the order or has been refunded already"
+                : "订单出现问题或已退款，已被店家取消"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Link href="/">
+              <Button>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {language === "en" ? "Return to Home" : "返回首页"}
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (order?.status === "PICKED_UP") {
     return (
       <div className="fixed inset-0 mx-auto flex max-w-3xl items-center justify-center">

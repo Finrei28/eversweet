@@ -341,6 +341,10 @@ model Order {
   customerPhoneNumber     String?
   completedAt             DateTime?
   pickedUpAt              DateTime?
+  /// When staff cancelled the order, which is final. Set with status CANCELLED and never
+  /// cleared; Past Orders dates a cancelled order by it, as it dates a collected one by
+  /// `pickedUpAt`.
+  cancelledAt             DateTime?
   status                  Status
   dineIn                  Boolean         @default(false)
   pickUpTime              DateTime        @default(now())
@@ -692,6 +696,10 @@ enum Status {
   MAKING
   READY
   PICKED_UP
+  /// Cancelled or refunded by the shop. One-way, and not a valid order: excluded from sales,
+  /// order counts, the leaderboard and the points-expiry clock. Moving no money itself - a
+  /// refund is made in Stripe.
+  CANCELLED
 }
 
 enum IngredientType {

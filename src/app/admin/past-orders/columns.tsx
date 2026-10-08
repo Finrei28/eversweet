@@ -52,6 +52,10 @@ export function GetPastOrderColumns({
             : `单号 ${data.orderId} 状态已更改${data.status === "READY" ? "已完成" : data.status === "PENDING" ? "待处理" : "已取货"}`,
       });
     },
+    onError: (error) => {
+      // A cancelled order refuses any change - say so rather than nothing.
+      toast({ variant: "destructive", title: error.message });
+    },
   });
 
   const handlePastOrderStatusChange = useCallback(
@@ -163,7 +167,12 @@ export function GetPastOrderColumns({
         },
       },
       {
-        accessorKey: "completedAt",
+        // Sorted by the date it shows. With `accessorKey: "completedAt"` a cancelled order
+        // showed its cancellation but sorted by a completion date it may never have had
+        // (Greptile on #37). The id stays `completedAt`, so anything keyed on it still finds it.
+        id: "completedAt",
+        accessorFn: (order) =>
+          order.status === "CANCELLED" ? order.cancelledAt : order.completedAt,
         header: ({ column }) => {
           return (
             <Button
@@ -178,7 +187,12 @@ export function GetPastOrderColumns({
           );
         },
         cell: ({ row }) => {
-          const completedAt = row.original.completedAt;
+          // A cancelled order is finished with when it was cancelled; one
+          // cancelled before it was ready has no completion date at all.
+          const completedAt =
+            row.original.status === "CANCELLED"
+              ? row.original.cancelledAt
+              : row.original.completedAt;
           const formatted = completedAt
             ? new Intl.DateTimeFormat("en-NZ").format(completedAt)
             : null;
@@ -197,7 +211,9 @@ export function GetPastOrderColumns({
               ? "待处理"
               : status === "READY"
                 ? "已完成"
-                : "已取货";
+                : status === "CANCELLED"
+                  ? "已取消"
+                  : "已取货";
           return (
             <div className="font-medium">
               {language === "en" ? status : chineseStatus}
@@ -209,6 +225,8 @@ export function GetPastOrderColumns({
         id: "actions",
         cell: ({ row }) => {
           const id = row.original.id;
+          // Cancelled is final: the server refuses to move one, so offer nothing that would.
+          const cancelled = row.original.status === "CANCELLED";
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -221,14 +239,17 @@ export function GetPastOrderColumns({
                 <DropdownMenuLabel>
                   {language === "en" ? "Action" : "行动"}
                 </DropdownMenuLabel>
-                <DropdownMenuItem
-                  className="bg-orange-500"
-                  onClick={() => handlePastOrderStatusChange(id, "PENDING")}
-                >
-                  {language === "en" ? "Change to PENDING" : "更改为待处理"}
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
+                {!cancelled && (
+                  <>
+                    <DropdownMenuItem
+                      className="bg-orange-500"
+                      onClick={() => handlePastOrderStatusChange(id, "PENDING")}
+                    >
+                      {language === "en" ? "Change to PENDING" : "更改为待处理"}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem
                   onClick={() => setCustomerDetailsOpen({ id, open: true })}
                 >
