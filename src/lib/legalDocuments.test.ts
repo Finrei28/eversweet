@@ -397,9 +397,32 @@ describe("the claims that were wrong before", () => {
     expect(privacyText).toMatch(/read by anyone on the internet/i);
   });
 
-  it("discloses overseas storage", () => {
-    expect(privacyText).toContain("Sydney");
-    expect(privacyText).toContain("Singapore");
+  /**
+   * The order server moved from Render in Singapore to Fly.io in Sydney on 2026-10-08, and the
+   * policy went on naming the old host and region (found filling in Google Play's Data safety
+   * form, which is checked against this policy).
+   */
+  it("discloses overseas storage, where the servers now are", () => {
+    expect(privacyText).toMatch(
+      /Our database, and the servers behind the app, are in Sydney, Australia/,
+    );
+    expect(privacyText).toMatch(/Fly\.io - runs the servers behind the app/);
+    expect(privacyText).not.toContain("Singapore");
+    expect(privacyText).not.toMatch(/Render - /);
+  });
+
+  /**
+   * Google Play requires a way to ask for deletion without the app, and this site's
+   * /delete-account page offers email, carried out with the order server's
+   * scripts/scheduleAccountDeletion. Both documents said the app was the only way.
+   */
+  it("offers a way to ask for deletion without the app", () => {
+    expect(termsText).toMatch(
+      /if you no longer have the app, by emailing us from the address on your account/,
+    );
+    expect(privacyText).toMatch(
+      /If you no longer have the app, email \{\{email\}\} from the email address on your account/,
+    );
   });
 
   it("names the analytics actually used, and not the one that is not", () => {
