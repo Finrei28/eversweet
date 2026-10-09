@@ -39,6 +39,9 @@ export default function SiteFooter() {
           <Link href="/privacy-policy" className="hover:underline">
             {language === "en" ? "Privacy Policy" : "隐私政策"}
           </Link>
+          <Link href="/delete-account" className="hover:underline">
+            {language === "en" ? "Delete account" : "删除账户"}
+          </Link>
         </nav>
       </div>
     </footer>
