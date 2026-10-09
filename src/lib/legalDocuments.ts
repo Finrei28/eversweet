@@ -92,7 +92,7 @@ export const LEGAL_TOKENS = [
  * Written the long way round because it is rendered raw by the app, and "12-06-2026" reads
  * as 12 June to a New Zealander and 6 December to an American with equal confidence.
  */
-export const LEGAL_LAST_UPDATED = "10 October 2026"
+export const LEGAL_LAST_UPDATED = "9 October 2026"
 
 const fill = (text: string, contact: LegalContact): string =>
   text.replace(/\{\{(\w+)\}\}/g, (whole, token: string) =>
@@ -168,7 +168,7 @@ export const termAndConditions: LegalDocument = {
         "Keep your password to yourself. You are responsible for what happens under your account.",
         "The name on your account is printed on the kitchen receipt and may be shown on the public leaderboard, so please use your real name and nothing offensive.",
         "You can change your name, phone number and email address yourself in the app. A new email address only takes effect once you enter a code we send to it, so that nobody can move an account to an inbox they do not own, and we tell the old address when it changes.",
-        "You can delete your account in the app, from Account details. It is deleted seven days after you ask; until then it works as normal and you can cancel the deletion. What is deleted and what is kept is set out in our Privacy Policy.",
+        "You can delete your account in the app, from Account details, or, if you no longer have the app, by emailing us from the address on your account. It is deleted seven days after you ask; until then it works as normal and you can cancel the deletion. What is deleted and what is kept is set out in our Privacy Policy.",
         "We may suspend or close an account that is being misused.",
       ],
     },
@@ -471,7 +471,7 @@ export const privacyPolicy: LegalDocument = {
         "Resend - sends our emails: the code that confirms your email address, the code that resets your password, your order confirmation, a welcome email when you join the membership, and an email when you ask for your account to be deleted.",
         "Expo - delivers notifications to your phone, receiving the notification text and your device's token.",
         "Supabase - hosts the database that everything is stored in.",
-        "Render - runs the servers behind the app.",
+        "Fly.io - runs the servers behind the app.",
         "Vercel - runs the website, and provides the page-view analytics described above.",
         "Cloudinary - hosts the images in our emails and on our menu. Opening one of our emails asks Cloudinary for those images, which tells Cloudinary your IP address, as opening any email with pictures in it would.",
         "We also share information where the law requires it, or to establish or defend a legal claim.",
@@ -480,7 +480,7 @@ export const privacyPolicy: LegalDocument = {
     {
       heading: "12. Where your information is stored",
       content:
-        "Your information is stored and processed outside New Zealand, and you should know where. Our database is in Sydney, Australia. The servers behind the app run in Singapore. Our website, payments, email and notification providers are based in or operate from the United States and other countries. We choose established providers who are required to protect information to a standard comparable to New Zealand's, but once information is held overseas it is also subject to the laws of those countries.",
+        "Your information is stored and processed outside New Zealand, and you should know where. Our database, and the servers behind the app, are in Sydney, Australia. Our website, payments, email and notification providers are based in or operate from the United States and other countries. We choose established providers who are required to protect information to a standard comparable to New Zealand's, but once information is held overseas it is also subject to the laws of those countries.",
     },
     {
       heading: "13. How we protect it",
@@ -525,7 +525,7 @@ export const privacyPolicy: LegalDocument = {
     {
       heading: "16. Deleting your information",
       content:
-        "You can delete your account in the app: open Account details and tap Delete account. We ask for your password, and the account is deleted seven days later, in the early hours of the day the app shows. Until then it works as normal and you can cancel the deletion in the app. We email you when you ask, so that you would know if someone else had.",
+        "You can delete your account in the app: open Account details and tap Delete account. We ask for your password, and the account is deleted seven days later, in the early hours of the day the app shows. Until then it works as normal and you can cancel the deletion in the app. We email you when you ask, so that you would know if someone else had. If you no longer have the app, email {{email}} from the email address on your account, and we will schedule the deletion for you in the same way.",
       list: [
         "When it is deleted we remove your account and its details, your Sweet Points and their history, your cart, your offers, your notification token, and your customer record with Stripe, which holds your saved cards.",
         "A membership stops renewing as soon as you ask, and ends when the account is deleted. The rest of that month is not refunded.",
