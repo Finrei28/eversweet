@@ -28,11 +28,10 @@ export const metadata: Metadata = {
   title: "Eversweet",
   description:
     'Eversweet offers chinese desserts and drinks, including "boba" tea, mochi desserts, Sago desserts and more.',
-  icons: [
-    { rel: "icon", url: `${process.env.NEXT_PUBLIC_LOGO_URL}` },
-    { rel: "apple-touch-icon", url: `${process.env.NEXT_PUBLIC_LOGO_URL}` },
-    { rel: "shortcut icon", url: `${process.env.NEXT_PUBLIC_LOGO_URL}` },
-  ],
+  // The icons are files beside this layout (icon.png, apple-icon.png, favicon.ico), which Next.js
+  // links itself: the app's square bowl on white. They were the wide, transparent header logo,
+  // which Google search showed as a black circle - it fills transparency with black and squeezes
+  // a wide image into its round slot.
   keywords:
     "Eversweet, sweet treats, desserts, Sago, boba, bubble tea, mochi, drinks, grass jelly,",
   openGraph: {
