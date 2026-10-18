@@ -174,6 +174,7 @@ export const productRouter = createTRPCRouter({
             name: true,
             chineseName: true,
             priceInCents: true,
+            priceInLoyaltyPoints: true,
             imagePath: true,
             ingredients: { include: { ingredient: true } },
             description: true,
@@ -330,6 +331,7 @@ export const productRouter = createTRPCRouter({
           name: data.name,
           chineseName: data.chineseName,
           priceInCents: data.priceInCents,
+          priceInLoyaltyPoints: data.priceInLoyaltyPoints,
           description: data.description,
           ingredients: {
             // Remove all existing ingredients and add the new ones
