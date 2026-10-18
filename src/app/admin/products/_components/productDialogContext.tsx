@@ -58,6 +58,11 @@ export default function ProductDialogContext({
               label: language === "en" ? "Price in cents" : "价格(分)",
               value: product.priceInCents.toString(),
             },
+            {
+              id: "priceInLoyaltyPoints",
+              label: language === "en" ? "Price in points" : "积分价格",
+              value: product.priceInLoyaltyPoints.toString(),
+            },
             // change type back to file when working with database
             {
               id: "image",
@@ -79,6 +84,7 @@ export default function ProductDialogContext({
             description: product.description ?? "",
             ingredients: product.ingredients,
             priceInCents: product.priceInCents,
+            priceInLoyaltyPoints: product.priceInLoyaltyPoints,
             imagePath: product.imagePath,
             isAvailableForPurchase: product.isAvailableForPurchase,
             category: {

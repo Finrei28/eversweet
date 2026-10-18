@@ -5,6 +5,7 @@ export type DessertOnForm = {
   name: string;
   chineseName: string;
   priceInCents: number;
+  priceInLoyaltyPoints: number;
   description: string;
   ingredients?: Ingredients;
   imagePath: string;
@@ -22,6 +23,7 @@ export type dessertFromDB = {
   description: string | null;
   ingredients: Ingredients;
   priceInCents: number;
+  priceInLoyaltyPoints: number;
   isAvailableForPurchase: boolean;
   imagePath: string;
   category: {

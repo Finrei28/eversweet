@@ -3,9 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   announcementSchema,
   announcementsFormSchema,
+  editSchema,
+  LOYALTY_POINTS_PRICE_MAX,
   membershipBenefitsFormSchema,
   membershipBenefitsSchema,
+  priceInLoyaltyPointsSchema,
   saveAnnouncementsSchema,
+  updateProductSchema,
 } from "./schemas";
 import { todayNZ } from "~/lib/aucklandDay";
 import {
@@ -278,5 +282,35 @@ describe("the active announcement cap", () => {
         ),
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("a dessert's price in points", () => {
+  it("is the same schema on the edit form and the mutation", () => {
+    expect(editSchema.shape.priceInLoyaltyPoints).toBe(
+      priceInLoyaltyPointsSchema,
+    );
+    expect(updateProductSchema.shape.priceInLoyaltyPoints).toBe(
+      priceInLoyaltyPointsSchema,
+    );
+  });
+
+  it("reads the form's text as a whole number", () => {
+    expect(priceInLoyaltyPointsSchema.parse("750")).toBe(750);
+  });
+
+  /** The order server refuses a redemption whose points differ, so 0 is unredeemable. */
+  it.each([0, -1, 1.5, LOYALTY_POINTS_PRICE_MAX + 1, ""])(
+    "refuses %j",
+    (value) => {
+      expect(priceInLoyaltyPointsSchema.safeParse(value).success).toBe(false);
+    },
+  );
+
+  it("accepts 1 and the ceiling", () => {
+    expect(priceInLoyaltyPointsSchema.safeParse(1).success).toBe(true);
+    expect(
+      priceInLoyaltyPointsSchema.safeParse(LOYALTY_POINTS_PRICE_MAX).success,
+    ).toBe(true);
   });
 });

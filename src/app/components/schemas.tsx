@@ -21,6 +21,9 @@ import {
   SHOP_ABOUT_MAX_LENGTH,
 } from "~/lib/shopSettings";
 
+/** A generous ceiling: at the default 6 points a dollar this is over $16,000 of spend. */
+export const LOYALTY_POINTS_PRICE_MAX = 100_000;
+
 const fileSchema = z.instanceof(File, { message: "File is required" });
 export const imageSchema = fileSchema.refine(
   (file) => file.size === 0 || file.type.startsWith("image/"),
@@ -55,9 +58,22 @@ export const createProductSchema = z.object({
   categoryId: z.string().min(1),
 });
 
+/**
+ * What a dessert costs as an app reward. The order server treats a cart line with points
+ * as a redemption and refuses one that does not send exactly this figure, so 0 would make
+ * the dessert unredeemable rather than free. New desserts take the column's default (500).
+ * Shared by the form and the mutation so the bound cannot drift between them.
+ */
+export const priceInLoyaltyPointsSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(LOYALTY_POINTS_PRICE_MAX);
+
 export const editSchema = addSchema.extend({
   image: imageSchema.optional(),
   isAvailableForPurchase: z.boolean(),
+  priceInLoyaltyPoints: priceInLoyaltyPointsSchema,
 });
 
 export const updateProductSchema = createProductSchema.extend({
@@ -65,6 +81,7 @@ export const updateProductSchema = createProductSchema.extend({
   imagePath: z.string().optional(),
   imagePublicId: z.string().optional(),
   isAvailableForPurchase: z.boolean(),
+  priceInLoyaltyPoints: priceInLoyaltyPointsSchema,
 });
 
 export const dessertSchema = z.object({
@@ -439,8 +456,7 @@ export const saveAnnouncementsSchema = z.object({
             { isActive: a.isActive, endsOn: a.endsOn ?? null },
             todayNZ(),
           ),
-        ).length <=
-        MAX_ACTIVE_ANNOUNCEMENTS,
+        ).length <= MAX_ACTIVE_ANNOUNCEMENTS,
       `At most ${MAX_ACTIVE_ANNOUNCEMENTS} announcements can be showing at once`,
     ),
 });

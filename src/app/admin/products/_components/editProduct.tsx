@@ -201,6 +201,7 @@ export function EditProduct({
                             | "name"
                             | "chineseName"
                             | "priceInCents"
+                            | "priceInLoyaltyPoints"
                             | "description"
                             | "ingredients"
                             | "image"
@@ -309,12 +310,26 @@ export function EditProduct({
                                               )
                                                 field.onChange(e); // Make sure other fields still update correctly
                                             }
-                                          : field.onChange
+                                          : id === "priceInLoyaltyPoints"
+                                            ? (e) => {
+                                                if (
+                                                  /^\d*$/.test(e.target.value)
+                                                )
+                                                  field.onChange(e);
+                                              }
+                                            : field.onChange
                                       }
                                     />
                                   )}
                                 </FormControl>
 
+                                {id === "priceInLoyaltyPoints" && (
+                                  <div className="pointer-events-none absolute bottom-0 right-0 pb-2 pr-3">
+                                    <span className="text-sm text-gray-600">
+                                      {language === "en" ? "points" : "积分"}
+                                    </span>
+                                  </div>
+                                )}
                                 {id === "priceInCents" && (
                                   <div className="pointer-events-none absolute bottom-0 right-0 pb-2 pr-3">
                                     <span className="text-sm text-gray-600">
