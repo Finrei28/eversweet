@@ -92,7 +92,7 @@ export const LEGAL_TOKENS = [
  * Written the long way round because it is rendered raw by the app, and "12-06-2026" reads
  * as 12 June to a New Zealander and 6 December to an American with equal confidence.
  */
-export const LEGAL_LAST_UPDATED = "9 October 2026"
+export const LEGAL_LAST_UPDATED = "23 October 2026"
 
 const fill = (text: string, contact: LegalContact): string =>
   text.replace(/\{\{(\w+)\}\}/g, (whole, token: string) =>
@@ -278,6 +278,7 @@ export const termAndConditions: LegalDocument = {
         "A prize code lasts until the end of the month after the one you won in. A prize won in September can be collected through October and expires at the start of November.",
         "If the winning account is closed before the prize is collected, the prize cannot be claimed.",
         "We can withhold a prize where we think the ranking was reached by misusing an account.",
+        "The leaderboard and its prizes are run by Eversweet alone. Apple and Google are not sponsors of the leaderboard or its prizes and are not involved in them in any way.",
         "We can pause the leaderboard in the app. While it is paused the board and last month's top three are not shown, but points earned still count towards the month and the top three are still recorded. A prize we have given you can still be collected, and its code stays in the app.",
       ],
     },
@@ -373,7 +374,7 @@ export const privacyPolicy: LegalDocument = {
       content:
         "Ordering in the app needs an account, and the account holds:",
       list: [
-        "Your first name, last name, email address and phone number.",
+        "Your first name, last name and email address, and your phone number if you give one. The phone number is optional; we ask for it so we can call you if something is wrong with an order.",
         "Your password, which is stored only as a scrambled form that cannot be turned back into your password.",
         "A reference to your customer record with Stripe, our payment provider, if you have paid by card.",
         "Your Sweet Points balance and the record of points earned and spent that produces it.",
@@ -398,7 +399,7 @@ export const privacyPolicy: LegalDocument = {
       list: [
         "What you bought, any customisations, the quantities and what it cost, including GST.",
         "Whether it was to collect or to eat in, and the pick-up time you chose.",
-        "The name, email address and phone number given for that order. These are stored with the order, so correcting your details later changes future orders rather than past ones.",
+        "The name, email address and phone number given for that order (in the app, the phone number only if you gave one). These are stored with the order, so correcting your details later changes future orders rather than past ones.",
         "A reference to the payment, so that we can match it to your order and refund it if we need to.",
         "Any feedback you send us, which asks for your email address and optionally your name. Feedback is stored on its own and is not linked to an account.",
       ],
@@ -410,7 +411,7 @@ export const privacyPolicy: LegalDocument = {
       list: [
         "We do not collect your home address. There is nowhere to put one, because we do not deliver.",
         "We do not collect your location. The app never asks for it.",
-        "We do not use your camera, photos, contacts or microphone. The app asks for one permission, which is to send notifications.",
+        "We do not use your photos, contacts or microphone. The app asks for permission to send notifications, and may ask to use your camera only if you choose to scan a payment card when adding one. The card is read on your phone to fill in its details, and the picture is not sent to us.",
         "The app contains no advertising or analytics software of any kind, and we do not track you between apps or across the web.",
         "We never hold your full card number, expiry date or security code. Those go straight to Stripe.",
         "We do not buy personal information about you from anyone, and we do not sell yours.",
@@ -447,7 +448,7 @@ export const privacyPolicy: LegalDocument = {
       heading: "9. Notifications",
       appliesTo: ["app"],
       content:
-        "If you allow them, we send notifications about your own orders - when one is accepted, when the kitchen starts it, and when it is ready - when a prize has been assigned to you, a week before your Sweet Points are due to expire, three days before a membership you have cancelled ends, and when a membership renewal payment is declined. We also send one about the shop: a notification when a new offer becomes available, which for a members-only offer goes to members. That is the only message we send that is not about your own account or orders. You can turn notifications off in your phone's settings at any time, and the app keeps working without them. Signing out removes your device's notification token from our records.",
+        "If you allow them, we send notifications about your own orders - when one is accepted, when the kitchen starts it, and when it is ready - when a prize has been assigned to you, a week before your Sweet Points are due to expire, three days before a membership you have cancelled ends, and when a membership renewal payment is declined. We also send one about the shop, a notification when a new offer becomes available (for a members-only offer, to members), but only if you have said yes to them. We ask when you sign up, or once in the app if you signed up before we asked, and you can change your answer at any time with the New offers switch in Account details. That is the only message we send that is not about your own account or orders. You can turn notifications off in your phone's settings at any time, and the app keeps working without them. Signing out removes your device's notification token from our records.",
     },
     {
       heading: "10. Cookies and analytics",
@@ -467,7 +468,7 @@ export const privacyPolicy: LegalDocument = {
       content:
         "We use other companies to run parts of the service. They are allowed to use your information only to do the job we have given them:",
       list: [
-        "Stripe - payments, saved cards and memberships. Stripe receives your name, email address, phone number and the amount, and handles your card details directly.",
+        "Stripe - payments, saved cards and memberships. Stripe receives your name, email address, phone number (if you gave one) and the amount, and handles your card details directly.",
         "Resend - sends our emails: the code that confirms your email address, the code that resets your password, your order confirmation, a welcome email when you join the membership, and an email when you ask for your account to be deleted.",
         "Expo - delivers notifications to your phone, receiving the notification text and your device's token.",
         "Supabase - hosts the database that everything is stored in.",

@@ -273,6 +273,40 @@ describe("the claims that were wrong before", () => {
   const termsText = termAndConditions.sections.flatMap(bodies).join(" ");
   const privacyText = privacyPolicy.sections.flatMap(bodies).join(" ");
 
+  // The new-offer push goes only to customers who said yes (guideline 4.5.4).
+  it("says offer notifications need the customer's yes, and where to change it", () => {
+    expect(privacyText).toMatch(/only if you have said yes to them/);
+    expect(privacyText).toMatch(/the New offers switch in Account details/);
+  });
+
+  // The iOS permission prompt now asks for the camera, for Stripe's card scanning.
+  it("says the camera is used only to scan a payment card", () => {
+    expect(privacyText).not.toMatch(/We do not use your camera/);
+    expect(privacyText).toMatch(/only if you choose to scan a payment card/);
+  });
+
+  // The monthly prizes are a contest: App Review requires its rules to say Apple is no sponsor
+  // of it and not involved (guideline 5.3), and Google Play asks the same.
+  it("says Apple and Google have nothing to do with the leaderboard prizes", () => {
+    expect(termsText).toMatch(
+      /Apple and Google are not sponsors of the leaderboard or its prizes and are not involved in them in any way/,
+    );
+  });
+
+  // The app stopped requiring a phone number after App Review refused it (guideline 5.1.1(v)),
+  // so the policy can no longer list one as something every account holds.
+  it("says the app's phone number is optional, and why it is asked for", () => {
+    expect(privacyText).toMatch(
+      /Your first name, last name and email address, and your phone number if you give one/,
+    );
+    expect(privacyText).not.toMatch(
+      /Your first name, last name, email address and phone number\./,
+    );
+    expect(privacyText).toMatch(
+      /so we can call you if something is wrong with an order/,
+    );
+  });
+
   it("does not promise delivery", () => {
     expect(termsText).toContain("We do not deliver");
     expect(termsText).not.toMatch(/correct delivery details/i);
