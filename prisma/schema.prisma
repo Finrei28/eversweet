@@ -81,6 +81,14 @@ model User {
   pendingEmail              String?
   emailChangeOtp            String?
   emailChangeOtpExpiresAt   DateTime?
+  /// Whether the customer has agreed to pushes about new offers - the one push that is not
+  /// about their own account or orders. App Review allows marketing pushes only to customers
+  /// who opted in through consent wording in the app (guideline 4.5.4), so it starts off for
+  /// everyone, accounts from before it included. `offerPushAnsweredAt` is when they last
+  /// answered either way: sign-up's checkbox, the app's one-time question or the switch in
+  /// Account details. NULL means never asked, which is what that one-time question checks.
+  offerPushOptIn            Boolean           @default(false)
+  offerPushAnsweredAt       DateTime?
   createdAt                DateTime          @default(now())
   accounts                  Account[]
   Authenticator             Authenticator[]

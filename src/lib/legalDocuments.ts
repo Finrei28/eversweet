@@ -411,7 +411,7 @@ export const privacyPolicy: LegalDocument = {
       list: [
         "We do not collect your home address. There is nowhere to put one, because we do not deliver.",
         "We do not collect your location. The app never asks for it.",
-        "We do not use your camera, photos, contacts or microphone. The app asks for one permission, which is to send notifications.",
+        "We do not use your photos, contacts or microphone. The app asks for permission to send notifications, and may ask to use your camera only if you choose to scan a payment card when adding one. The card is read on your phone to fill in its details, and the picture is not sent to us.",
         "The app contains no advertising or analytics software of any kind, and we do not track you between apps or across the web.",
         "We never hold your full card number, expiry date or security code. Those go straight to Stripe.",
         "We do not buy personal information about you from anyone, and we do not sell yours.",
@@ -448,7 +448,7 @@ export const privacyPolicy: LegalDocument = {
       heading: "9. Notifications",
       appliesTo: ["app"],
       content:
-        "If you allow them, we send notifications about your own orders - when one is accepted, when the kitchen starts it, and when it is ready - when a prize has been assigned to you, a week before your Sweet Points are due to expire, three days before a membership you have cancelled ends, and when a membership renewal payment is declined. We also send one about the shop: a notification when a new offer becomes available, which for a members-only offer goes to members. That is the only message we send that is not about your own account or orders. You can turn notifications off in your phone's settings at any time, and the app keeps working without them. Signing out removes your device's notification token from our records.",
+        "If you allow them, we send notifications about your own orders - when one is accepted, when the kitchen starts it, and when it is ready - when a prize has been assigned to you, a week before your Sweet Points are due to expire, three days before a membership you have cancelled ends, and when a membership renewal payment is declined. We also send one about the shop, a notification when a new offer becomes available (for a members-only offer, to members), but only if you have said yes to them. We ask when you sign up, or once in the app if you signed up before we asked, and you can change your answer at any time with the New offers switch in Account details. That is the only message we send that is not about your own account or orders. You can turn notifications off in your phone's settings at any time, and the app keeps working without them. Signing out removes your device's notification token from our records.",
     },
     {
       heading: "10. Cookies and analytics",

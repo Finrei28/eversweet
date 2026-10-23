@@ -273,6 +273,18 @@ describe("the claims that were wrong before", () => {
   const termsText = termAndConditions.sections.flatMap(bodies).join(" ");
   const privacyText = privacyPolicy.sections.flatMap(bodies).join(" ");
 
+  // The new-offer push goes only to customers who said yes (guideline 4.5.4).
+  it("says offer notifications need the customer's yes, and where to change it", () => {
+    expect(privacyText).toMatch(/only if you have said yes to them/);
+    expect(privacyText).toMatch(/the New offers switch in Account details/);
+  });
+
+  // The iOS permission prompt now asks for the camera, for Stripe's card scanning.
+  it("says the camera is used only to scan a payment card", () => {
+    expect(privacyText).not.toMatch(/We do not use your camera/);
+    expect(privacyText).toMatch(/only if you choose to scan a payment card/);
+  });
+
   // The monthly prizes are a contest: App Review requires its rules to say Apple is no sponsor
   // of it and not involved (guideline 5.3), and Google Play asks the same.
   it("says Apple and Google have nothing to do with the leaderboard prizes", () => {
