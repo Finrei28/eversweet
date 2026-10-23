@@ -273,6 +273,20 @@ describe("the claims that were wrong before", () => {
   const termsText = termAndConditions.sections.flatMap(bodies).join(" ");
   const privacyText = privacyPolicy.sections.flatMap(bodies).join(" ");
 
+  // The app stopped requiring a phone number after App Review refused it (guideline 5.1.1(v)),
+  // so the policy can no longer list one as something every account holds.
+  it("says the app's phone number is optional, and why it is asked for", () => {
+    expect(privacyText).toMatch(
+      /Your first name, last name and email address, and your phone number if you give one/,
+    );
+    expect(privacyText).not.toMatch(
+      /Your first name, last name, email address and phone number\./,
+    );
+    expect(privacyText).toMatch(
+      /so we can call you if something is wrong with an order/,
+    );
+  });
+
   it("does not promise delivery", () => {
     expect(termsText).toContain("We do not deliver");
     expect(termsText).not.toMatch(/correct delivery details/i);

@@ -92,7 +92,7 @@ export const LEGAL_TOKENS = [
  * Written the long way round because it is rendered raw by the app, and "12-06-2026" reads
  * as 12 June to a New Zealander and 6 December to an American with equal confidence.
  */
-export const LEGAL_LAST_UPDATED = "9 October 2026"
+export const LEGAL_LAST_UPDATED = "23 October 2026"
 
 const fill = (text: string, contact: LegalContact): string =>
   text.replace(/\{\{(\w+)\}\}/g, (whole, token: string) =>
@@ -373,7 +373,7 @@ export const privacyPolicy: LegalDocument = {
       content:
         "Ordering in the app needs an account, and the account holds:",
       list: [
-        "Your first name, last name, email address and phone number.",
+        "Your first name, last name and email address, and your phone number if you give one. The phone number is optional; we ask for it so we can call you if something is wrong with an order.",
         "Your password, which is stored only as a scrambled form that cannot be turned back into your password.",
         "A reference to your customer record with Stripe, our payment provider, if you have paid by card.",
         "Your Sweet Points balance and the record of points earned and spent that produces it.",
@@ -398,7 +398,7 @@ export const privacyPolicy: LegalDocument = {
       list: [
         "What you bought, any customisations, the quantities and what it cost, including GST.",
         "Whether it was to collect or to eat in, and the pick-up time you chose.",
-        "The name, email address and phone number given for that order. These are stored with the order, so correcting your details later changes future orders rather than past ones.",
+        "The name, email address and phone number given for that order (in the app, the phone number only if you gave one). These are stored with the order, so correcting your details later changes future orders rather than past ones.",
         "A reference to the payment, so that we can match it to your order and refund it if we need to.",
         "Any feedback you send us, which asks for your email address and optionally your name. Feedback is stored on its own and is not linked to an account.",
       ],
@@ -467,7 +467,7 @@ export const privacyPolicy: LegalDocument = {
       content:
         "We use other companies to run parts of the service. They are allowed to use your information only to do the job we have given them:",
       list: [
-        "Stripe - payments, saved cards and memberships. Stripe receives your name, email address, phone number and the amount, and handles your card details directly.",
+        "Stripe - payments, saved cards and memberships. Stripe receives your name, email address, phone number (if you gave one) and the amount, and handles your card details directly.",
         "Resend - sends our emails: the code that confirms your email address, the code that resets your password, your order confirmation, a welcome email when you join the membership, and an email when you ask for your account to be deleted.",
         "Expo - delivers notifications to your phone, receiving the notification text and your device's token.",
         "Supabase - hosts the database that everything is stored in.",
