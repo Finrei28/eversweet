@@ -273,6 +273,14 @@ describe("the claims that were wrong before", () => {
   const termsText = termAndConditions.sections.flatMap(bodies).join(" ");
   const privacyText = privacyPolicy.sections.flatMap(bodies).join(" ");
 
+  // The monthly prizes are a contest: App Review requires its rules to say Apple is no sponsor
+  // of it and not involved (guideline 5.3), and Google Play asks the same.
+  it("says Apple and Google have nothing to do with the leaderboard prizes", () => {
+    expect(termsText).toMatch(
+      /Apple and Google are not sponsors of the leaderboard or its prizes and are not involved in them in any way/,
+    );
+  });
+
   // The app stopped requiring a phone number after App Review refused it (guideline 5.1.1(v)),
   // so the policy can no longer list one as something every account holds.
   it("says the app's phone number is optional, and why it is asked for", () => {

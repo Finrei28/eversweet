@@ -278,6 +278,7 @@ export const termAndConditions: LegalDocument = {
         "A prize code lasts until the end of the month after the one you won in. A prize won in September can be collected through October and expires at the start of November.",
         "If the winning account is closed before the prize is collected, the prize cannot be claimed.",
         "We can withhold a prize where we think the ranking was reached by misusing an account.",
+        "The leaderboard and its prizes are run by Eversweet alone. Apple and Google are not sponsors of the leaderboard or its prizes and are not involved in them in any way.",
         "We can pause the leaderboard in the app. While it is paused the board and last month's top three are not shown, but points earned still count towards the month and the top three are still recorded. A prize we have given you can still be collected, and its code stays in the app.",
       ],
     },
