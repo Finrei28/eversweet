@@ -89,7 +89,7 @@ model User {
   /// Account details. NULL means never asked, which is what that one-time question checks.
   offerPushOptIn            Boolean           @default(false)
   offerPushAnsweredAt       DateTime?
-  createdAt                DateTime          @default(now())
+  createdAt                 DateTime          @default(now())
   accounts                  Account[]
   Authenticator             Authenticator[]
   cart                      Cart?
@@ -152,33 +152,42 @@ model MembershipPlan {
 }
 
 model Offer {
-  id               String             @id @default(cuid())
-  name             String
-  description      String?
-  image            String?
-  isActive         Boolean            @default(true)
+  id                 String             @id @default(cuid())
+  name               String
+  description        String?
+  image              String?
+  isActive           Boolean            @default(true)
   /// The offer runs only while `isActive` AND inside this window. NULL is "no bound" on
   /// either end, which is how every offer written before these columns existed behaves -
   /// unchanged. Mirrors Promo.startsAt/endsAt and is read through the same predicate,
   /// isWithinActiveWindow.
-  startsAt         DateTime?
-  endsAt           DateTime?
+  startsAt           DateTime?
+  endsAt             DateTime?
   /// Soft delete. Offers are never removed: OrderDessert.offer and CartItem.offer both
   /// cascade from here, so deleting one takes the order lines that used it - and the
   /// shop's sales history - with it.
-  archivedAt       DateTime?
-  audience         OfferAudience      @default(MEMBERS)
-  dessertId        String?
-  categoryId       String?
-  itemPriceInCents Int?
+  archivedAt         DateTime?
+  audience           OfferAudience      @default(MEMBERS)
+  dessertId          String?
+  categoryId         String?
+  /// Desserts in `category` that this offer does not cover: "50% off the Sago Series,
+  /// except the Durian Sago". Read only when the offer names a category - an offer on
+  /// one dessert covers that dessert and nothing else.
+  ///
+  /// Ids rather than a relation, so retiring a dessert never has to touch an offer; an id
+  /// that no longer matches anything excludes nothing. The order server leaves these
+  /// desserts out of the offer's list and refuses them at add-to-cart, so installed app
+  /// builds, which list whatever the server sends, needed no update.
+  excludedDessertIds String[]           @default([])
+  itemPriceInCents   Int?
   /// Whole percent off, 0-100. Was a Decimal holding a fraction (0.2 meaning 20%), which
   /// put a decimal.js instance on every wire and read as `x * 100` in the app and
   /// `1 - x` in the cart. Int matches every other discount here (Promo.value,
   /// MembershipPlan.membershipDiscount).
   ///
   /// Ignored entirely when itemPriceInCents is set - that wins.
-  discountAmount   Int?
-  limit            Int                @default(1)
+  discountAmount     Int?
+  limit              Int                @default(1)
   /// `used` on this offer's redemptions resets every Monday, so a membership perk can be
   /// taken once a week. The order server's weekly cron used to be an updateMany with no
   /// WHERE at all, resetting every redemption row in the database - including the
@@ -186,7 +195,7 @@ model Offer {
   ///
   /// Replaces OfferRedemption.renewsAt, dropped as dead in the migration before this:
   /// per-offer is the level this question is actually asked at.
-  renewsWeekly     Boolean            @default(false)
+  renewsWeekly       Boolean            @default(false)
   /// When customers were told this offer exists. NULL means they have not been.
   ///
   /// The order server sweeps for live offers with this unset, pushes a notification and
@@ -198,13 +207,13 @@ model Offer {
   ///
   /// `closeRun` clears it, because that is the one path that deliberately starts an offer
   /// over and a second run should be announced like the first.
-  notifiedAt       DateTime?
-  requirements     OfferRequirement[]
-  cartItems        CartItem[]
-  category         Category?          @relation(fields: [categoryId], references: [id])
-  dessert          Dessert?           @relation(fields: [dessertId], references: [id])
-  redemptions      OfferRedemption[]
-  orderDessert     OrderDessert[]
+  notifiedAt         DateTime?
+  requirements       OfferRequirement[]
+  cartItems          CartItem[]
+  category           Category?          @relation(fields: [categoryId], references: [id])
+  dessert            Dessert?           @relation(fields: [dessertId], references: [id])
+  redemptions        OfferRedemption[]
+  orderDessert       OrderDessert[]
 }
 
 model OfferRequirement {

@@ -139,12 +139,22 @@ export function GetOfferColumns({
         id: "appliesTo",
         header: language === "en" ? "Applies to" : "适用于",
         cell: ({ row }) => {
-          const { dessert, category } = row.original;
+          const { dessert, category, excludedDessertIds } = row.original;
           const target = dessert ?? category;
           if (!target) return <div className="text-muted-foreground">—</div>;
+          // Counted rather than named: the names are in the edit dialog, and a table row
+          // that read "Sago Series" alone would say the offer covers durian too.
+          const leftOut = dessert ? 0 : excludedDessertIds.length;
           return (
             <div className="font-medium">
               {language === "en" ? target.name : target.chineseName}
+              {leftOut > 0 && (
+                <div className="text-sm font-normal text-muted-foreground">
+                  {language === "en"
+                    ? `except ${leftOut} ${leftOut === 1 ? "item" : "items"}`
+                    : `不含 ${leftOut} 项`}
+                </div>
+              )}
             </div>
           );
         },

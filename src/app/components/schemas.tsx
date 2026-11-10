@@ -153,6 +153,12 @@ const offerFields = z.object({
   dessertId: z.string().min(1).nullable().default(null),
   categoryId: z.string().min(1).nullable().default(null),
   /**
+   * Desserts in `categoryId` this offer leaves out. Meaningless without a category, so
+   * the router stores an empty list for an offer on one dessert; it also checks every id
+   * is in the category, which zod cannot see from here.
+   */
+  excludedDessertIds: z.array(z.string().min(1)).default([]),
+  /**
    * Cents, and **0 is legal**: it is how a free item is expressed, and both of the
    * shop's giveaway offers are stored that way. The rule that it must come in under the
    * item's list price is enforced in the router - it compares against another table, so
@@ -229,6 +235,12 @@ const offerInputFields = offerFields
   .extend({
     startsOn: z.string().date().nullable().default(null),
     endsOn: z.string().date().nullable().default(null),
+    /**
+     * Optional on the wire, where the form's own default would read a missing list as
+     * "leave nothing out". A tab opened before exclusions existed sends none, and its
+     * next save would have wiped the list - so the router keeps the stored one instead.
+     */
+    excludedDessertIds: z.array(z.string().min(1)).optional(),
   });
 
 export const createOfferSchema =
