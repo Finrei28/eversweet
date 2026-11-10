@@ -50,27 +50,36 @@ type OfferScope = {
 };
 
 /**
- * What the offer leaves out, as it will be stored: only against a category, and once each.
- * An offer switched from a category to one dessert drops its list, so switching back
- * later does not bring back exclusions the form had stopped showing.
+ * What the offer leaves out, as it will be stored, checked.
+ *
+ * - Only against a category, and once each. An offer switched from a category to one
+ *   dessert drops its list, so switching back later does not bring back exclusions the
+ *   form had stopped showing.
+ * - A save that sends no list keeps the stored one while the category is unchanged. That
+ *   is a tab opened before exclusions existed, which never showed the list.
+ * - Every id sent has to be a dessert in the category, and something has to be left. The
+ *   order server filters the category by these ids, so an id from elsewhere would sit
+ *   there excluding nothing while the admin believed it worked, and excluding the lot puts
+ *   an offer on the app whose "choose an item" sheet is empty.
+ * - Except an id already stored that has since left the category (moved, or deleted): it
+ *   is dropped. The dialog lists only the category's desserts, so it sends that id back
+ *   without showing it, and refusing it blocked every save of the offer.
+ *
+ * `current` is the offer as stored, or null for a new one.
  */
-const exclusionsFor = (data: OfferScope) =>
-  data.categoryId && !data.dessertId
-    ? Array.from(new Set(data.excludedDessertIds))
-    : [];
-
-/**
- * Every excluded id has to be a dessert in the offer's category, and something has to be
- * left. The order server filters the category by these ids, so an id from elsewhere would
- * sit there excluding nothing while the admin believed it worked, and excluding the lot
- * puts an offer on the app whose "choose an item" sheet is empty.
- */
-const assertExclusions = async (
+const resolveExclusions = async (
   db: Prisma.TransactionClient,
-  data: OfferScope,
-) => {
-  const excluded = exclusionsFor(data);
-  if (excluded.length === 0 || !data.categoryId) return;
+  data: Omit<OfferScope, "excludedDessertIds"> & {
+    excludedDessertIds?: string[];
+  },
+  current: { categoryId: string | null; excludedDessertIds: string[] } | null,
+): Promise<string[]> => {
+  if (!data.categoryId || data.dessertId) return [];
+
+  const stored =
+    current?.categoryId === data.categoryId ? current.excludedDessertIds : [];
+  const excluded = Array.from(new Set(data.excludedDessertIds ?? stored));
+  if (excluded.length === 0) return [];
 
   const inCategory = await db.dessert.findMany({
     where: { categoryId: data.categoryId },
@@ -78,7 +87,10 @@ const assertExclusions = async (
   });
   const ids = new Set(inCategory.map((dessert) => dessert.id));
 
-  if (excluded.some((id) => !ids.has(id))) {
+  const kept = excluded.filter((id) => ids.has(id) || !stored.includes(id));
+  if (kept.length === 0) return [];
+
+  if (kept.some((id) => !ids.has(id))) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
@@ -86,13 +98,15 @@ const assertExclusions = async (
     });
   }
 
-  if (inCategory.every((dessert) => excluded.includes(dessert.id))) {
+  if (inCategory.every((dessert) => kept.includes(dessert.id))) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
         "An offer cannot leave out every dessert in its category - it would have nothing to offer.",
     });
   }
+
+  return kept;
 };
 
 const assertUnderListPrice = async (
@@ -107,7 +121,7 @@ const assertUnderListPrice = async (
   const where = data.dessertId
     ? { id: data.dessertId }
     : data.categoryId
-      ? { categoryId: data.categoryId, id: { notIn: exclusionsFor(data) } }
+      ? { categoryId: data.categoryId, id: { notIn: data.excludedDessertIds } }
       : null;
 
   // An offer that names neither has nothing to undercut, so there is no rule to break.
@@ -173,7 +187,10 @@ const offerSelect = {
  * millisecond of the last. Both apps compare the bounds inclusively, so an offer ending
  * on the 31st is served all of the 31st.
  */
-const offerScalars = (data: z.infer<typeof createOfferSchema>) => ({
+const offerScalars = (
+  data: z.infer<typeof createOfferSchema>,
+  excludedDessertIds: string[],
+) => ({
   name: data.name,
   description: data.description ?? null,
   image: data.image,
@@ -187,7 +204,7 @@ const offerScalars = (data: z.infer<typeof createOfferSchema>) => ({
   renewsWeekly: data.renewsWeekly,
   dessertId: data.dessertId,
   categoryId: data.categoryId,
-  excludedDessertIds: exclusionsFor(data),
+  excludedDessertIds,
 });
 
 export const offerRouter = createTRPCRouter({
@@ -214,13 +231,13 @@ export const offerRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const data = input.offer;
 
-      await assertExclusions(ctx.db, data);
-      await assertUnderListPrice(ctx.db, data);
+      const excludedDessertIds = await resolveExclusions(ctx.db, data, null);
+      await assertUnderListPrice(ctx.db, { ...data, excludedDessertIds });
 
       // No redemption reset: a brand new offer has none.
       const offer = await ctx.db.offer.create({
         data: {
-          ...offerScalars(data),
+          ...offerScalars(data, excludedDessertIds),
           requirements: {
             create: data.requirements.map((r) => ({
               quantity: r.quantity,
@@ -253,6 +270,8 @@ export const offerRouter = createTRPCRouter({
           select: {
             id: true,
             endsAt: true,
+            categoryId: true,
+            excludedDessertIds: true,
             requirements: { select: { id: true } },
           },
         });
@@ -280,8 +299,8 @@ export const offerRouter = createTRPCRouter({
           });
         }
 
-        await assertExclusions(tx, data);
-        await assertUnderListPrice(tx, data);
+        const excludedDessertIds = await resolveExclusions(tx, data, existing);
+        await assertUnderListPrice(tx, { ...data, excludedDessertIds });
 
         /**
          * Requirements are patched, not replaced.
@@ -329,7 +348,7 @@ export const offerRouter = createTRPCRouter({
 
         const offer = await tx.offer.update({
           where: { id: data.id },
-          data: offerScalars(data),
+          data: offerScalars(data, excludedDessertIds),
           select: { id: true, name: true },
         });
 

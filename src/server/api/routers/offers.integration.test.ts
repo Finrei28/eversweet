@@ -509,6 +509,81 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
     expect(stored.excludedDessertIds).toEqual([]);
   });
 
+  /**
+   * An admin tab opened before exclusions existed sends no list at all. Read as "none", its
+   * next save of an unrelated field put the Durian Sago back in a 50% offer, unseen.
+   */
+  it("keeps the stored exclusions when a save sends no list", async () => {
+    const { category, dessert } = await seedMenu();
+    const caller = adminCaller();
+
+    const created = await caller.offer.createOffer({
+      offer: offerInput({
+        categoryId: category.id,
+        excludedDessertIds: [dessert.id],
+      }),
+    });
+
+    // `offerInput` carries no `excludedDessertIds`, as that older tab's form did not.
+    await caller.offer.updateOffer({
+      offer: {
+        ...offerInput({ categoryId: category.id, name: "Half-price sago" }),
+        id: created.id,
+      },
+    });
+
+    const stored = await db.offer.findUniqueOrThrow({
+      where: { id: created.id },
+      select: { name: true, excludedDessertIds: true },
+    });
+    expect(stored).toEqual({
+      name: "Half-price sago",
+      excludedDessertIds: [dessert.id],
+    });
+  });
+
+  /**
+   * A dessert left out and later moved to another category stays in the stored list, and
+   * the dialog sends it back hidden, since it lists only the category's desserts. Refused
+   * as "not in this offer's category", every save of the offer failed, a name fix included.
+   */
+  it("drops a left-out dessert that has since moved category, rather than refusing the save", async () => {
+    const { category, cheaper } = await seedMenu();
+    const caller = adminCaller();
+
+    const created = await caller.offer.createOffer({
+      offer: offerInput({
+        categoryId: category.id,
+        excludedDessertIds: [cheaper.id],
+      }),
+    });
+
+    const other = await db.category.create({
+      data: { name: "Drinks", chineseName: "饮品" },
+    });
+    await db.dessert.update({
+      where: { id: cheaper.id },
+      data: { categoryId: other.id },
+    });
+
+    await caller.offer.updateOffer({
+      offer: {
+        ...offerInput({
+          categoryId: category.id,
+          excludedDessertIds: [cheaper.id],
+          name: "Half-price bowls",
+        }),
+        id: created.id,
+      },
+    });
+
+    const stored = await db.offer.findUniqueOrThrow({
+      where: { id: created.id },
+      select: { name: true, excludedDessertIds: true },
+    });
+    expect(stored).toEqual({ name: "Half-price bowls", excludedDessertIds: [] });
+  });
+
   it("refuses to leave out a dessert that is not in the offer's category", async () => {
     const { category } = await seedMenu();
     const other = await db.category.create({

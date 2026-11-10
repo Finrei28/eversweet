@@ -235,6 +235,12 @@ const offerInputFields = offerFields
   .extend({
     startsOn: z.string().date().nullable().default(null),
     endsOn: z.string().date().nullable().default(null),
+    /**
+     * Optional on the wire, where the form's own default would read a missing list as
+     * "leave nothing out". A tab opened before exclusions existed sends none, and its
+     * next save would have wiped the list - so the router keeps the stored one instead.
+     */
+    excludedDessertIds: z.array(z.string().min(1)).optional(),
   });
 
 export const createOfferSchema =
