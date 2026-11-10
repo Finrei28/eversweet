@@ -779,7 +779,14 @@ opened the language menu. Check any new link at 1280px, in both languages.
   `itemPriceInCents` is cents and **0 is legal, meaning free** — both giveaway offers are
   stored that way, so null-check it, never truth-check it. A fixed price must also come in
   *under* the list price of what it covers; for a category-scoped offer that means under the
-  **cheapest** item in the category, which is the only shape in production.
+  **cheapest** item in the category it still covers, which is the only shape in production.
+- **A category offer can leave desserts out** (`Offer.excludedDessertIds`, since
+  `20261110000000_offer_excluded_desserts`): "50% off the Sago Series, except the Durian
+  Sago". The offers router stores the list only against a category (an offer on one dessert
+  keeps it empty), refuses an id outside the category and a list that leaves nothing, and
+  leaves excluded desserts out of the price ceiling. The order server is what enforces it:
+  it drops them from the app's list for the offer and refuses them at the cart
+  (`lib/offerCoverage` there).
 - **Those rules live in three places and only two of them are the database.** The first two
   are CHECK constraints (`20260914000000_offer_pricing_rules`) *and* `createOfferSchema`;
   the price ceiling cannot be a constraint at all, because it compares against another

@@ -1,0 +1,24 @@
+-- Lets an offer on a category leave some of its desserts out: "50% off the Sago Series,
+-- except the Durian Sago".
+--
+-- Written by hand in place of:
+--   npx prisma migrate dev --create-only --name offer_excluded_desserts
+-- run from C:\Personal Projects\eversweet
+--
+-- This is exactly the SQL Prisma would generate (`prisma migrate diff` against the previous
+-- schema), and nothing more. An offer could name one dessert or a whole category, so the
+-- only way to run the sago offer without durian was a separate offer per sago dessert: a
+-- card each on the Offers screen, and a use limit each, so a member could take the
+-- discount once on every one of them.
+--
+-- Purely additive, so there is nothing to backfill or assert against. The DEFAULT fills
+-- every existing offer with an empty list as the column is added, which excludes nothing:
+-- every live offer goes on covering exactly what it covers today.
+--
+-- Rollout: this migration first, then this site and the order server. A Prisma client built
+-- from this schema selects the column on any `offer` query, and fails with "column does not
+-- exist" against a database without it. Installed app builds need nothing: they list the
+-- desserts the order server sends for an offer, and the server leaves the excluded ones out.
+
+-- AlterTable
+ALTER TABLE "Offer" ADD COLUMN     "excludedDessertIds" TEXT[] DEFAULT ARRAY[]::TEXT[];

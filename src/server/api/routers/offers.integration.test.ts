@@ -452,6 +452,137 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
     ).resolves.toMatchObject({ name: "Free mochi bowl" });
   });
 
+  /**
+   * "50% off the Sago Series, except the Durian Sago". The order server is what leaves the
+   * excluded desserts out of the app and refuses them at the cart; these hold what the admin
+   * can write, so it never stores an exclusion the server would read differently.
+   */
+  it("stores the desserts a category offer leaves out, and reads them back", async () => {
+    const { category, dessert } = await seedMenu();
+    const caller = adminCaller();
+
+    await caller.offer.createOffer({
+      offer: offerInput({
+        categoryId: category.id,
+        excludedDessertIds: [dessert.id],
+      }),
+    });
+
+    const [offer] = await caller.offer.getOffers();
+    expect(offer?.excludedDessertIds).toEqual([dessert.id]);
+
+    // Editing keeps them, and an edit can take one off again.
+    await caller.offer.updateOffer({
+      offer: {
+        ...offerInput({ categoryId: category.id, excludedDessertIds: [] }),
+        id: offer!.id,
+      },
+    });
+
+    const stored = await db.offer.findUniqueOrThrow({
+      where: { id: offer!.id },
+      select: { excludedDessertIds: true },
+    });
+    expect(stored.excludedDessertIds).toEqual([]);
+  });
+
+  /**
+   * An exclusion means something only against a category. Switching an offer from the
+   * Sago Series to one dessert must not carry a list the admin can no longer see in the
+   * form - the next switch back to a category would bring it back unannounced.
+   */
+  it("keeps no exclusions on an offer that names one dessert", async () => {
+    const { dessert, cheaper } = await seedMenu();
+    const caller = adminCaller();
+
+    const created = await caller.offer.createOffer({
+      offer: offerInput({
+        dessertId: dessert.id,
+        excludedDessertIds: [cheaper.id],
+      }),
+    });
+
+    const stored = await db.offer.findUniqueOrThrow({
+      where: { id: created.id },
+      select: { excludedDessertIds: true },
+    });
+    expect(stored.excludedDessertIds).toEqual([]);
+  });
+
+  it("refuses to leave out a dessert that is not in the offer's category", async () => {
+    const { category } = await seedMenu();
+    const other = await db.category.create({
+      data: { name: "Drinks", chineseName: "饮品" },
+    });
+    const tea = await db.dessert.create({
+      data: {
+        name: "Milk tea",
+        chineseName: "奶茶",
+        priceInCents: 700,
+        imagePath: "/desserts/tea.jpg",
+        imagePublicId: "products/tea",
+        categoryId: other.id,
+      },
+    });
+
+    await expect(
+      adminCaller().offer.createOffer({
+        offer: offerInput({
+          categoryId: category.id,
+          excludedDessertIds: [tea.id],
+        }),
+      }),
+    ).rejects.toThrow(/not in this offer's category/);
+
+    expect(await db.offer.count()).toBe(0);
+  });
+
+  it("refuses to leave out every dessert in the category", async () => {
+    const { category, dessert, cheaper } = await seedMenu();
+
+    await expect(
+      adminCaller().offer.createOffer({
+        offer: offerInput({
+          categoryId: category.id,
+          excludedDessertIds: [dessert.id, cheaper.id],
+        }),
+      }),
+    ).rejects.toThrow(/every dessert/);
+
+    expect(await db.offer.count()).toBe(0);
+  });
+
+  /**
+   * The ceiling is the cheapest item the offer *covers*. Leaving out the cheap one raises
+   * it: 950 is not under Taro balls at 900, but Taro balls is no longer in the offer.
+   */
+  it("takes the price ceiling from the desserts the offer still covers", async () => {
+    const { category, dessert, cheaper } = await seedMenu();
+    const caller = adminCaller();
+
+    await expect(
+      caller.offer.createOffer({
+        offer: offerInput({
+          categoryId: category.id,
+          excludedDessertIds: [cheaper.id],
+          itemPriceInCents: 950,
+          discountAmount: null,
+        }),
+      }),
+    ).resolves.toMatchObject({ name: "Free mochi bowl" });
+
+    await expect(
+      caller.offer.createOffer({
+        offer: offerInput({
+          categoryId: category.id,
+          excludedDessertIds: [cheaper.id],
+          itemPriceInCents: 1200,
+          discountAmount: null,
+        }),
+      }),
+    ).rejects.toThrow(new RegExp(dessert.name));
+  });
+
   it("refuses a fixed price equal to the list price, and allows free", async () => {
     const { dessert } = await seedMenu();
     const caller = adminCaller();

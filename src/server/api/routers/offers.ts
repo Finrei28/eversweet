@@ -43,22 +43,71 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
  * re-checks existing offers, and this deliberately does not either - it would mean an
  * unrelated price edit could refuse to save because of an old offer.
  */
+type OfferScope = {
+  dessertId: string | null;
+  categoryId: string | null;
+  excludedDessertIds: string[];
+};
+
+/**
+ * What the offer leaves out, as it will be stored: only against a category, and once each.
+ * An offer switched from a category to one dessert drops its list, so switching back
+ * later does not bring back exclusions the form had stopped showing.
+ */
+const exclusionsFor = (data: OfferScope) =>
+  data.categoryId && !data.dessertId
+    ? Array.from(new Set(data.excludedDessertIds))
+    : [];
+
+/**
+ * Every excluded id has to be a dessert in the offer's category, and something has to be
+ * left. The order server filters the category by these ids, so an id from elsewhere would
+ * sit there excluding nothing while the admin believed it worked, and excluding the lot
+ * puts an offer on the app whose "choose an item" sheet is empty.
+ */
+const assertExclusions = async (
+  db: Prisma.TransactionClient,
+  data: OfferScope,
+) => {
+  const excluded = exclusionsFor(data);
+  if (excluded.length === 0 || !data.categoryId) return;
+
+  const inCategory = await db.dessert.findMany({
+    where: { categoryId: data.categoryId },
+    select: { id: true },
+  });
+  const ids = new Set(inCategory.map((dessert) => dessert.id));
+
+  if (excluded.some((id) => !ids.has(id))) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "One of the desserts left out is not in this offer's category. Reopen the offer and choose again.",
+    });
+  }
+
+  if (inCategory.every((dessert) => excluded.includes(dessert.id))) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "An offer cannot leave out every dessert in its category - it would have nothing to offer.",
+    });
+  }
+};
+
 const assertUnderListPrice = async (
   db: Prisma.TransactionClient,
-  data: {
-    itemPriceInCents: number | null;
-    dessertId: string | null;
-    categoryId: string | null;
-  },
+  data: OfferScope & { itemPriceInCents: number | null },
 ) => {
   if (data.itemPriceInCents === null) return;
 
   // Scope first. `where: undefined` would match the entire menu and take the ceiling
-  // from the cheapest dessert in the shop, which is not what either branch means.
+  // from the cheapest dessert in the shop, which is not what either branch means. A
+  // dessert the offer leaves out is not something it undercuts, so it sets no ceiling.
   const where = data.dessertId
     ? { id: data.dessertId }
     : data.categoryId
-      ? { categoryId: data.categoryId }
+      ? { categoryId: data.categoryId, id: { notIn: exclusionsFor(data) } }
       : null;
 
   // An offer that names neither has nothing to undercut, so there is no rule to break.
@@ -103,6 +152,7 @@ const offerSelect = {
   // the edit form reads `offer.dessert?.id` back out of them.
   dessert: { select: { id: true, name: true, chineseName: true } },
   category: { select: { id: true, name: true, chineseName: true } },
+  excludedDessertIds: true,
   requirements: {
     select: {
       id: true,
@@ -137,6 +187,7 @@ const offerScalars = (data: z.infer<typeof createOfferSchema>) => ({
   renewsWeekly: data.renewsWeekly,
   dessertId: data.dessertId,
   categoryId: data.categoryId,
+  excludedDessertIds: exclusionsFor(data),
 });
 
 export const offerRouter = createTRPCRouter({
@@ -163,6 +214,7 @@ export const offerRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const data = input.offer;
 
+      await assertExclusions(ctx.db, data);
       await assertUnderListPrice(ctx.db, data);
 
       // No redemption reset: a brand new offer has none.
@@ -228,6 +280,7 @@ export const offerRouter = createTRPCRouter({
           });
         }
 
+        await assertExclusions(tx, data);
         await assertUnderListPrice(tx, data);
 
         /**

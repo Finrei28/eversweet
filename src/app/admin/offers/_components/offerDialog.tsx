@@ -71,6 +71,7 @@ const emptyOffer: OfferForm = {
   audience: "MEMBERS",
   dessertId: null,
   categoryId: null,
+  excludedDessertIds: [],
   itemPriceInCents: null,
   discountAmount: null,
   limit: 1,
@@ -92,6 +93,7 @@ const toFormValues = (offer: OfferRow | null): OfferForm =>
         audience: offer.audience,
         dessertId: offer.dessert?.id ?? null,
         categoryId: offer.category?.id ?? null,
+        excludedDessertIds: offer.excludedDessertIds,
         itemPriceInCents: offer.itemPriceInCents,
         discountAmount: offer.discountAmount,
         limit: offer.limit,
@@ -126,6 +128,16 @@ export default function OfferDialog({
 
   const dessertId = form.watch("dessertId");
   const categoryId = form.watch("categoryId");
+  const excludedDessertIds = form.watch("excludedDessertIds");
+
+  /** The desserts a category offer can leave out - the ones the app would list for it. */
+  const categoryDesserts = useMemo(
+    () =>
+      categoryId
+        ? desserts.filter((dessert) => dessert.category.id === categoryId)
+        : [],
+    [desserts, categoryId],
+  );
 
   /**
    * The cheapest item this offer covers - the ceiling a fixed price has to come in
@@ -138,12 +150,12 @@ export default function OfferDialog({
   const priceCeiling = useMemo(() => {
     const covered = dessertId
       ? desserts.filter((dessert) => dessert.id === dessertId)
-      : categoryId
-        ? desserts.filter((dessert) => dessert.category.id === categoryId)
-        : [];
+      : categoryDesserts.filter(
+          (dessert) => !excludedDessertIds.includes(dessert.id),
+        );
 
     return cheapestDessert(covered);
-  }, [desserts, dessertId, categoryId]);
+  }, [desserts, dessertId, categoryDesserts, excludedDessertIds]);
 
   const onError = (mutationError: { message: string }) => {
     setLoading(false);
@@ -415,6 +427,9 @@ export default function OfferDialog({
                       onValueChange={(value) => {
                         field.onChange(value === "none" ? null : value);
                         if (value !== "none") form.setValue("dessertId", null);
+                        // Exclusions belong to the category they were picked from.
+                        if (value !== field.value)
+                          form.setValue("excludedDessertIds", []);
                       }}
                     >
                       <SelectTrigger>
@@ -437,6 +452,53 @@ export default function OfferDialog({
                 )}
               />
             </div>
+
+            {/* Only for a category: "50% off the Sago Series, except the Durian Sago".
+                The order server leaves these out of the app's list for the offer and
+                refuses them at the cart. */}
+            {categoryId && !dessertId && categoryDesserts.length > 0 && (
+              <FormField
+                control={form.control}
+                name="excludedDessertIds"
+                render={({ field }) => (
+                  <div>
+                    <FormLabel>
+                      {language === "en" ? "Leave out" : "不包括"}
+                    </FormLabel>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {language === "en"
+                        ? "Ticked desserts are not part of this offer and cannot be chosen for it."
+                        : "勾选的甜品不参与此优惠，顾客无法选择。"}
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {categoryDesserts.map((dessert) => (
+                        <label
+                          key={dessert.id}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <Checkbox
+                            checked={field.value.includes(dessert.id)}
+                            onCheckedChange={(checked) =>
+                              field.onChange(
+                                checked === true
+                                  ? [...field.value, dessert.id]
+                                  : field.value.filter(
+                                      (id) => id !== dessert.id,
+                                    ),
+                              )
+                            }
+                          />
+                          {language === "en"
+                            ? dessert.name
+                            : dessert.chineseName}
+                        </label>
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </div>
+                )}
+              />
+            )}
 
             <div className="grid grid-cols-2 gap-2">
               <FormField
