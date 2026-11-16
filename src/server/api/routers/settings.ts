@@ -512,7 +512,9 @@ export const settingsRouter = createTRPCRouter({
         const onFile = new Set(rows.map((row) => nzDayKey(row.date)));
         const reopening = new Set(input.removed);
 
-        const toAdd = [...new Set(input.added)].filter((day) => !onFile.has(day));
+        const toAdd = [...new Set(input.added)].filter(
+          (day) => !onFile.has(day),
+        );
         const toDelete = rows
           .filter((row) => reopening.has(nzDayKey(row.date)))
           .map((row) => row.id);

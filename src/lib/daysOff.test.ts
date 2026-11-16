@@ -95,7 +95,10 @@ describe("pendingDaysOff", () => {
   it("sends the days in calendar order", () => {
     expect(
       pendingDaysOff(saved(), edit(["2027-01-02", "2026-12-25", "2026-12-31"])),
-    ).toEqual({ added: ["2026-12-25", "2026-12-31", "2027-01-02"], removed: [] });
+    ).toEqual({
+      added: ["2026-12-25", "2026-12-31", "2027-01-02"],
+      removed: [],
+    });
   });
 });
 
