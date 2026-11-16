@@ -33,10 +33,18 @@ export const pickedDay = (date: Date): string =>
  * Auckland, and a day out for an admin somewhere else, who would then save that day.
  */
 export const calendarDate = (instant: Date): Date =>
-  DateTime.fromFormat(
+  dayAsCalendarDate(
     DateTime.fromJSDate(instant).setZone(ZONE).toFormat("yyyy-LL-dd"),
-    "yyyy-LL-dd",
-  ).toJSDate();
+  );
+
+/**
+ * A day, "2026-10-31", as the local-midnight `Date` a calendar control shows for it: the
+ * inverse of `pickedDay`. Midnight in whatever zone it runs in, so a calendar drawn from it
+ * shows that day on the server too (the days-off card is server-rendered); never store the
+ * instant itself.
+ */
+export const dayAsCalendarDate = (day: string): Date =>
+  DateTime.fromFormat(day, "yyyy-LL-dd").toJSDate();
 
 /**
  * Today on the Auckland calendar, "2026-10-31", wherever this runs. Unlike `pickedDay`, safe

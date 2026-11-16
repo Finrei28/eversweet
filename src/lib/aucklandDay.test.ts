@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   calendarDate,
+  dayAsCalendarDate,
   endOfDayNZ,
   pickedDay,
   startOfDayNZ,
@@ -85,6 +86,18 @@ describe("calendarDate", () => {
       );
     });
   });
+});
+
+describe("dayAsCalendarDate", () => {
+  // The days-off calendar's round trip: a day drawn, clicked, sent as the same day.
+  it.each(["Pacific/Auckland", "UTC", "America/Los_Angeles", "Asia/Kolkata"])(
+    "draws a day as the date pickedDay reads back in %s",
+    (zone) => {
+      expect(
+        inZone(zone, () => pickedDay(dayAsCalendarDate("2026-10-31"))),
+      ).toBe("2026-10-31");
+    },
+  );
 });
 
 describe("startOfDayNZ", () => {

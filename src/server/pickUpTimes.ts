@@ -45,6 +45,9 @@ const getTradingHoursCached = unstable_cache(
   { revalidate: 300, tags: ["trading-hours"] },
 );
 
+/** Revalidated by `/admin/settings` when it saves days off. */
+export const DAYS_OFF_TAG = "days-off";
+
 /**
  * Days off from today onwards. The NZ date is an argument so it forms part of the cache
  * key; read inside, a cached result would survive past the day it was computed for.
@@ -56,15 +59,16 @@ const getDaysOffCached = unstable_cache(
   async (todayKey: string) => {
     const daysOff = await db.daysOff.findMany({
       select: { date: true },
-      // Auckland midnight, which is how the admin app stores a day off. Midnight UTC on
-      // the same date would be 12-13 hours later and drop today's own day off.
+      // Auckland midnight, which is how both the admin app and /admin/settings store a day
+      // off. Midnight UTC on the same date would be 12-13 hours later and drop today's own
+      // day off.
       where: { date: { gte: atNZ(todayKey, 0) } },
       orderBy: { date: "asc" },
     });
     return daysOff.map((day) => day.date.toISOString());
   },
   ["days-off"],
-  { revalidate: 300, tags: ["days-off"] },
+  { revalidate: 300, tags: [DAYS_OFF_TAG] },
 );
 
 /**

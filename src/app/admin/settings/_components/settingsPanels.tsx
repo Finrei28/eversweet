@@ -2,6 +2,7 @@
 
 import { useLanguage } from "~/app/components/language";
 import { AnnouncementsCard } from "./announcementsCard";
+import { DaysOffCard } from "./daysOffCard";
 import { LeaderboardCard } from "./leaderboardCard";
 import { LoyaltyRatesCard } from "./loyaltyRatesCard";
 import { MembershipBenefitsCard } from "./membershipBenefitsCard";
@@ -25,11 +26,13 @@ export function SettingsPanels() {
         </h1>
         <p className="text-sm text-muted-foreground">
           {language === "en"
-            ? "The customer app reads these. A change takes up to a minute to reach it, so make one outside trading hours if the timing matters."
-            : "顾客应用程序会读取这些设置。更改最多需要一分钟才能生效，如果时间很重要，请在营业时间之外进行更改。"}
+            ? "The customer app reads these. Most changes take up to a minute to reach it (days off, about ten), so make one outside trading hours if the timing matters."
+            : "顾客应用程序会读取这些设置。大多数更改最多需要一分钟才能生效（休息日约需十分钟），如果时间很重要，请在营业时间之外进行更改。"}
         </p>
       </div>
 
+      {/* First: the one set most often, a few times a year rather than once. */}
+      <DaysOffCard />
       <LoyaltyRatesCard />
       <PointsExpiryCard />
       <LeaderboardCard />

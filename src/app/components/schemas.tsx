@@ -330,6 +330,21 @@ export const leaderboardVisibilitySchema = z.object({
 });
 
 /**
+ * A save from the days-off card: the Auckland days to close and to reopen, as the calendar
+ * showed them ("2026-12-25"). The change rather than the list, because the staff app's
+ * tablets edit the same days - see `~/lib/daysOff`. A year each way is far more than anyone
+ * changes at once, and keeps one request from writing a table's worth of rows.
+ */
+export const saveDaysOffSchema = z
+  .object({
+    added: z.array(z.string().date()).max(366),
+    removed: z.array(z.string().date()).max(366),
+  })
+  .refine(({ added, removed }) => !added.some((day) => removed.includes(day)), {
+    message: "A day can't be closed and reopened in the same save.",
+  });
+
+/**
  * The shop's own details. Every field is required: these are served to the customer app as
  * one object and a blank address is worse than a stale one.
  */

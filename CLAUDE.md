@@ -560,7 +560,8 @@ The CHECK constraints refuse:
 - a day too short to have a last pick-up
 
 The website sees a change within 5 minutes and the order server within 1, so change hours
-outside trading time. One-off closures stay in the admin app's days off.
+outside trading time. One-off closures are days off, edited on `/admin/settings` or in the
+staff app's Settings - see **Days off** below.
 
 (The hours have no editor. The other shop settings do - see below - and that page is where
 one would go.)
@@ -630,6 +631,39 @@ prize code, pushing a notification. Nothing here has an equivalent.
   benefits card says whether it is currently live; `src/lib/shopSettings.test.ts` pins the
   token spellings against the order server's.
 - **The legal text is deliberately not here.** See TODO.md item 5 in the other repo.
+
+### Days off
+
+The one setting edited in **both** places: the Days off card here and the staff app's Settings
+(through the order server's `updateDaysOff`) write the same `DaysOff` rows. The card is for
+planning closures away from the shop; the tablet stays for a closure decided on the day.
+
+- **A day crosses the wire as an Auckland date** ("2026-12-25"), never a `Date`, and is stored
+  as Auckland midnight (`startOfDayNZ`), as the staff app stores one. Every reader - this
+  site's checkout, the order server, the customer app - matches by Auckland calendar day, so
+  `saveDaysOff` does too: a day already off is not written again however its row was stored,
+  and reopening a day deletes every row on it. Today can be closed; a day that has passed
+  is refused.
+- **A save sends the change, not the list** (`added`, `removed`; `~/lib/daysOff`). The tablets
+  edit the same days, and the staff app's own save used to send its whole list, which deleted
+  any day added since its calendar opened. The card holds its edit the same way, so a refetch
+  under it keeps the admin's clicks. Staff builds from before that fix (staff app #96,
+  2026-10-04) still send the whole list - one saving after a day was added here deletes it.
+- **Saves here take turns** (`lockDaysOff`, an advisory lock like the announcements'), since
+  `DaysOff` has no unique day for two concurrent inserts to collide on. The order server does
+  not take it, so a tablet and this page closing the same day at the same instant can write it
+  twice; harmless, for the reasons above.
+- **Who sees it when:** this site's checkout at once (`revalidateTag(DAYS_OFF_TAG)`), the
+  order server's order checks at once (`getDaysOffKeys` reads uncached), and the customer
+  app's calendar within about ten minutes - the order server's public `/api/getDaysOff` sits
+  in Redis for five, which a writer here cannot clear, plus the app's own refresh. Until then
+  the app offers the day and the order server refuses it at checkout, before the card is
+  touched.
+- **Closing a day cancels nothing and tells nobody.** The card counts the open orders booked on
+  each upcoming day off (`getOrdersBookedOn`: not `PICKED_UP` or `CANCELLED`, by Auckland
+  day), and a save that closes a booked day lists them - name, time, phone - and asks first.
+  The check is made against the server when Save is pressed, not the counts on screen. Staff
+  then contact the customers; only the staff app can cancel an order.
 
 ## Legal documents
 
