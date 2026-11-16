@@ -8,11 +8,14 @@ import { SettingsPanels } from "./_components/settingsPanels";
 
 /**
  * The shop settings that used to need a deploy to change: what an order earns, what the
- * membership advertises, what the launch pop-up says, and the shop's own details.
+ * membership advertises, what the launch pop-up says, and the shop's own details. Those are
+ * the ones that should not be changeable from the tablet on the counter.
+ *
+ * Plus the days off, which are deliberately in both places: the staff app's Settings edits
+ * the same rows, and this is the screen for planning closures away from the shop.
  *
  * Preparation times are deliberately not here - they stay in the staff app, where the
- * kitchen adjusts them as service speeds up or slows down. These are the ones that should
- * not be changeable from the tablet on the counter.
+ * kitchen adjusts them as service speeds up or slows down.
  */
 export default async function SettingsPage() {
   const session = await auth();
@@ -25,6 +28,7 @@ export default async function SettingsPage() {
   // after the shell, and streamed-in content gets `useId` tree ids that do not match the
   // ones hydration computes. See the long note in src/app/admin/past-orders/page.tsx.
   await Promise.all([
+    api.settings.getDaysOff.prefetch(),
     api.settings.getLoyaltyRates.prefetch(),
     api.settings.getPointsExpiry.prefetch(),
     api.settings.getLeaderboardVisibility.prefetch(),

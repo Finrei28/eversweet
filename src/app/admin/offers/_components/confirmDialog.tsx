@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { useLanguage } from "~/app/components/language";
 import { Button } from "~/components/ui/button";
 import {
@@ -20,6 +22,8 @@ type ConfirmDialogProps = {
   destructive?: boolean;
   loading?: boolean;
   onConfirm: () => void;
+  /** Shown between the description and the buttons: what the confirmation is about. */
+  children?: ReactNode;
 };
 
 /**
@@ -38,6 +42,7 @@ export default function ConfirmDialog({
   destructive = false,
   loading = false,
   onConfirm,
+  children,
 }: ConfirmDialogProps) {
   const { language } = useLanguage();
 
@@ -48,6 +53,7 @@ export default function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {children}
         <DialogFooter className="gap-2">
           <Button
             type="button"

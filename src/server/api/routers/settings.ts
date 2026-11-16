@@ -9,11 +9,16 @@ import {
   pointsExpirySchema,
   membershipBenefitsSchema,
   saveAnnouncementsSchema,
+  saveDaysOffSchema,
   shopProfileSchema,
 } from "~/app/components/schemas";
-import { endOfDayNZ, startOfDayNZ } from "~/lib/aucklandDay";
+import { endOfDayNZ, startOfDayNZ, todayNZ } from "~/lib/aucklandDay";
+import { formatDayOff } from "~/lib/daysOff";
+import { nzDayKey } from "~/lib/pickUpTimes";
 import { benefitsClaimingOtherMultiplier } from "~/lib/shopSettings";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import type { db as Db } from "~/server/db";
+import { DAYS_OFF_TAG } from "~/server/pickUpTimes";
 import { SHOP_PROFILE_TAG } from "~/server/shopProfile";
 
 /**
@@ -57,6 +62,37 @@ const SINGLETON_ID = "default";
  */
 export const lockAnnouncements = (tx: Prisma.TransactionClient) =>
   tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('settings:announcements', 0))`;
+
+/**
+ * Takes turns on saving days off, for the rest of `tx`.
+ *
+ * `DaysOff` has no unique day - it cannot, as a day is an Auckland date and the column an
+ * instant - so the save reads which days are off and then inserts the rest. Two admins
+ * adding the same day together both found no row and wrote one each.
+ *
+ * The staff app saves through the order server, which does not take this lock, so a tablet
+ * and this page closing the same day in the same instant can still write it twice. That is
+ * harmless: every reader matches days off by day, and reopening one deletes every row on it.
+ *
+ * Exported so a test can hold it.
+ */
+export const lockDaysOff = (tx: Prisma.TransactionClient) =>
+  tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('settings:days-off', 0))`;
+
+/**
+ * Days off from today on the Auckland calendar, each once, in order. Earlier ones are left
+ * in the table and off this screen: they are history, and nothing reads them for an order.
+ */
+const upcomingDaysOff = async (db: typeof Db): Promise<string[]> => {
+  const rows = await db.daysOff.findMany({
+    where: { date: { gte: startOfDayNZ(todayNZ()) } },
+    select: { date: true },
+  });
+  return [...new Set(rows.map((row) => nzDayKey(row.date)))].sort();
+};
+
+/** An order is still the shop's to make or hand over until it is collected or called off. */
+const OPEN_ORDER_STATUSES = ["PENDING", "ACCEPTED", "MAKING", "READY"] as const;
 
 export const settingsRouter = createTRPCRouter({
   /**
@@ -432,5 +468,114 @@ export const settingsRouter = createTRPCRouter({
           memberMultiplier,
         ),
       };
+    }),
+
+  /** The days off still to come, as Auckland days ("2026-12-25"). */
+  getDaysOff: protectedProcedure.query(({ ctx }) => upcomingDaysOff(ctx.db)),
+
+  /**
+   * Closes and reopens days, and answers with the days off as they now are.
+   *
+   * Written here directly, as the other settings are, rather than through the order
+   * server's `updateDaysOff`. Nothing about a day off needs a guard only that server holds,
+   * and the moment it matters, it sees the change at once: its order checks read the table
+   * uncached (`getDaysOffKeys`), so an order for a day closed here is refused as soon as this
+   * commits. Only its public `/api/getDaysOff`, which the apps draw their calendars from, is
+   * cached - five minutes in Redis, which a writer here cannot clear - so the customer app
+   * goes on offering the day for a few minutes, and the order server refuses it at checkout,
+   * before the card is touched.
+   *
+   * A day matches the rows on its Auckland date however each was stored, as the order
+   * server matches them: a day already off is not written again, and reopening one deletes
+   * every row on it.
+   */
+  saveDaysOff: protectedProcedure
+    .input(saveDaysOffSchema)
+    .mutation(async ({ ctx, input }) => {
+      const today = todayNZ();
+      // Today is allowed - a closure decided in the morning - but a day that has gone
+      // cannot be closed. Only a page left open past midnight sends one.
+      const passed = input.added.filter((day) => day < today);
+      if (passed.length > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `${passed.map((day) => formatDayOff(day, "en")).join(" and ")} ${passed.length === 1 ? "has" : "have"} already passed. Reload the page and pick your days again.`,
+        });
+      }
+
+      await ctx.db.$transaction(async (tx) => {
+        await lockDaysOff(tx);
+
+        const rows = await tx.daysOff.findMany({
+          select: { id: true, date: true },
+        });
+        const onFile = new Set(rows.map((row) => nzDayKey(row.date)));
+        const reopening = new Set(input.removed);
+
+        const toAdd = [...new Set(input.added)].filter((day) => !onFile.has(day));
+        const toDelete = rows
+          .filter((row) => reopening.has(nzDayKey(row.date)))
+          .map((row) => row.id);
+
+        if (toAdd.length > 0) {
+          await tx.daysOff.createMany({
+            // Auckland midnight, as the staff app stores a day off and this site's checkout
+            // bounds its read on. The server runs in UTC, where midnight is 12-13 hours on.
+            data: toAdd.map((day) => ({ date: startOfDayNZ(day) })),
+          });
+        }
+        if (toDelete.length > 0) {
+          await tx.daysOff.deleteMany({ where: { id: { in: toDelete } } });
+        }
+      });
+
+      // This site's checkout caches its days off for five minutes; without this it would
+      // go on offering a day just closed.
+      revalidateTag(DAYS_OFF_TAG);
+
+      return upcomingDaysOff(ctx.db);
+    }),
+
+  /**
+   * The orders still to be collected on the given Auckland days, earliest first, so the
+   * screen can say who is booked on a day before it is closed. Closing a day cancels
+   * nothing and tells nobody: staff contact the customer, and cancel from the staff app if
+   * it comes to that.
+   *
+   * Real names and phone numbers, as the other admin screens show them: staff are the ones
+   * who have to ring.
+   */
+  getOrdersBookedOn: protectedProcedure
+    .input(z.object({ days: z.array(z.string().date()).max(366) }))
+    .query(async ({ ctx, input }) => {
+      const days = [...new Set(input.days)];
+      if (days.length === 0) return [];
+
+      const orders = await ctx.db.order.findMany({
+        where: {
+          status: { in: [...OPEN_ORDER_STATUSES] },
+          OR: days.map((day) => ({
+            pickUpTime: { gte: startOfDayNZ(day), lte: endOfDayNZ(day) },
+          })),
+        },
+        select: {
+          id: true,
+          pickUpTime: true,
+          customerFirstName: true,
+          customerLastName: true,
+          customerPhoneNumber: true,
+          source: true,
+          status: true,
+        },
+        orderBy: { pickUpTime: "asc" },
+      });
+
+      return orders.map(
+        ({ customerFirstName, customerLastName, ...order }) => ({
+          ...order,
+          day: nzDayKey(order.pickUpTime),
+          customerName: `${customerFirstName} ${customerLastName}`.trim(),
+        }),
+      );
     }),
 });
