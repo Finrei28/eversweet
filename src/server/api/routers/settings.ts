@@ -18,6 +18,7 @@ import { nzDayKey } from "~/lib/pickUpTimes";
 import { benefitsClaimingOtherMultiplier } from "~/lib/shopSettings";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import type { db as Db } from "~/server/db";
+import { LEADERBOARD_VISIBILITY_TAG } from "~/server/leaderboardVisibility";
 import { DAYS_OFF_TAG } from "~/server/pickUpTimes";
 import { SHOP_PROFILE_TAG } from "~/server/shopProfile";
 
@@ -204,6 +205,10 @@ export const settingsRouter = createTRPCRouter({
   /**
    * Hides or shows it. Hiding stamps the moment only if it was shown, so a second click keeps
    * the date the card reports; showing clears it. Same shape as `setPointsExpiry`.
+   *
+   * Either way the home page's app band is told, since it mentions the leaderboard only while
+   * the app shows it (`~/server/leaderboardVisibility`). The order server needs no telling: it
+   * reads the row with the loyalty rates, within a minute.
    */
   setLeaderboardVisibility: protectedProcedure
     .input(leaderboardVisibilitySchema)
@@ -212,6 +217,7 @@ export const settingsRouter = createTRPCRouter({
         await ctx.db.loyaltySetting.updateMany({
           data: { leaderboardHiddenAt: null },
         });
+        revalidateTag(LEADERBOARD_VISIBILITY_TAG);
         return { hiddenAt: null };
       }
 
@@ -229,8 +235,10 @@ export const settingsRouter = createTRPCRouter({
         await ctx.db.loyaltySetting.create({
           data: { id: SINGLETON_ID, leaderboardHiddenAt: now },
         });
+        revalidateTag(LEADERBOARD_VISIBILITY_TAG);
         return { hiddenAt: now };
       }
+      revalidateTag(LEADERBOARD_VISIBILITY_TAG);
       return { hiddenAt: row.leaderboardHiddenAt };
     }),
 

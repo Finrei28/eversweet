@@ -9,6 +9,7 @@ import { Button } from "~/components/ui/button";
 import { useLanguage } from "../components/language";
 import { Separator } from "~/components/ui/separator";
 import UberEats from "./_homeComponents/uber-eats";
+import GetTheApp from "./_homeComponents/get-the-app";
 import OpeningHours from "./_homeComponents/opening-hours";
 import MenuPhotos from "./_homeComponents/menu-photos";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -105,6 +106,10 @@ function HomePageContent() {
             speed={0.6}
           />
         </div>
+
+        <section className="mt-10 px-4">
+          <GetTheApp />
+        </section>
 
         <section ref={openingHoursRef} id="opening-hours" className="my-10">
           <OpeningHours />

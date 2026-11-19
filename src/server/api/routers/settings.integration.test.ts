@@ -8,8 +8,11 @@ vi.mock("next/cache", () => ({
   unstable_cache: (fn: unknown) => fn,
 }));
 
+import { revalidateTag } from "next/cache";
+
 import { todayNZ } from "~/lib/aucklandDay";
 import { db } from "~/server/db";
+import { LEADERBOARD_VISIBILITY_TAG } from "~/server/leaderboardVisibility";
 import { lockAnnouncements } from "~/server/api/routers/settings";
 import { adminCaller } from "~/test/caller";
 import { describeIfDb, resetDatabase } from "~/test/db";
@@ -140,6 +143,24 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
       const rows = await db.loyaltySetting.findMany();
       expect(rows).toHaveLength(1);
       expect(rows[0]!.leaderboardHiddenAt).not.toBeNull();
+    });
+
+    /**
+     * The home page's app band leaves the leaderboard out while it is hidden, from a cached
+     * read. Without the tag it would go on advertising a board taken out of the app for up to
+     * the cache's five minutes, or keep it out after the board came back.
+     */
+    it("tells the home page's cached read, both ways", async () => {
+      await seed();
+      const caller = adminCaller();
+
+      vi.mocked(revalidateTag).mockClear();
+      await caller.settings.setLeaderboardVisibility({ shown: false });
+      expect(revalidateTag).toHaveBeenCalledWith(LEADERBOARD_VISIBILITY_TAG);
+
+      vi.mocked(revalidateTag).mockClear();
+      await caller.settings.setLeaderboardVisibility({ shown: true });
+      expect(revalidateTag).toHaveBeenCalledWith(LEADERBOARD_VISIBILITY_TAG);
     });
   });
 

@@ -26,6 +26,8 @@ export default function Home() {
   // result inside the HTML. Without this the browser had to download and
   // hydrate the bundle before it even began asking for the desserts.
   void api.dessert.getMostPopularProducts.prefetch();
+  // Whether the app band may mention the leaderboard, read from a cache like the desserts.
+  void api.store.getAppPromotion.prefetch();
 
   return (
     <HydrateClient>
