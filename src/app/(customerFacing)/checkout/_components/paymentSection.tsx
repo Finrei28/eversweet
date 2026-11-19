@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { useLanguage } from "~/app/components/language";
+import { stripeAppearance } from "~/lib/stripeAppearance";
 import type { PricedCart } from "./checkoutItems";
 
 type paymentSectionProps = {
@@ -68,7 +69,7 @@ export default function PaymentSection({
         {clientSecret && pricedCart && (
           <Elements
             key={clientSecret}
-            options={{ clientSecret }}
+            options={{ clientSecret, appearance: stripeAppearance }}
             stripe={stripePromise}
           >
             <CheckoutForm
