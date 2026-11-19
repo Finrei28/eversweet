@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  closureLabel,
+  closures,
   dayChip,
   hoursLine,
   orderPlacedLabel,
@@ -192,5 +194,76 @@ describe("visibleSlots", () => {
       shown: slots.slice(0, 5),
       more: false,
     });
+  });
+});
+
+/**
+ * The days-off notice. A day off is stored as Auckland midnight, which is 11:00 or 12:00 UTC
+ * the day before, so a browser west of Auckland that reads the day off the `Date` names the
+ * day before the shop is actually closed.
+ */
+describe("closures", () => {
+  it("reads each day off on the Auckland calendar", () => {
+    expect(closures([atNZ("2026-11-24", 0)])).toEqual([
+      { first: "2026-11-24", last: "2026-11-24" },
+    ]);
+  });
+
+  it("joins days in a row into one closure, and splits at a gap", () => {
+    const days = ["2026-12-24", "2026-12-25", "2026-12-26", "2026-12-28"];
+    expect(closures(days.map((day) => atNZ(day, 0)))).toEqual([
+      { first: "2026-12-24", last: "2026-12-26" },
+      { first: "2026-12-28", last: "2026-12-28" },
+    ]);
+  });
+
+  it("runs on over the end of a month and a year", () => {
+    const days = ["2026-12-31", "2027-01-01", "2027-01-02"];
+    expect(closures(days.map((day) => atNZ(day, 0)))).toEqual([
+      { first: "2026-12-31", last: "2027-01-02" },
+    ]);
+  });
+
+  it("names a day once however many rows hold it, in date order", () => {
+    // A tablet and /admin/settings closing the same day at once can write it twice.
+    const days = ["2026-12-25", "2026-11-24", "2026-12-25"];
+    expect(closures(days.map((day) => atNZ(day, 0)))).toEqual([
+      { first: "2026-11-24", last: "2026-11-24" },
+      { first: "2026-12-25", last: "2026-12-25" },
+    ]);
+  });
+
+  it("has nothing to say about no days off", () => {
+    expect(closures([])).toEqual([]);
+  });
+});
+
+describe("closureLabel", () => {
+  const text = ({ days, joiner }: { days: string[]; joiner: string }) =>
+    days.join(joiner);
+
+  it("names one day with its weekday", () => {
+    const day = { first: "2026-11-24", last: "2026-11-24" };
+    expect(closureLabel(day, "en").days).toEqual(["Tuesday 24 November"]);
+    expect(closureLabel(day, "zh").days).toEqual(["11月24日（周二）"]);
+  });
+
+  it("names a run of days by its first and last, each kept whole", () => {
+    const run = { first: "2026-12-24", last: "2026-12-27" };
+    expect(closureLabel(run, "en").days).toEqual([
+      "Thursday 24 December",
+      "Sunday 27 December",
+    ]);
+    expect(closureLabel(run, "zh").days).toEqual([
+      "12月24日（周四）",
+      "12月27日（周日）",
+    ]);
+    // The dash stays with the first day, so a line never starts with it.
+    expect(text(closureLabel(run, "en"))).toBe(
+      "Thursday 24 December\u00a0– Sunday 27 December",
+    );
+    expect(text(closureLabel(run, "zh"))).toBe(
+      "12月24日（周四）至12月27日（周日）",
+    );
   });
 });
