@@ -65,6 +65,9 @@ const REDESIGNED = [
   "src/app/(customerFacing)/checkout/_components/paymentSection.tsx",
   "src/app/(customerFacing)/checkout/_components/pick-up-time.tsx",
   "src/lib/stripeAppearance.ts",
+  // Order confirmed (PR 4): the page, its not-found states and the app card under it.
+  "src/app/(customerFacing)/order/page.tsx",
+  "src/app/(customerFacing)/order/_components/earnInTheApp.tsx",
 ];
 
 const PALETTE =
