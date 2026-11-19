@@ -9,6 +9,7 @@ import Link from "next/link";
 import PaymentSection from "./_components/paymentSection";
 import CustomerInformation from "./_components/customerInformation";
 import OrderSummary from "./_components/orderSummary";
+import { PickupTimePicker } from "./_components/pick-up-time";
 import { useLanguage } from "~/app/components/language";
 import Loader from "~/app/components/customLoading";
 import { api } from "~/trpc/react";
@@ -35,6 +36,7 @@ export default function CheckoutPage() {
 
   const [pickUpTime, setPickUpTime] = useState<Date | null>(null);
   const [pickUpNextOpening, setPickUpNextOpening] = useState(false);
+  const [pickUpAsap, setPickUpAsap] = useState(true);
   // How far the device's clock is from the server's, learned from the server's own check
   // before paying. The picker reads its clock through this, so a phone a few minutes slow
   // does not keep offering an ASAP the server keeps refusing.
@@ -201,12 +203,17 @@ export default function CheckoutPage() {
   // clicked under them.
   if (orderPlaced) {
     return (
-      <div className="mx-auto flex min-h-[60dvh] max-w-xs flex-col items-center justify-center px-4 py-10 text-center md:max-w-md">
-        <CheckCircle className="mb-4 h-16 w-16 text-green-500" />
-        <h2 className="mb-2 text-2xl font-medium">
-          {language === "en" ? "Payment Successful!" : "付款成功！"}
-        </h2>
-        <p className="text-gray-500">
+      <div
+        role="status"
+        className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-8 py-10 text-center"
+      >
+        <span className="mb-1 flex h-20 w-20 items-center justify-center rounded-full bg-success-soft">
+          <CheckCircle className="h-10 w-10 text-success" aria-hidden />
+        </span>
+        <h1 className="text-2xl font-extrabold">
+          {language === "en" ? "Payment successful" : "付款成功"}
+        </h1>
+        <p className="text-[15px] text-muted-foreground">
           {language === "en"
             ? "Thank you for your order. You will be redirected to the confirmation page shortly."
             : "感谢您的订购。您将被重定向至确认页面"}
@@ -217,67 +224,92 @@ export default function CheckoutPage() {
 
   if (!cart?.cart || cart.cart.length === 0) {
     return (
-      <div className="mx-auto flex min-h-[60dvh] max-w-xs flex-col items-center justify-center px-4 py-10 md:max-w-md">
-        <ShoppingBag className="mb-4 h-16 w-16 text-gray-300" />
-        <h2 className="mb-2 text-2xl font-medium">
+      <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-8 py-10 text-center">
+        <span className="mb-1 flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+          <ShoppingBag className="h-9 w-9 text-muted-foreground" aria-hidden />
+        </span>
+        <h1 className="text-2xl font-extrabold">
           {language === "en" ? "Your cart is empty" : "您的购物车是空的"}
-        </h2>
-        <p className="mb-8 text-center text-gray-500">
+        </h1>
+        <p className="text-[15px] text-muted-foreground">
           {language === "en"
             ? "You don't have any items in your cart yet."
             : "您的购物车中还没有任何商品"}
         </p>
-        <Link href="/menu">
-          <Button>{language === "en" ? "Browse Menu" : "浏览菜单"}</Button>
-        </Link>
+        {/* A link styled as a button. It was a button inside a link, which is two
+            controls in one for a keyboard and a screen reader. */}
+        <Button asChild size="pill-sm" className="mt-3">
+          <Link href="/menu">
+            {language === "en" ? "Browse menu" : "浏览菜单"}
+          </Link>
+        </Button>
       </div>
     );
   }
+
+  // One column on a phone, in the order a customer works through it: when, what, who,
+  // pay. From `lg` the summary moves into a column of its own beside the other three,
+  // which keep their order; the last row takes any height the summary needs beyond theirs.
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10">
-      <h1 className="mb-8 text-center text-3xl font-bold">
+    <div className="mx-auto w-full max-w-[680px] px-5 pb-4 lg:max-w-[1240px]">
+      <h1 className="pb-2 pt-5 text-[30px] font-extrabold leading-tight lg:pb-6 lg:pt-10 lg:text-5xl lg:tracking-[-0.01em]">
         {language === "en" ? "Checkout" : "付款台"}
       </h1>
 
-      <div className="grid gap-8 md:grid-cols-2">
-        {/* Order Summary */}
-        <div>
-          <OrderSummary
-            cart={cart}
-            pricedCart={pricedCart}
-            pickUpTime={pickUpTime}
-            setPickUpTime={setPickUpTime}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:grid-rows-[auto_auto_1fr] lg:gap-x-16">
+        <section
+          aria-labelledby="pick-up-heading"
+          className="flex flex-col gap-3.5 border-b border-border pb-7 pt-4 lg:col-start-1 lg:row-start-1 lg:gap-4 lg:pb-8 lg:pt-2"
+        >
+          <h2
+            id="pick-up-heading"
+            className="text-xl font-extrabold lg:text-2xl"
+          >
+            {language === "en" ? "Pick-up time" : "取货时间"}
+          </h2>
+          <PickupTimePicker
+            value={pickUpTime}
+            onChange={setPickUpTime}
             setPickUpNextOpening={setPickUpNextOpening}
-            clockSkewMs={clockSkewMs}
+            setPickUpAsap={setPickUpAsap}
+            numberOfItems={cart.totalItems}
             daysOff={daysOff}
+            clockSkewMs={clockSkewMs}
           />
+        </section>
 
-          {/* Customer Information */}
-          <CustomerInformation
-            customerInfo={customerInfo}
-            handleCustomerInfoChange={handleCustomerInfoChange}
-          />
-        </div>
+        <OrderSummary
+          cart={cart}
+          pricedCart={pricedCart}
+          pickUpTime={pickUpTime}
+          pickUpAsap={pickUpAsap}
+          className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:self-start"
+        />
 
-        {/* Payment Section */}
-        <div>
-          <PaymentSection
-            clientSecret={clientSecret}
-            paymentIntentId={paymentIntentId}
-            pricedCart={pricedCart}
-            onPriced={setPricedCart}
-            onPaymentReset={resetPayment}
-            onOrderPlaced={handleOrderPlaced}
-            cart={cart}
-            customerInfo={customerInfo}
-            pickUpTime={pickUpTime}
-            pickUpNextOpening={pickUpNextOpening}
-            setPickUpTime={setPickUpTime}
-            isLoading={isPaymentSectionLoading}
-            error={error}
-            onServerTime={handleServerTime}
-          />
-        </div>
+        <CustomerInformation
+          customerInfo={customerInfo}
+          handleCustomerInfoChange={handleCustomerInfoChange}
+          className="lg:col-start-1 lg:row-start-2"
+        />
+
+        <PaymentSection
+          clientSecret={clientSecret}
+          paymentIntentId={paymentIntentId}
+          pricedCart={pricedCart}
+          onPriced={setPricedCart}
+          onPaymentReset={resetPayment}
+          onOrderPlaced={handleOrderPlaced}
+          cart={cart}
+          customerInfo={customerInfo}
+          detailsReady={detailsComplete(customerInfo)}
+          pickUpTime={pickUpTime}
+          pickUpNextOpening={pickUpNextOpening}
+          setPickUpTime={setPickUpTime}
+          isLoading={isPaymentSectionLoading}
+          error={error}
+          onServerTime={handleServerTime}
+          className="lg:col-start-1 lg:row-start-3 lg:self-start"
+        />
       </div>
     </div>
   );

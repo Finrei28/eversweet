@@ -1,43 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { format } from "date-fns";
-import { zhCN, enNZ } from "date-fns/locale";
-import { CalendarIcon, Clock, Info } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Clock } from "lucide-react";
 
-import { Calendar } from "~/components/ui/calendar";
-import { Button } from "~/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { ScrollArea } from "~/components/ui/scroll-area";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "~/components/ui/tooltip";
 import { useLanguage } from "~/app/components/language";
 import {
   addDaysToKey,
   asapPickUpTime,
-  formatMinutes,
-  formatNZ,
   hoursOn,
   isTooSoon,
-  LAST_PICK_UP_OFFSET_MINUTES,
   nextDayWithSlots,
   nzDayKey,
+  nzMinuteOfDay,
   pickUpProblem,
   pickUpSlots,
   toDaysOffKeys,
   toWeeklyHours,
   type TradingCalendar,
 } from "~/lib/pickUpTimes";
+import {
+  dayChip,
+  hoursLine,
+  pickUpTimeLabel,
+  visibleSlots,
+} from "~/lib/pickUpLabels";
+import { timeOfDay } from "~/lib/openToday";
+import { scrollBehavior } from "~/lib/scrollBehavior";
 import { quoteMinutes } from "~/lib/prepTimes";
 import { api } from "~/trpc/react";
 
@@ -45,6 +34,8 @@ type PickupTimeProps = {
   onChange: (date: Date | null) => void;
   value: Date | null;
   setPickUpNextOpening: (boolean: boolean) => void;
+  /** Whether the time is the soonest (ASAP) rather than one picked; see the summary. */
+  setPickUpAsap: (asap: boolean) => void;
   numberOfItems: number;
   daysOff: Date[];
   /** How far the device's clock is behind the server's; see the checkout page. */
@@ -57,17 +48,8 @@ const BOOKING_DAYS_AHEAD = 14;
 /** How often the soonest time is worked out again while the page is open. */
 const REFRESH_MS = 5000;
 
-/**
- * The calendar grid shows the customer's local dates, and the day they click is the
- * Auckland day they mean. These convert between that grid and Auckland calendar-day keys
- * without passing through an instant, which is what shifted days for a browser outside
- * New Zealand.
- */
-const gridDayKey = (date: Date) => format(date, "yyyy-MM-dd");
-const gridDate = (dayKey: string) => {
-  const [year, month, day] = dayKey.split("-").map(Number);
-  return new Date(year!, month! - 1, day);
-};
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 /**
  * Picks the pick-up time for a website order.
@@ -77,19 +59,25 @@ const gridDate = (dayKey: string) => {
  * Auckland clock whatever the customer's device is set to. This component only keeps the
  * chosen time valid as the clock and the cart move, and the server checks it again before
  * the customer pays.
+ *
+ * Drawn in the page, as direction D's checkout has it: ASAP or Pick up later, then for a
+ * later time a strip of days and a grid of times. It used to be a popover holding a month
+ * calendar. The days are Auckland day keys throughout, so nothing here converts through a
+ * browser-local date any more.
  */
 export function PickupTimePicker({
   onChange,
   value,
   setPickUpNextOpening,
+  setPickUpAsap,
   numberOfItems,
   daysOff,
   clockSkewMs,
 }: PickupTimeProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<"asap" | "custom">("asap");
+  // The day whose "Later times" was pressed, so another day starts short again.
+  const [showAllFor, setShowAllFor] = useState<string | null>(null);
   const { language } = useLanguage();
-  const locale = language === "en" ? enNZ : zhCN;
 
   // Shared with the kitchen, so the time offered here and the moment staff are told to
   // start it come from the same row.
@@ -151,6 +139,11 @@ export function PickupTimePicker({
     setPickUpNextOpening(onAnotherDay);
   }, [onAnotherDay, setPickUpNextOpening]);
 
+  // The order summary calls an ASAP time "about" that time.
+  useEffect(() => {
+    setPickUpAsap(selectedTab === "asap");
+  }, [selectedTab, setPickUpAsap]);
+
   /** Whether a calendar day has anything to book. Only today can be open yet empty. */
   const isBookableDay = (dayKey: string) => {
     if (!calendar) return false;
@@ -170,10 +163,9 @@ export function PickupTimePicker({
   const handleAsapSelect = () => {
     setSelectedTab("asap");
     onChange(asap);
-    setIsOpen(false);
   };
 
-  // Opens the calendar on the time already showing, so the screen does not jump.
+  // Opens on the time already showing, so the screen does not jump.
   const handlePickLaterSelect = () => {
     setSelectedTab("custom");
     if (!value && asap) onChange(asap);
@@ -184,25 +176,66 @@ export function PickupTimePicker({
    * last pick-up - moves on to the next day that has one, rather than offering the
    * opening time that has already passed, which is what this used to do.
    */
-  const handleDateSelect = (date: Date | undefined) => {
-    if (!date || !calendar) return;
+  const handleDaySelect = (dayKey: string) => {
+    if (!calendar) return;
     setSelectedTab("custom");
 
-    const dayKey = nextDayWithSlots(gridDayKey(date), now, quote, calendar);
-    const first = dayKey && pickUpSlots(dayKey, now, quote, calendar)[0];
+    const day = nextDayWithSlots(dayKey, now, quote, calendar);
+    const first = day && pickUpSlots(day, now, quote, calendar)[0];
     if (first) onChange(first);
   };
 
   const handleTimeSelect = (time: Date) => {
     onChange(time);
-    setIsOpen(false);
   };
 
   const t = (en: string, zh: string) => (language === "en" ? en : zh);
 
+  const valueDayKey = value ? nzDayKey(value) : null;
+  const valueDayHours =
+    valueDayKey && calendar ? hoursOn(valueDayKey, calendar) : null;
+  const slots =
+    valueDayKey && calendar
+      ? pickUpSlots(valueDayKey, now, quote, calendar)
+      : [];
+  const { shown, more } = visibleSlots(
+    slots,
+    valueTime,
+    showAllFor !== null && showAllFor === valueDayKey,
+  );
+
+  // Keeps the picked day in view in the strip, which scrolls sideways.
+  const stripRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const strip = stripRef.current;
+    const chip = strip?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!strip || !chip) return;
+    const start = chip.offsetLeft;
+    const end = start + chip.offsetWidth;
+    if (
+      start < strip.scrollLeft ||
+      end > strip.scrollLeft + strip.clientWidth
+    ) {
+      strip.scrollTo({ left: start - 20, behavior: scrollBehavior() });
+    }
+  }, [valueDayKey, selectedTab]);
+
+  // "Later times" goes once pressed, so focus moves to the first time it revealed.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const revealFrom = useRef<number | null>(null);
+  useEffect(() => {
+    if (revealFrom.current === null) return;
+    gridRef.current
+      ?.querySelectorAll<HTMLButtonElement>("button")
+      [revealFrom.current]?.focus();
+    revealFrom.current = null;
+  }, [showAllFor]);
+
+  const modeRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
   if (hoursFailed) {
     return (
-      <p className="text-sm text-destructive">
+      <p className="text-[15px] text-destructive">
         {t(
           "We couldn't load our opening hours. Please refresh the page to try again.",
           "无法加载营业时间，请刷新页面重试。",
@@ -213,7 +246,7 @@ export function PickupTimePicker({
 
   if (calendar && asap === null) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-[15px] text-muted-foreground">
         {t(
           "We're not taking pick-up orders at the moment. Please check back soon.",
           "我们目前不接受取货订单，请稍后再来。",
@@ -222,175 +255,210 @@ export function PickupTimePicker({
     );
   }
 
-  const valueDayKey = value ? nzDayKey(value) : null;
-  const valueDayHours =
-    valueDayKey && calendar ? hoursOn(valueDayKey, calendar) : null;
-  const slots =
-    valueDayKey && calendar
-      ? pickUpSlots(valueDayKey, now, quote, calendar)
-      : [];
+  const modes = [
+    { tab: "asap", label: t("ASAP", "尽快"), select: handleAsapSelect },
+    {
+      tab: "custom",
+      label: t("Pick up later", "稍后取货"),
+      select: handlePickLaterSelect,
+    },
+  ] as const;
 
-  const formatDisplayValue = () => {
-    if (!value || !calendar)
-      return t("Loading pick-up times...", "正在加载取货时间...");
-
-    if (selectedTab === "asap") {
-      return nzDayKey(value) === todayKey
-        ? `${t("ASAP (approx. ", "尽快 (大概 ")}${formatNZ(value, "EEE, h:mm a", { locale })})`
-        : `${t("Next opening: ", "下次营业: ")}${formatNZ(value, "EEE, MMM d, h:mm a", { locale })}`;
+  // A radio group: the arrow keys move the choice, and Tab leaves the group.
+  const handleModeKey = (event: React.KeyboardEvent) => {
+    if (
+      !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)
+    ) {
+      return;
     }
-
-    return formatNZ(value, "EEE, MMM d, h:mm a", { locale });
+    event.preventDefault();
+    const next = selectedTab === "asap" ? 1 : 0;
+    modes[next].select();
+    modeRefs.current[next]?.focus();
   };
 
-  return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          disabled={!calendar}
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !value && "text-muted-foreground",
-          )}
-        >
-          {selectedTab === "asap" ? (
-            <Clock className="mr-2 h-4 w-4" />
-          ) : (
-            <CalendarIcon className="mr-2 h-4 w-4" />
-          )}
-          {formatDisplayValue()}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[100vw] max-w-[440px] p-0 md:w-auto"
-        align="start"
-      >
-        <Tabs
-          value={selectedTab}
-          onValueChange={(v) => setSelectedTab(v as "asap" | "custom")}
-        >
-          <div className="border-b p-3">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="asap" onClick={handleAsapSelect}>
-                {t("ASAP", "尽快")}
-              </TabsTrigger>
-              <TabsTrigger value="custom" onClick={handlePickLaterSelect}>
-                {t("Pick up later", "稍后取货")}
-              </TabsTrigger>
-            </TabsList>
-          </div>
+  const days = Array.from({ length: BOOKING_DAYS_AHEAD + 1 }, (_, i) =>
+    addDaysToKey(todayKey, i),
+  );
 
-          <TabsContent value="asap" className="p-4">
-            <div className="space-y-2">
-              {asap && nzDayKey(asap) !== todayKey ? (
-                <p className="text-sm text-muted-foreground">
-                  {t(
+  return (
+    <div className="flex flex-col gap-3.5 lg:gap-4">
+      <div
+        role="radiogroup"
+        aria-label={t("Pick-up time", "取货时间")}
+        onKeyDown={handleModeKey}
+        className="flex w-full rounded-full bg-muted p-1 sm:w-[400px]"
+      >
+        {modes.map((mode, index) => {
+          const checked = selectedTab === mode.tab;
+          return (
+            <button
+              key={mode.tab}
+              ref={(el) => {
+                modeRefs.current[index] = el;
+              }}
+              type="button"
+              role="radio"
+              aria-checked={checked}
+              tabIndex={checked ? 0 : -1}
+              disabled={!calendar}
+              onClick={mode.select}
+              className={cn(
+                "h-11 flex-1 rounded-full text-[15px] font-semibold transition-colors disabled:opacity-50 lg:text-base",
+                focusRing,
+                checked && "bg-primary font-extrabold text-primary-foreground",
+              )}
+            >
+              {mode.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {!calendar || !value ? (
+        <p className="text-[15px] text-muted-foreground">
+          {t("Loading pick-up times...", "正在加载取货时间...")}
+        </p>
+      ) : selectedTab === "asap" ? (
+        <div className="flex items-start gap-3.5">
+          <span
+            aria-hidden
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-secondary"
+          >
+            <Clock className="h-[22px] w-[22px]" strokeWidth={1.9} />
+          </span>
+          <div className="flex flex-col gap-0.5">
+            <p className="text-lg font-extrabold tabular-nums lg:text-xl">
+              {t("Estimated time: ", "预计时间：")}
+              {/* Wraps whole, after the label, rather than leaving "pm" alone. */}
+              <span className="whitespace-nowrap">
+                {asap
+                  ? pickUpTimeLabel(asap, language)
+                  : t("Loading...", "加载中...")}
+              </span>
+            </p>
+            <p className="text-[15px] text-muted-foreground">
+              {asap && nzDayKey(asap) !== todayKey
+                ? t(
                     "There are no pick-up times left today. The soonest is when we next open.",
                     "今天已没有可取货时间。最早可在下次营业时取货。",
-                  )}
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {t(
+                  )
+                : t(
                     "Your order will be ready for pickup as soon as possible.",
-                    "您的订单将尽快准备好供取货.",
+                    "您的订单将尽快准备好供取货。",
                   )}
-                </p>
-              )}
-              <p className="font-medium">
-                {t("Estimated time: ", "预计时间: ")}
-                {asap
-                  ? formatNZ(asap, "EEE, MMM d, h:mm a", { locale })
-                  : t("Loading...", "加载中...")}
-              </p>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="custom" className="p-0">
-            <div className="flex flex-col md:flex-row">
-              <div className="w-full md:w-auto">
-                <Calendar
-                  mode="single"
-                  locale={enNZ}
-                  selected={valueDayKey ? gridDate(valueDayKey) : undefined}
-                  defaultMonth={valueDayKey ? gridDate(valueDayKey) : undefined}
-                  onSelect={handleDateSelect}
-                  disabled={(date) => !isBookableDay(gridDayKey(date))}
-                  modifiers={{
-                    closed: (date) =>
-                      !!calendar && !hoursOn(gridDayKey(date), calendar),
-                  }}
-                  modifiersClassNames={{
-                    closed: "text-red-500 line-through opacity-50",
-                  }}
-                  initialFocus
-                  className="flex justify-center border-r"
-                />
-                {valueDayHours && value && (
-                  <div className="border-t p-2 text-center text-sm">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex cursor-help items-center justify-center gap-1">
-                            <span>
-                              {t("Hours: ", "营业时间: ")}
-                              {formatMinutes(valueDayHours.opensAt)} -{" "}
-                              {formatMinutes(valueDayHours.closesAt)}
-                            </span>
-                            <Info className="h-3 w-3" />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            {t("Last pick-up on ", "最后取货时间，")}
-                            {formatNZ(value, "EEEE", { locale })}
-                            {": "}
-                            {formatMinutes(
-                              valueDayHours.closesAt -
-                                LAST_PICK_UP_OFFSET_MINUTES,
-                            )}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                )}
-              </div>
-
-              <div className="w-full p-3 sm:w-[200px]">
-                <h3 className="mb-2 text-sm font-medium">
-                  {t("Available Times", "可取货时间")}
-                </h3>
-                <ScrollArea className="h-72">
-                  <div className="grid grid-cols-2 gap-2 pr-3">
-                    {slots.map((time) => (
-                      <Button
-                        key={time.getTime()}
-                        variant={
-                          valueTime === time.getTime() ? "default" : "outline"
-                        }
-                        size="sm"
-                        onClick={() => handleTimeSelect(time)}
-                      >
-                        {formatNZ(time, "h:mm a")}
-                      </Button>
-                    ))}
-                    {value && slots.length === 0 && (
-                      <p className="col-span-2 py-4 text-center text-sm text-muted-foreground">
-                        {t(
-                          "No pick-up times left on this date. Please select another date.",
-                          "此日期没有可用时间。请选择其他日期.",
-                        )}
-                      </p>
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div
+            ref={stripRef}
+            role="group"
+            aria-label={t("Pick-up day", "取货日期")}
+            // A phone scrolls it sideways, to the screen's edge; the padding keeps each
+            // day's focus ring inside the scroller, which clips. Wider screens wrap it
+            // instead, since a mouse wheel cannot scroll it sideways and the days past
+            // the column's edge would be out of reach.
+            className="relative -mx-5 flex gap-2 overflow-x-auto px-5 py-1 scrollbar-hide sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:py-0"
+          >
+            {days.map((dayKey) => {
+              const bookable = isBookableDay(dayKey);
+              const chip = dayChip(dayKey, todayKey, bookable, language);
+              const picked = dayKey === valueDayKey;
+              return (
+                <button
+                  key={dayKey}
+                  type="button"
+                  aria-pressed={picked}
+                  aria-label={chip.label}
+                  disabled={!bookable}
+                  onClick={() => handleDaySelect(dayKey)}
+                  className={cn(
+                    "flex h-[68px] w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-card bg-secondary transition-[filter] hover:brightness-95 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:hover:brightness-100",
+                    focusRing,
+                    picked &&
+                      "bg-inverse text-inverse-foreground hover:brightness-100",
+                  )}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "text-xs font-bold",
+                      picked && "text-secondary",
                     )}
-                  </div>
-                </ScrollArea>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </PopoverContent>
-    </Popover>
+                  >
+                    {chip.weekday}
+                  </span>
+                  <span
+                    aria-hidden
+                    className="text-xl font-extrabold tabular-nums"
+                  >
+                    {chip.day}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {valueDayHours && valueDayKey && (
+            <p className="text-sm tabular-nums text-muted-foreground">
+              {hoursLine(valueDayKey, valueDayHours, language)}
+            </p>
+          )}
+
+          <div
+            ref={gridRef}
+            role="group"
+            aria-label={t("Pick-up times", "可取货时间")}
+            className="grid grid-cols-3 gap-2 sm:grid-cols-4"
+          >
+            {shown.map((time) => {
+              const picked = valueTime === time.getTime();
+              return (
+                <button
+                  key={time.getTime()}
+                  type="button"
+                  aria-pressed={picked}
+                  onClick={() => handleTimeSelect(time)}
+                  className={cn(
+                    "h-11 rounded-full bg-secondary text-[15px] font-semibold tabular-nums transition-[filter] hover:brightness-95",
+                    focusRing,
+                    picked && "bg-primary font-extrabold",
+                  )}
+                >
+                  {timeOfDay(nzMinuteOfDay(time), language)}
+                </button>
+              );
+            })}
+            {slots.length === 0 && (
+              <p className="col-span-full py-2 text-[15px] text-muted-foreground">
+                {t(
+                  "No pick-up times left on this date. Please select another date.",
+                  "此日期没有可用时间。请选择其他日期。",
+                )}
+              </p>
+            )}
+          </div>
+
+          {more && (
+            <button
+              type="button"
+              onClick={() => {
+                revealFrom.current = shown.length;
+                setShowAllFor(valueDayKey);
+              }}
+              className={cn(
+                "-my-1 flex h-11 items-center gap-1 self-start rounded-full text-[15px] font-bold text-accent hover:underline",
+                focusRing,
+              )}
+            >
+              {t("Later times", "更晚的时间")}
+              <ChevronDown className="h-4 w-4" strokeWidth={2} aria-hidden />
+            </button>
+          )}
+        </>
+      )}
+    </div>
   );
 }
