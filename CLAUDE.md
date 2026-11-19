@@ -805,6 +805,24 @@ positioned at the other end, so the row reserves that too (`pr-32`), and admin l
 size at `xl`. The eighth link, Settings, ran under that button until it did, and a click on it
 opened the language menu. Check any new link at 1280px, in both languages.
 
+## Customer pages: the direction D redesign
+
+The customer pages are moving onto the customer app's design direction D, from a token file
+both repos share. `REDESIGN.md` holds the plan and what the owner decided on 2026-11-20; read it
+before restyling a customer page. The app's `eversweet-design` skill
+(`eversweet_app/frontend/.claude/skills/eversweet-design/`) is the brief.
+
+- **The redesign lands on `feat/website-redesign`, not `main`.** Each flow is a PR into that
+  branch, and the branch merges into `main` once, when every flow is done: merging into `main`
+  deploys, and customers should never see half the site in the new look. The one exception is
+  PR 0, the token file and its CI check, which changes nothing on screen.
+- **`src/styles/designTokens.json` will be shared byte-for-byte** with
+  `eversweet_app/frontend/lib/designTokens.json` (PR 0 in `REDESIGN.md` adds both). Change both
+  or neither, under one branch name; `npm run verify:tokens` fails otherwise.
+- **Names lead in the reader's language.** A dessert, category or customisation shows both
+  names: the selected language's first and larger, the other second. Every other string stays in
+  the selected language only.
+
 ## Sharp edges
 
 - **An offer carries exactly one price: `itemPriceInCents` or `discountAmount`, never both
