@@ -22,22 +22,32 @@ import { cn } from "~/lib/utils";
  */
 export default function StoreBadges({
   size = "lg",
+  tone = "light",
   className,
 }: {
   size?: "md" | "lg";
+  /** The ground they sit on, which their focus ring has to stand out from. */
+  tone?: "light" | "dark";
   className?: string;
 }) {
   const { language } = useLanguage();
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-3 sm:gap-4", className)}>
+    <div
+      className={cn("flex flex-wrap items-center gap-3 sm:gap-4", className)}
+    >
       {storeBadges(language).map((badge) => (
         <a
           key={badge.store}
           href={badge.href}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-[0.6rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2"
+          className={cn(
+            "rounded-[0.6rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+            tone === "dark"
+              ? "focus-visible:ring-primary focus-visible:ring-offset-inverse"
+              : "focus-visible:ring-foreground focus-visible:ring-offset-background",
+          )}
         >
           <Image
             src={badge.src}
@@ -45,10 +55,7 @@ export default function StoreBadges({
             width={badge.width}
             height={badge.height}
             unoptimized
-            className={cn(
-              "h-10 w-auto",
-              size === "lg" ? "sm:h-12" : "sm:h-11",
-            )}
+            className={cn("h-10 w-auto", size === "lg" ? "sm:h-12" : "sm:h-11")}
           />
           <span className="sr-only">
             {language === "en"

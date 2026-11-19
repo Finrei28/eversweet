@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useContext } from "react";
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { ShoppingBag, Trash2 } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "~/components/ui/sheet";
+import { Stepper } from "~/components/ui/stepper";
 import { DESKTOP_MIN_WIDTH, useMinWidth } from "~/lib/browserState";
 import { formatCurrency } from "~/lib/formatters";
 import { cn } from "~/lib/utils";
@@ -189,32 +190,16 @@ function CartLine({ item }: { item: CartItem }) {
         )}
 
         <div className="mt-0.5 flex items-center justify-between">
-          <div className="-ml-[7px] flex items-center">
-            <button
-              type="button"
-              aria-label={en ? `One fewer ${shownName}` : `少一份${shownName}`}
-              onClick={() => cart.removeFromCart(item.id)}
-              className="group flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full border-[1.5px] border-accent text-accent transition-colors group-hover:bg-muted">
-                <Minus className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden />
-              </span>
-            </button>
-            <span className="w-4 text-center font-bold tabular-nums">
-              {item.quantity}
-            </span>
-            <button
-              type="button"
-              aria-label={en ? `One more ${shownName}` : `多一份${shownName}`}
-              onClick={() => cart.addExtraToCart(item.id)}
-              disabled={!!item.promoNumber}
-              className="group flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
-            >
-              <span className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-primary-foreground transition-[filter] group-hover:brightness-95">
-                <Plus className="h-3.5 w-3.5" strokeWidth={2.6} aria-hidden />
-              </span>
-            </button>
-          </div>
+          <Stepper
+            size="sm"
+            className="-ml-[7px]"
+            value={item.quantity}
+            onDecrease={() => cart.removeFromCart(item.id)}
+            onIncrease={() => cart.addExtraToCart(item.id)}
+            increaseDisabled={!!item.promoNumber}
+            decreaseLabel={en ? `One fewer ${shownName}` : `少一份${shownName}`}
+            increaseLabel={en ? `One more ${shownName}` : `多一份${shownName}`}
+          />
           <button
             type="button"
             aria-label={en ? `Remove ${shownName}` : `移除${shownName}`}

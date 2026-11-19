@@ -5,7 +5,6 @@ import { Suspense, type ReactNode } from "react";
 import {
   BadgePercent,
   BellRing,
-  Coins,
   Crown,
   Trophy,
   type LucideIcon,
@@ -36,18 +35,35 @@ function Feature({
   title,
   children,
 }: {
-  icon: LucideIcon;
+  /** A line icon in apricot, or "seal" for the 甜 seal Sweet Points wears in the app. */
+  icon: LucideIcon | "seal";
   title: string;
   children: ReactNode;
 }) {
   return (
-    <li className="flex gap-3">
-      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-primary-dark shadow-sm">
-        <Icon className="h-5 w-5" aria-hidden />
-      </span>
-      <div>
-        <h3 className="font-semibold text-gray-900">{title}</h3>
-        <p className="text-sm text-gray-600">{children}</p>
+    <li className="flex items-start gap-3.5 lg:gap-[18px]">
+      {Icon === "seal" ? (
+        <span
+          aria-hidden
+          className="flex h-10 w-10 shrink-0 -rotate-[4deg] items-center justify-center rounded-[9px] bg-accent lg:h-12 lg:w-12 lg:rounded-seal"
+        >
+          <span className="font-zh text-[22px] font-black leading-none text-accent-foreground lg:text-[27px]">
+            甜
+          </span>
+        </span>
+      ) : (
+        <span
+          aria-hidden
+          className="flex h-10 w-10 shrink-0 items-center justify-center text-primary lg:h-12 lg:w-12"
+        >
+          <Icon className="h-6 w-6" strokeWidth={1.8} />
+        </span>
+      )}
+      <div className="flex flex-col gap-[3px] lg:gap-1">
+        <h3 className="text-base font-bold lg:text-lg">{title}</h3>
+        <p className="text-sm leading-[1.45] text-secondary lg:text-[15px]">
+          {children}
+        </p>
       </div>
     </li>
   );
@@ -63,10 +79,10 @@ function Features() {
     api.store.getAppPromotion.useSuspenseQuery();
 
   return (
-    <ul className="grid gap-y-5 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
+    <ul className="grid gap-y-[18px] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:gap-y-6 lg:self-center">
       {pointsEarned && (
         <Feature
-          icon={Coins}
+          icon="seal"
           title={language === "en" ? "Sweet Points" : "Sweet Points 积分"}
         >
           {language === "en"
@@ -121,24 +137,24 @@ export default function GetTheApp() {
     // features take the right-hand column on their own and the pitch and badges share the
     // left, so however many features the settings allow (three to five), none is left alone
     // on a row. Each is placed explicitly, so the badges stay put while the list suspends.
-    <div className="mx-auto grid max-w-5xl gap-8 rounded-3xl bg-secondary p-6 sm:p-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-x-14 lg:gap-y-8">
-      <div className="flex items-center gap-4 sm:gap-6 lg:col-start-1 lg:row-start-1 lg:flex-col lg:items-start lg:self-end">
+    <div className="mx-auto grid w-full max-w-[1200px] gap-4 rounded-[24px] bg-inverse p-6 text-inverse-foreground lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-x-16 lg:gap-y-6 lg:rounded-sheet lg:p-14">
+      <div className="flex items-center gap-3.5 lg:col-start-1 lg:row-start-1 lg:flex-col lg:items-start lg:gap-5 lg:self-end">
         {/* The app's own icon, so it can be recognised in the store. */}
         <Image
           src="/eversweet-app-icon.png"
           alt=""
           width={512}
           height={512}
-          className="h-16 w-16 shrink-0 rounded-[22%] bg-white shadow-md sm:h-24 sm:w-24"
+          className="h-16 w-16 shrink-0 rounded-[15px] bg-card lg:h-[88px] lg:w-[88px] lg:rounded-[20px]"
         />
         <div>
           {/* `break-keep` so the Chinese wraps at its comma, not inside 享受. */}
-          <h2 className="break-keep text-2xl font-bold text-gray-900 sm:text-3xl lg:text-4xl">
+          <h2 className="break-keep text-2xl font-extrabold leading-[1.15] lg:text-[40px] lg:leading-[1.1]">
             {language === "en"
               ? "Get more in the Eversweet app"
               : "在 Eversweet 应用里，享受更多"}
           </h2>
-          <p className="mt-2 break-keep text-gray-600">
+          <p className="mt-4 hidden break-keep text-[17px] leading-normal text-secondary lg:block">
             {language === "en"
               ? "Order ahead on your iPhone or Android phone, and get what only the app has."
               : "用 iPhone 或 Android 手机提前下单，享受应用独有的功能。"}
@@ -146,11 +162,21 @@ export default function GetTheApp() {
         </div>
       </div>
 
+      {/* On a phone the line moves under the heading's row, as the mock-ups draw it. */}
+      <p className="break-keep text-[15px] leading-[1.45] text-secondary lg:hidden">
+        {language === "en"
+          ? "Order ahead on your iPhone or Android phone, and get what only the app has."
+          : "用 iPhone 或 Android 手机提前下单，享受应用独有的功能。"}
+      </p>
+
       <Suspense fallback={null}>
         <Features />
       </Suspense>
 
-      <StoreBadges className="lg:col-start-1 lg:row-start-2 lg:self-start" />
+      <StoreBadges
+        tone="dark"
+        className="mt-2 lg:col-start-1 lg:row-start-2 lg:mt-0 lg:self-start"
+      />
     </div>
   );
 }

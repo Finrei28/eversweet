@@ -44,6 +44,19 @@ const REDESIGNED = [
   "src/app/components/itemName.tsx",
   "src/app/components/siteFooter.tsx",
   "src/app/components/siteHeader.tsx",
+  // Browse (PR 2): home, the menu, the customise dialog.
+  "src/components/ui/stepper.tsx",
+  "src/app/_components/homePageContent.tsx",
+  "src/app/_components/_homeComponents/get-the-app.tsx",
+  "src/app/_components/_homeComponents/hero.tsx",
+  "src/app/_components/_homeComponents/menu-photos.tsx",
+  "src/app/_components/_homeComponents/opening-hours.tsx",
+  "src/app/_components/_homeComponents/top-desserts.tsx",
+  "src/app/_components/_homeComponents/uber-eats.tsx",
+  "src/app/(customerFacing)/menu/_components/customisation.tsx",
+  "src/app/(customerFacing)/menu/_components/menu-cards.tsx",
+  "src/app/components/dessertPrice.tsx",
+  "src/app/components/storeBadges.tsx",
 ];
 
 const PALETTE =

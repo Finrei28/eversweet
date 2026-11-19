@@ -1,31 +1,27 @@
 "use client";
 
-import { Minus, Plus, Info, SquarePen, Loader2 } from "lucide-react";
+import { SquarePen, Loader2 } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "~/components/ui/dialog";
+  Sheet,
+  SheetCloseButton,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "~/components/ui/sheet";
+import { Stepper } from "~/components/ui/stepper";
 import { formatCurrency } from "~/lib/formatters";
 import { api } from "~/trpc/react";
 import { nanoid } from "nanoid";
 import { CartContext, CartItem } from "~/app/components/cartContext";
-import { Badge } from "~/components/ui/badge";
-import { Separator } from "~/components/ui/separator";
 import Image from "next/image";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "~/components/ui/tooltip";
 import { useLanguage } from "~/app/components/language";
+import { DessertPrice } from "~/app/components/dessertPrice";
+import { ItemName } from "~/app/components/itemName";
+import { DESKTOP_MIN_WIDTH, useMinWidth } from "~/lib/browserState";
+import { promoDiscountInCents } from "~/lib/dessertPricing";
+import { cn } from "~/lib/utils";
 import { usePathname } from "next/navigation";
 import { dessertOnClient } from "~/lib/types";
 
@@ -68,11 +64,9 @@ export default function CustomisationDialog({
   const [modifications, setModifications] = useState<typeof totalQuantity>(
     cartItem ? cartItem.customisations : [],
   );
-  const discountedAmountInCents = dessert.promo
-    ? dessert.promo.type === "FIXED_AMOUNT"
-      ? dessert.promo.value
-      : Math.floor(dessert.priceInCents * (dessert.promo.value / 100))
-    : 0;
+  const discountedAmountInCents = promoDiscountInCents(dessert);
+  // A centred dialog from md, a bottom sheet below it.
+  const isDesktop = useMinWidth(DESKTOP_MIN_WIDTH);
 
   const priceInCentsAfterPromo = dessert.priceInCents - discountedAmountInCents;
   // const [totalPrice, setTotalPrice] = useState(
@@ -344,13 +338,71 @@ export default function CustomisationDialog({
     );
   }
 
+  const en = language === "en";
+  const editing = pathName === "/checkout";
+  // The same sums the dialog always showed, now on the Add to cart button.
+  const extrasInCents = modifications.reduce(
+    (acc, m) => acc + m.priceInCents * m.quantity,
+    0,
+  );
+  const totalInCents =
+    (priceInCentsAfterPromo + extrasInCents) * dessertQuantity;
+  const totalBeforePromoInCents =
+    (dessert.priceInCents + extrasInCents) * dessertQuantity;
+
+  const customisationRow = (
+    c: (typeof customisations)[number],
+    included: boolean,
+  ) => {
+    const item = totalQuantity.find((item) => item.id === c.id);
+    const name = en ? c.name : c.chineseName;
+    const each = formatCurrency(c.priceInCents / 100);
+    return (
+      <li
+        key={c.id}
+        className="flex items-center gap-2 border-b border-border py-1.5 last:border-b-0 md:gap-2.5 md:py-2.5"
+      >
+        <div className="flex min-w-0 flex-1 flex-col">
+          <ItemName
+            name={c.name}
+            chineseName={c.chineseName}
+            layout="inline"
+            leadClassName="text-[15px] font-semibold md:text-base"
+            secondClassName="text-sm"
+          />
+          <span className="text-[13px] tabular-nums text-muted-foreground md:text-sm">
+            {/* An ingredient already in the bowl costs this much for each one
+                more; a topping costs it for each one added. */}
+            {included
+              ? en
+                ? `Extra +${each} each`
+                : `加量 +${each} 每个`
+              : en
+                ? `+${each} each`
+                : `+${each} 每个`}
+          </span>
+        </div>
+        <Stepper
+          size={isDesktop ? "md" : "sm"}
+          value={item?.quantity ?? 0}
+          onDecrease={() => handleDecrease(c.id, c.name, c.chineseName)}
+          onIncrease={() => handleIncrease(c.id, c.name, c.chineseName)}
+          decreaseDisabled={item && item?.quantity === 0}
+          increaseDisabled={item && item?.quantity >= 5}
+          decreaseLabel={en ? `One fewer ${name}` : `少一份${name}`}
+          increaseLabel={en ? `One more ${name}` : `多一份${name}`}
+        />
+      </li>
+    );
+  };
+
   return (
-    <Dialog
+    <Sheet
       open={customOpen ? customOpen : dialogOpen}
       onOpenChange={handleOpenClose}
     >
       {!customOpen && (
-        <DialogTrigger asChild>
+        <SheetTrigger asChild>
           <Button
             variant={`${pathName === "/checkout" ? "ghost" : "default"}`}
             className={`${pathName === "/checkout" ? "" : "w-full"}`}
@@ -360,293 +412,123 @@ export default function CustomisationDialog({
               <SquarePen className="h-5 w-5 hover:cursor-pointer" />
             )}
           </Button>
-        </DialogTrigger>
+        </SheetTrigger>
       )}
 
-      <DialogContent className="h-[95%] sm:max-w-[425px] md:h-auto">
-        <DialogHeader className="md:pb-2">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <DialogTitle className="mb-1 text-xl text-primary">
-                {language === "en" ? dessert.name : dessert.chineseName}
-              </DialogTitle>
-              <DialogDescription className="text-start">
-                {dessert.description}
-              </DialogDescription>
-            </div>
-
+      <SheetContent
+        side={isDesktop ? "center" : "bottom"}
+        aria-describedby={undefined}
+        className={cn(isDesktop ? "max-w-[880px]" : "h-[88dvh]")}
+      >
+        <div className="relative flex shrink-0 items-center gap-4 px-5 pb-4 pt-1.5 md:gap-6 md:px-8 md:pb-[22px] md:pt-7">
+          <span className="relative h-[132px] w-[132px] shrink-0 overflow-hidden rounded-full bg-muted md:h-[168px] md:w-[168px]">
             {dessert.imagePath && (
-              <div className="relative ml-4 mr-4 mt-2 h-20 w-20 flex-shrink-0 overflow-hidden rounded-md">
-                <Image
-                  src={dessert.imagePath}
-                  alt={language === "en" ? dessert.name : dessert.chineseName}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                />
-              </div>
+              <Image
+                src={dessert.imagePath}
+                alt={en ? dessert.name : dessert.chineseName}
+                fill
+                className="object-cover"
+                sizes="168px"
+              />
+            )}
+          </span>
+          <div className="flex min-w-0 flex-col gap-0.5 pr-10 md:gap-1 md:pr-12">
+            <SheetTitle className="leading-none">
+              <ItemName
+                name={dessert.name}
+                chineseName={dessert.chineseName}
+                className="gap-1"
+                leadClassName="text-[28px] font-extrabold leading-[1.1] md:text-[34px] md:leading-[1.05]"
+                secondClassName="text-[21px] text-accent md:text-2xl"
+              />
+            </SheetTitle>
+            <DessertPrice
+              dessert={dessert}
+              language={language}
+              className="mt-1.5 md:mt-2"
+              priceClassName="text-[17px] md:text-[19px]"
+            />
+            {dessert.description && (
+              <p className="text-[15px] text-muted-foreground">
+                {dessert.description}
+              </p>
+            )}
+            {customisations.length > 0 && (
+              <p className="hidden text-[15px] text-muted-foreground md:block">
+                {en ? "Customise your dessert below." : "在下面定制您的甜点"}
+              </p>
             )}
           </div>
+          <SheetCloseButton
+            label={en ? "Close" : "关闭"}
+            className="absolute right-3.5 top-0 md:right-5 md:top-5"
+          />
+        </div>
 
-          <div className="flex items-center">
-            <Badge variant="outline" className="mr-2 bg-primary/10">
-              {formatCurrency(dessert.priceInCents / 100)}
-            </Badge>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 rounded-full p-0"
-                  >
-                    <Info className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                {customisations.length > 0 && (
-                  <TooltipContent>
-                    <p>
-                      {language === "en"
-                        ? "Customise your dessert below"
-                        : "在下面定制您的甜点"}
-                    </p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </DialogHeader>
-
-        <Separator className="lg:my-2" />
-        {/* Included Customisations */}
-        <div className="max-h-[40vh] overflow-y-auto px-1 py-2">
+        <div className="min-h-0 flex-1 overflow-y-auto border-t border-border px-5 pb-3 md:grid md:grid-cols-2 md:content-start md:gap-x-10 md:px-8">
           {includedCustomisations.length > 0 && (
-            <div className="mb-4">
-              <h3 className="mb-2 font-medium text-primary">
-                {language === "en" ? "Included Ingredients" : "包含成分"}
+            <section>
+              <h3 className="mb-0.5 mt-3.5 text-base font-extrabold md:mb-1 md:text-[17px]">
+                {en ? "In this bowl" : "包含成分"}
               </h3>
-              <div className="space-y-3">
-                {includedCustomisations.map((c) => {
-                  const item = totalQuantity.find((item) => item.id === c.id);
-                  const isIncluded = dessert.ingredients.some(
-                    (ingredient) => ingredient.id === c.id,
-                  );
-
-                  return (
-                    <div
-                      className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
-                      key={c.id}
-                    >
-                      <div className="flex items-start">
-                        <div>
-                          <span className="text-sm">
-                            {language === "en" ? c.name : c.chineseName}
-                          </span>
-                          <div className="text-sm text-gray-500">
-                            {formatCurrency(c.priceInCents / 100)}{" "}
-                            {language === "en" ? "each" : "每个"}
-                          </div>
-                        </div>
-
-                        {isIncluded && (
-                          <Badge
-                            variant="secondary"
-                            className="ml-2 mr-2 bg-green-100 text-green-800"
-                          >
-                            {language === "en" ? "Included" : "包括"}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 rounded-full p-0"
-                          onClick={() =>
-                            handleDecrease(c.id, c.name, c.chineseName)
-                          }
-                          disabled={item && item?.quantity === 0}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-6 text-center">
-                          {item?.quantity ?? 0}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 rounded-full p-0"
-                          onClick={() =>
-                            handleIncrease(c.id, c.name, c.chineseName)
-                          }
-                          disabled={item && item?.quantity >= 5}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+              <ul>
+                {includedCustomisations.map((c) => customisationRow(c, true))}
+              </ul>
+            </section>
           )}
-          {/* Additional Customisations */}
           {additionalCustomisations.length > 0 && (
-            <div>
-              <h3 className="mb-2 font-medium text-primary">
-                {language === "en" ? "Additional Toppings" : "额外的配料"}
+            <section>
+              <h3 className="mb-0.5 mt-3.5 text-base font-extrabold md:mb-1 md:text-[17px]">
+                {en ? "Add toppings" : "额外的配料"}
               </h3>
-              <div className="space-y-3">
-                {additionalCustomisations.map((c) => {
-                  const item = totalQuantity.find((item) => item.id === c.id);
-
-                  return (
-                    <div
-                      className="flex items-center justify-between rounded-lg bg-slate-50 p-3"
-                      key={c.id}
-                    >
-                      <div>
-                        <span className="text-sm">
-                          {language === "en" ? c.name : c.chineseName}
-                        </span>
-                        <div className="text-sm text-gray-500">
-                          {formatCurrency(c.priceInCents / 100)}{" "}
-                          {language === "en" ? "each" : "每个"}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 rounded-full p-0"
-                          onClick={() =>
-                            handleDecrease(c.id, c.name, c.chineseName)
-                          }
-                          disabled={item && item?.quantity === 0}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-6 text-center">
-                          {item?.quantity ?? 0}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 rounded-full p-0"
-                          onClick={() =>
-                            handleIncrease(c.id, c.name, c.chineseName)
-                          }
-                          disabled={item && item?.quantity >= 5}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+              <ul>
+                {additionalCustomisations.map((c) =>
+                  customisationRow(c, false),
+                )}
+              </ul>
+            </section>
           )}
         </div>
 
-        <Separator className="lg:my-2" />
-
-        <div className="mt-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">
-              {language === "en" ? "Quantity:" : "数量:"}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border bg-card px-5 pb-6 pt-3.5 md:px-8 md:py-4">
+          <div className="flex items-center gap-1.5">
+            <span className="mr-1 hidden text-base font-bold md:inline">
+              {en ? "Quantity" : "数量"}
             </span>
-            <div className="flex items-center">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 w-8 rounded-full p-0"
-                onClick={() =>
-                  setDessertQuantity((prev) => Math.max(prev - 1, 1))
-                }
-                disabled={dessertQuantity <= 1}
-              >
-                <Minus className="h-3 w-3" />
-              </Button>
-              <span className="w-8 text-center">{dessertQuantity}</span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 w-8 rounded-full p-0"
-                onClick={() =>
-                  setDessertQuantity((prev) => Math.min(prev + 1, 20))
-                }
-                disabled={dessertQuantity >= 20}
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
+            <Stepper
+              size="lg"
+              value={dessertQuantity}
+              onDecrease={() =>
+                setDessertQuantity((prev) => Math.max(prev - 1, 1))
+              }
+              onIncrease={() =>
+                setDessertQuantity((prev) => Math.min(prev + 1, 20))
+              }
+              decreaseDisabled={dessertQuantity <= 1}
+              increaseDisabled={dessertQuantity >= 20}
+              decreaseLabel={en ? "One fewer" : "少一份"}
+              increaseLabel={en ? "One more" : "多一份"}
+            />
           </div>
-
-          <div className="text-right">
-            <div className="text-sm text-gray-500">
-              {language === "en" ? "Total" : "总计:"}
-            </div>
-            {dessert.promo ? (
-              <div className="flex items-center justify-end gap-2">
-                {/* Old price */}
-                <span className="relative text-base text-muted-foreground">
-                  {formatCurrency(
-                    ((dessert.priceInCents +
-                      modifications.reduce(
-                        (acc, m) => acc + m.priceInCents * m.quantity,
-                        0,
-                      )) *
-                      dessertQuantity) /
-                      100,
-                  )}
-                  <span className="pointer-events-none absolute left-0 top-1/2 h-[1.5px] w-full rotate-[-8deg] bg-red-500" />
-                </span>
-
-                {/* New price */}
-                <span className="text-lg font-semibold text-red-600">
-                  {formatCurrency(
-                    ((priceInCentsAfterPromo +
-                      modifications.reduce(
-                        (acc, m) => acc + m.priceInCents * m.quantity,
-                        0,
-                      )) *
-                      dessertQuantity) /
-                      100,
-                  )}
-                </span>
-              </div>
-            ) : (
-              <span className="text-lg font-semibold text-primary">
-                {formatCurrency(
-                  ((dessert.priceInCents +
-                    modifications.reduce(
-                      (acc, m) => acc + m.priceInCents * m.quantity,
-                      0,
-                    )) *
-                    dessertQuantity) /
-                    100,
-                )}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <DialogFooter className="mt-4">
           <Button
-            className="w-full py-6 text-lg"
-            onClick={
-              pathName === "/checkout"
-                ? handleEditDessertToCart
-                : handleAddDessertToCart
-            }
+            size="cta"
+            className="min-w-0 flex-1 justify-between gap-3 px-6 md:max-w-[380px] md:px-[26px]"
+            onClick={editing ? handleEditDessertToCart : handleAddDessertToCart}
           >
-            {pathName === "/checkout"
-              ? `${language === "en" ? "Edit" : "编辑"}`
-              : `${language === "en" ? "Add to Cart" : "加"}`}
+            <span className="truncate">
+              {editing ? (en ? "Edit" : "编辑") : en ? "Add to cart" : "加"}
+            </span>
+            <span className="flex items-baseline gap-2 tabular-nums">
+              {dessert.promo && (
+                <span className="text-sm font-semibold line-through opacity-70">
+                  {formatCurrency(totalBeforePromoInCents / 100)}
+                </span>
+              )}
+              {formatCurrency(totalInCents / 100)}
+            </span>
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

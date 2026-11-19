@@ -1,22 +1,19 @@
 "use client";
 
-import Link from "next/link";
+import { Suspense, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
+
+import Loader from "../components/customLoading";
+import { DessertAnimation } from "./_homeComponents/_top-desserts-components.tsx/dessert-animation";
+import GetTheApp from "./_homeComponents/get-the-app";
+import { Hero } from "./_homeComponents/hero";
+import MenuPhotos from "./_homeComponents/menu-photos";
+import OpeningHours from "./_homeComponents/opening-hours";
 import {
   TopDesserts,
   TopDessertsSkeleton,
 } from "./_homeComponents/top-desserts";
-import { Button } from "~/components/ui/button";
-import { useLanguage } from "../components/language";
-import { Separator } from "~/components/ui/separator";
 import UberEats from "./_homeComponents/uber-eats";
-import GetTheApp from "./_homeComponents/get-the-app";
-import OpeningHours from "./_homeComponents/opening-hours";
-import MenuPhotos from "./_homeComponents/menu-photos";
-import { Suspense, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import Loader from "../components/customLoading";
-import NotificationModal from "./_homeComponents/notification";
-import { DessertAnimation } from "./_homeComponents/_top-desserts-components.tsx/dessert-animation";
 import { scrollBehavior } from "~/lib/scrollBehavior";
 
 /**
@@ -43,100 +40,64 @@ function ScrollToOpeningHours({
   return null;
 }
 
-function HomePageContent() {
-  const { language } = useLanguage();
+function HomePageContent({ address }: { address?: string }) {
   const openingHoursRef = useRef<HTMLDivElement>(null);
   const menuPhotoRefs = [
     useRef<HTMLDivElement>(null),
     useRef<HTMLDivElement>(null),
   ];
 
-  // states for notifications
-
-  // {
-  //   /*
-  const [notificationModalOpen, setNotificationModalOpen] = useState(true);
-  // const NOTIFICATION_KEY = "notification_shown";
-  // */
-  // }
-
-  // useeffect for notifications
-
-  // useEffect(() => {
-  //   const hasShown = sessionStorage.getItem(NOTIFICATION_KEY);
-
-  //   if (!hasShown) {
-  //     setNotificationModalOpen(true);
-  //     sessionStorage.setItem(NOTIFICATION_KEY, "true");
-  //   }
-  // }, []);
-
   return (
     <>
       <Suspense fallback={null}>
         <ScrollToOpeningHours targetRef={openingHoursRef} />
       </Suspense>
-      <div className="flex min-h-screen flex-col lg:mt-0">
-        <div className="relative bg-gradient-to-b from-background to-primary">
-          <main className="flex flex-grow flex-col items-center justify-center pb-10 pt-5 text-white">
-            <div className="container flex flex-col items-center justify-center gap-12 py-16 text-center">
-              <Suspense fallback={<TopDessertsSkeleton />}>
-                <TopDesserts />
-              </Suspense>
-            </div>
-            <Link href={"/menu"}>
-              <Button className="p-7 text-2xl shadow-lg lg:p-8 lg:text-3xl">
-                {language === "en" ? "ORDER ONLINE" : "线上点菜"}
-              </Button>
-            </Link>
-          </main>
-          <Separator className="my-10 bg-primary" />
-          <section>
-            <MenuPhotos imageRefs={menuPhotoRefs} />
-          </section>
 
-          <Separator className="my-10 bg-primary" />
-          <section className="mb-10">
-            <UberEats />
-          </section>
-
-          {/* Rendered last so the desserts settle on top of the menu photos. */}
-          <DessertAnimation
-            landingRefs={menuPhotoRefs}
-            density={34}
-            speed={0.6}
-          />
-        </div>
-
-        <section className="mt-10 px-4">
-          <GetTheApp />
-        </section>
-
-        <section ref={openingHoursRef} id="opening-hours" className="my-10">
-          <OpeningHours />
-        </section>
-
-        {/* The footer moved to `(customerFacing)/layout.tsx`, so that it - and the only
-            links to the legal documents - appear on every page rather than only here. */}
+      {/* The falling desserts cover the hero down to Uber Eats, and settle on the menu
+          boards. Rendered last so they draw over what they fall past. */}
+      <div className="relative">
+        <Hero
+          address={address}
+          onOpeningHours={() =>
+            openingHoursRef.current?.scrollIntoView({
+              behavior: scrollBehavior(),
+            })
+          }
+        />
+        <Suspense fallback={<TopDessertsSkeleton />}>
+          <TopDesserts />
+        </Suspense>
+        <MenuPhotos imageRefs={menuPhotoRefs} />
+        <UberEats />
+        <DessertAnimation
+          landingRefs={menuPhotoRefs}
+          density={34}
+          speed={0.6}
+        />
       </div>
 
-      {/* <NotificationModal
-        open={notificationModalOpen}
-        onClose={() => setNotificationModalOpen(false)}
-        title={language === "en" ? "Announcement" : "通知"}
+      <section className="px-5 py-8 lg:py-20">
+        <GetTheApp />
+      </section>
+
+      <section
+        ref={openingHoursRef}
+        id="opening-hours"
+        className="scroll-mt-2 border-t border-border"
       >
-        {language === "en"
-          ? "We are closed today on the 26/05/2026. Sorry for the inconvenience! We will be back to normal business hours tomorrow. Thank you for your understanding!"
-          : "我们将于2026年5月26日（今天）休息一天。对于由此带来的不便，我们深表歉意！我们将于明天恢复正常营业时间。感谢您的理解！"}
-      </NotificationModal> */}
+        <OpeningHours />
+      </section>
+
+      {/* The footer moved to `(customerFacing)/layout.tsx`, so that it - and the only
+          links to the legal documents - appear on every page rather than only here. */}
     </>
   );
 }
 
-export default function HomePage() {
+export default function HomePage({ address }: { address?: string }) {
   return (
     <Suspense fallback={<Loader />}>
-      <HomePageContent />
+      <HomePageContent address={address} />
     </Suspense>
   );
 }
