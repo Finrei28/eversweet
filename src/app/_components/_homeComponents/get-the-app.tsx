@@ -117,10 +117,6 @@ export default function GetTheApp() {
   const { language } = useLanguage();
 
   return (
-    // Solid tokens only: the theme's colours are comma-separated HSL, so an opacity modifier
-    // (`bg-secondary/40`) builds invalid CSS and the browser drops it - no fill, and a border
-    // in the default colour.
-    //
     // One column on a phone: the pitch, what the app has, then the badges. From `lg` the
     // features take the right-hand column on their own and the pitch and badges share the
     // left, so however many features the settings allow (three to five), none is left alone

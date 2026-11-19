@@ -11,7 +11,13 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
 
-    --primary: 28, 66%, 70%;
+    /*
+     * Space-separated, like every token here: Tailwind's opacity modifiers
+     * (`bg-primary/10`) build `hsl(var(--primary) / 0.1)`, which only that form
+     * can take. This and --secondary were written with commas, so every modifier
+     * on them was dropped by the browser. src/styles/themeTokens.test.ts holds it.
+     */
+    --primary: 28 66% 70%;
     --primary-dark: 24 55% 42%;
     --primary-foreground: 0 0% 100%;
     /*
@@ -22,7 +28,7 @@
      */
     --primary-display: 24 50% 54%;
 
-    --secondary: 30.65, 83%, 83.25%;
+    --secondary: 30.65 83% 83.25%;
     --secondary-foreground: 0 0% 9%;
     --muted: 0 0% 96.1%;
     /* 45.1% measured 4.47:1 on the cream background — just under AA. */

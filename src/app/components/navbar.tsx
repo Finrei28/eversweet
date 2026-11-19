@@ -575,9 +575,9 @@ function PendingPill() {
     <span
       aria-hidden
       className={cn(
-        // Faded with opacity rather than bg-primary/30: --primary is written with
-        // commas, which Tailwind's `hsl(... / alpha)` cannot take, so any
-        // bg-primary/NN comes out invalid and the browser drops it.
+        // Faded with opacity, which transitions in. It was also the only way to fade
+        // it while --primary was written with commas, when every bg-primary/NN came
+        // out invalid; the token is space-separated now and those work.
         "pointer-events-none absolute inset-0 -z-10 rounded-full bg-primary",
         "opacity-0 transition-opacity",
         pending && "animate-pulse opacity-30 delay-100",
