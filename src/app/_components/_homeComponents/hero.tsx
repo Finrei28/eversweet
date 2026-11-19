@@ -2,12 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useMemo } from "react";
 import { Clock } from "lucide-react";
 
 import { useLanguage } from "~/app/components/language";
 import { Button } from "~/components/ui/button";
-import { useHydrated } from "~/lib/browserState";
+import { useHydrated, useMinuteClock } from "~/lib/browserState";
 import { openToday, timeOfDay } from "~/lib/openToday";
 import { toDaysOffKeys, toWeeklyHours } from "~/lib/pickUpTimes";
 import { cn } from "~/lib/utils";
@@ -18,19 +18,15 @@ import { POPULAR_ROW } from "./top-desserts";
  * "Open today until 10:00 pm", from the trading hours and days off the page loads
  * anyway (the opening hours below, the days-off notice). Drawn once hydrated: it
  * depends on the minute it is read, which the server and the browser would see
- * differently. Re-read every minute, so a page left open moves to "Closed today".
+ * differently. Re-read each minute and when the tab comes back into view, so a page
+ * left open moves on to "Closed today".
  */
 function OpenTodayLine({ address }: { address?: string }) {
   const { language } = useLanguage();
   const hydrated = useHydrated();
   const { data: rows } = api.store.getTradingHours.useQuery();
   const { data: daysOff } = api.store.getDaysOff.useQuery();
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(timer);
-  }, []);
+  const now = useMinuteClock();
 
   const today = useMemo(
     () =>

@@ -2,7 +2,7 @@
 
 import { useLanguage } from "~/app/components/language";
 import { Badge } from "~/components/ui/badge";
-import { useHydrated } from "~/lib/browserState";
+import { useHydrated, useMinuteClock } from "~/lib/browserState";
 import { LAST_PICK_UP_OFFSET_MINUTES, nzDayKey } from "~/lib/pickUpTimes";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -30,14 +30,16 @@ const aucklandWeekday = (now: Date) => {
  * hard-coded strings, one of five copies of the hours that had to be kept in step by hand.
  *
  * Today's row is marked once the page has hydrated: which day it is depends on when the
- * page is read, and the server's answer could be a day out from the browser's.
+ * page is read, and the server's answer could be a day out from the browser's. It keeps
+ * its own minute clock, so the mark moves on at Auckland midnight on a page left open.
  */
 export default function OpeningHours() {
   const { language } = useLanguage();
   const en = language === "en";
   const hydrated = useHydrated();
+  const now = useMinuteClock();
   const { data: rows, isError } = api.store.getTradingHours.useQuery();
-  const today = hydrated ? aucklandWeekday(new Date()) : null;
+  const today = hydrated ? aucklandWeekday(now) : null;
 
   return (
     <div className="mx-auto grid w-full max-w-[1240px] gap-3 px-5 pb-12 pt-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16 lg:pb-[88px] lg:pt-[72px]">
