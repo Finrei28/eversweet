@@ -24,7 +24,8 @@
     "email": "cp .env ./node_modules/react-email && email dev --dir src/email --port 3001",
     "postbuild": "next-sitemap",
     "verify:legal": "node scripts/verify-legal.mjs",
-    "verify:tokens": "node scripts/verify-tokens.mjs"
+    "verify:tokens": "node scripts/verify-tokens.mjs",
+    "check:tokens": "node scripts/check-tokens.mjs"
   },
   "overrides": {
     "@auth/core": "0.41.3",
