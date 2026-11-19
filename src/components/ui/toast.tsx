@@ -29,11 +29,14 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: "border bg-green-400 text-foreground",
+        // Each on its own soft ground from the tokens, with the ink text that
+        // reads on all three. They were stock green, orange and red; admin's order
+        // toasts pick one by status.
+        default: "border-success/30 bg-success-soft text-foreground",
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
-        pending: "bg-orange-400",
-        picked_up: "bg-red-400",
+        pending: "border-warning/30 bg-warning-soft text-foreground",
+        picked_up: "border-destructive/30 bg-destructive-soft text-foreground",
       },
     },
     defaultVariants: {
@@ -79,7 +82,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      "absolute right-1 top-1 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-1 group-hover:opacity-100 group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
+      "absolute right-1 top-1 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-1 group-hover:opacity-100 group-[.destructive]:text-destructive-foreground/70 group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive-foreground group-[.destructive]:focus:ring-offset-destructive",
       className,
     )}
     toast-close=""

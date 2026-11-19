@@ -20,6 +20,7 @@ npm run typecheck    # tsc --noEmit
 npm run lint         # next lint  (lint:fix to autofix)
 npm test             # vitest run (test:watch for watch mode)
 npm run format:write # prettier
+npm run check:tokens # CI: redesigned files take their colours from the tokens
 ```
 
 Run a single test file or case:
@@ -819,8 +820,8 @@ before restyling a customer page. The app's `eversweet-design` skill
   pushes and PRs into that branch as well as `main`, so the flow PRs get every check.
 - **`src/styles/designTokens.json` is shared byte-for-byte** with
   `eversweet_app/frontend/lib/designTokens.json`, where the app's `lib/theme.ts` reads its
-  colours from it. Nothing here reads it until the foundation PR wires it into
-  `tailwind.config.ts`. Change both copies or neither, under one branch name.
+  colours from it, and `tailwind.config.ts` here takes every colour, the `seal`/`card`/`sheet`
+  radii and the `cart-bar` shadow from it. Change both copies or neither, under one branch name.
   - `npm run verify:tokens` compares them, like `verify:legal` (`EVERSWEET_APP_REPO` points it
     at the app's checkout). It compares line endings as git stores them, since `core.autocrlf`
     can leave one checkout CRLF and the other LF.
@@ -830,7 +831,46 @@ before restyling a customer page. The app's `eversweet-design` skill
   - It is in `.prettierignore` beside the legal documents.
 - **Names lead in the reader's language.** A dessert, category or customisation shows both
   names: the selected language's first and larger, the other second. Every other string stays in
-  the selected language only.
+  the selected language only. `ItemName` (`src/app/components/itemName.tsx`) draws a pair;
+  Chinese is always `font-zh` (Noto Serif SC) at 600, since asking for bold gets the 900 the
+  seal uses.
+
+### What the foundation put in place
+
+- **Colours come only from the token file.** `globals.css` keeps `--primary-dark` and
+  `--primary-display` (the website-only caramels, which go once nothing uses them), the admin
+  charts and `--radius`; `src/styles/themeTokens.test.ts` fails if it defines a colour the file
+  owns, or if a colour in the file is not wired into the theme.
+- **`accent` is red bean**, not shadcn's grey hover. The primitives hover, focus and select on
+  `muted` (rice); `src/components/ui/accentSurfaces.test.ts` fails on an `accent` surface there.
+- **Fonts:** Figtree (`font-sans`, with the system Chinese sans after it for Chinese interface
+  text) and Noto Serif SC (`font-zh`), both through `next/font` in the root layout. The Chinese
+  face arrives in unicode-range slices, so a page fetches only the characters it shows.
+- **The primitives keep admin's shapes.** Their defaults changed colour only; direction D's
+  shapes are opt-in: `Button` sizes `cta` (56px), `pill` (52), `pill-sm` (48), `chip` (44) and
+  `round` (44, icon only) and the `inverse` and `destructive-soft` variants; `Input` and
+  `Textarea` `variant="field"`; `Label variant="field"`; `Badge variant="soft"`. A redesigned
+  page uses those; admin's layouts do not move (REDESIGN.md, decision 4).
+- **`Sheet`** (`src/components/ui/sheet.tsx`) is the bottom sheet on a phone and the side panel
+  on desktop. A caller picks the side per width (`useMinWidth(DESKTOP_MIN_WIDTH)`), because the
+  slide direction cannot switch by breakpoint in classes.
+- **The customer header is `SiteHeader`**, the footer `SiteFooter`, and the cart is `CartBar` plus
+  `CartSheet`, all mounted in `(customerFacing)/layout.tsx`. The old `Navbar` is admin's alone now,
+  laid out exactly as before. The cart bar shows on every customer page but checkout while the
+  cart has anything in it; the footer and the scroll-to-top button make room for it through
+  `useCartBarShown`.
+- **Anything drawn from the cart waits for hydration** (`useHydrated` in `~/lib/browserState`).
+  The cart provider reads localStorage in its first client render, so a count rendered straight
+  away differs from the server's empty cart and React throws a hydration mismatch.
+- **Reduced motion is honoured**: `MotionPreferences` gives framer-motion `reducedMotion="user"`
+  (entrances fade instead of sliding), and `globals.css` cuts every CSS transition and animation
+  to 0.01ms under the setting. The falling desserts already drew themselves landed.
+- **`npm run check:tokens`** (`scripts/check-tokens.mjs`, run by CI) lists every finished file and
+  fails on a hex or raw colour, a stock palette class, or `primary-dark`/`primary-display` in one.
+  Each flow PR adds its files; nothing leaves the list.
+- **Screenshots** for a flow PR come from a local `next dev` against `eversweet_dev`, never
+  `npm run dev` here (`.env` is production): a wrapper that builds the environment itself and
+  refuses any database but `127.0.0.1/eversweet_dev`.
 
 ## Sharp edges
 
@@ -903,14 +943,13 @@ before restyling a customer page. The app's `eversweet-design` skill
 - Image uploads POST FormData to `/admin/products/api/uploadImage` (Cloudinary,
   content-hash deduped). It files everything under `products/` and returns a public id that
   some callers discard.
-- **Colour tokens in `globals.css` stay space-separated HSL** (`28 66% 70%`). An opacity
-  modifier builds `hsl(var(--primary) / 0.1)`, which only that form can take. `--primary` and
-  `--secondary` were written with commas until 2026-11-20, so every `bg-primary/10`,
-  `border-primary/40` and the like was invalid at computed-value time. The browser dropped
-  each one: no fill or tint, and borders in the text colour, near-black. That gave the order
-  details card a black border and the condensed navbar a black line, and left the menu's
-  hero gradient and category dividers undrawn. `src/styles/themeTokens.test.ts` fails on a
-  comma.
+- **The colours left in `globals.css` stay space-separated HSL** (`24 50% 54%`). An opacity
+  modifier builds `hsl(var(--primary-display) / 0.1)`, which only that form can take.
+  `--primary` and `--secondary` were written with commas until 2026-11-20, so every
+  `bg-primary/10`, `border-primary/40` and the like was invalid at computed-value time and the
+  browser dropped it: no fill or tint, and borders in the text colour, near-black. Those two
+  are hex from the token file now, which Tailwind parses itself, so their modifiers cannot
+  break that way again; `src/styles/themeTokens.test.ts` still fails on a comma in what is left.
 - **The store badges are the stores' own artwork** (`public/badges`, `~/lib/appStores`), and
   both stores' guidelines govern them: Apple's black badge first, both the same height and
   never under 40px, a quarter of the height clear, localized on the Chinese site, nothing

@@ -41,6 +41,12 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      # The redesign's ratchet: every file a flow PR has finished is listed in
+      # scripts/check-tokens.mjs, and one that picks up a hex value, a stock palette
+      # class or a pre-redesign caramel fails here, before it drifts back.
+      - name: Design tokens
+        run: npm run check:tokens
+
       # The integration suites skip here: they are wrapped in `describeIfDb` and
       # TEST_DATABASE_URL is unset, so no database is contacted. The unit suites run.
       - name: Test

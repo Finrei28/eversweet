@@ -70,8 +70,9 @@ The defaults the mock-ups drew:
   (self-hosted at build; the Chinese face comes in slices, so a page downloads only the
   characters it shows). Chinese UI text falls through to the system sans (PingFang SC, Microsoft
   YaHei), since Figtree has no Chinese. Geist and Baloo 2 go.
-- **Reduced motion:** nothing here honours it today (the framer-motion entrances on the menu,
-  contact and feedback, the falling desserts). The foundation adds the check, as the app has.
+- **Reduced motion:** nothing here honoured it but the falling desserts, which already drew
+  themselves landed (the framer-motion entrances on the menu, contact and feedback did not, nor
+  did any CSS transition). The foundation adds the check, as the app has.
 
 **New English in the mock-ups, each needing the owner's Chinese before its flow PR merges:** the
 hero heading "Chinese desserts and drinks in Somerville" and its line "Order online and pick up

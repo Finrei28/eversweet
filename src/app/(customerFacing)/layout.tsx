@@ -3,15 +3,20 @@
 import { useState } from "react";
 import NotificationModal from "../_components/_homeComponents/notification";
 import { useLanguage } from "../components/language";
-import { Navbar, NavbarLink } from "../components/navbar";
+import { CartBar } from "../components/cartBar";
+import { CartSheet } from "../components/cartSheet";
+import { SiteHeader } from "../components/siteHeader";
 import SiteFooter from "../components/siteFooter";
+import ScrollToTopButton from "./menu/_components/toTop";
 import { api } from "~/trpc/react";
 import { format } from "date-fns";
+import { usePathname } from "next/navigation";
 
 export default function CustomerFacingLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { language } = useLanguage();
+  const pathName = usePathname();
   const [notificationModalOpen, setNotificationModalOpen] = useState(true);
   const { data: daysOff } = api.store.getDaysOff.useQuery();
 
@@ -30,23 +35,15 @@ export default function CustomerFacingLayout({
   // under the navbar while the menu loaded, since the loader is `fixed` and takes no room.
   return (
     <div className="flex min-h-dvh flex-col">
-      <Navbar>
-        <NavbarLink href={"/menu"}>
-          {language === "en" ? "Menu" : "菜单"}
-        </NavbarLink>
-        {/* <NavbarLink href={"/about-us"}>
-          {language === "en" ? "About us" : "关于我们"}
-        </NavbarLink> */}
-        <NavbarLink href={"/contact"}>
-          {language === "en" ? "Contact" : "联系方法"}
-        </NavbarLink>
-        <NavbarLink href={"/feedback"}>
-          {language === "en" ? "Feedback" : "反馈"}
-        </NavbarLink>
-      </Navbar>
+      <SiteHeader />
 
       <div className="flex-1">{children}</div>
       <SiteFooter />
+
+      <CartBar />
+      <CartSheet />
+      {pathName !== "/checkout" && <ScrollToTopButton />}
+
       {daysOff && daysOff.length > 0 && (
         <NotificationModal
           open={notificationModalOpen}

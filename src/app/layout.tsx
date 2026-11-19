@@ -1,23 +1,35 @@
 import "~/styles/globals.css";
 
-import { GeistSans } from "geist/font/sans";
-import { Baloo_2 } from "next/font/google";
+import { Figtree, Noto_Serif_SC } from "next/font/google";
 import type { Metadata } from "next";
 import type React from "react";
 
-// Rounded display face for headings — the wordmark in the logo is rounded, and
-// a monospace stack read as a terminal rather than a dessert shop.
-const displayFont = Baloo_2({
+// Direction D's faces, self-hosted by next/font at build time. Figtree is English
+// only, so Chinese interface text falls through to the system sans after it in
+// `font-sans` (PingFang SC, Microsoft YaHei).
+const figtree = Figtree({
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  variable: "--font-display",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-figtree",
   display: "swap",
+});
+
+// Chinese dessert, category and customisation names (`font-zh`), and the 甜 seal.
+// Google serves the face in unicode-range slices, so a page downloads only the
+// slices holding the characters it shows. Not preloaded: no one slice is needed
+// everywhere, and preloading them all would fetch the whole face.
+const notoSerifSC = Noto_Serif_SC({
+  weight: ["600", "900"],
+  variable: "--font-noto-serif-sc",
+  display: "swap",
+  preload: false,
 });
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { Toaster } from "~/components/ui/toaster";
 import StructuredData from "./_components/structured-data";
+import { MotionPreferences } from "./components/motionPreferences";
 import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
@@ -64,13 +76,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${GeistSans.variable} ${displayFont.variable}`}
-    >
+    <html lang="en" className={`${figtree.variable} ${notoSerifSC.variable}`}>
       <body className={cn("overflow-x-hidden bg-background font-sans")}>
         <TRPCReactProvider>
-          <main>{children}</main>
+          <MotionPreferences>
+            <main>{children}</main>
+          </MotionPreferences>
           <Analytics />
           <StructuredData />
           <Toaster />
