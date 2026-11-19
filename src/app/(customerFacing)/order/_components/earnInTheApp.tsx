@@ -24,8 +24,6 @@ export default function EarnInTheApp() {
 
   if (!promotion?.pointsEarned) return null;
   return (
-    // Solid tokens, as in the home page's band: the theme's comma-separated HSL makes an
-    // opacity modifier invalid CSS.
     <section className="mt-8 rounded-lg bg-secondary p-5 sm:p-6 print:hidden">
       <div className="flex gap-4">
         <Image

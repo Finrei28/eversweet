@@ -876,11 +876,14 @@ opened the language menu. Check any new link at 1280px, in both languages.
 - Image uploads POST FormData to `/admin/products/api/uploadImage` (Cloudinary,
   content-hash deduped). It files everything under `products/` and returns a public id that
   some callers discard.
-- **Tailwind opacity modifiers do nothing with the theme's colours.** `--primary` and
-  `--secondary` in `globals.css` are comma-separated HSL (`28, 66%, 70%`), so `bg-secondary/40`
-  builds `hsl(30.65, 83%, 83.25% / 0.4)`, which is invalid CSS: the browser drops it, leaving
-  no fill, and a `border-primary/10` falls back to a near-black border (the order details
-  card has one). Use the solid tokens, or check the computed style in the browser.
+- **Colour tokens in `globals.css` stay space-separated HSL** (`28 66% 70%`). An opacity
+  modifier builds `hsl(var(--primary) / 0.1)`, which only that form can take. `--primary` and
+  `--secondary` were written with commas until 2026-11-20, so every `bg-primary/10`,
+  `border-primary/40` and the like was invalid at computed-value time. The browser dropped
+  each one: no fill or tint, and borders in the text colour, near-black. That gave the order
+  details card a black border and the condensed navbar a black line, and left the menu's
+  hero gradient and category dividers undrawn. `src/styles/themeTokens.test.ts` fails on a
+  comma.
 - **The store badges are the stores' own artwork** (`public/badges`, `~/lib/appStores`), and
   both stores' guidelines govern them: Apple's black badge first, both the same height and
   never under 40px, a quarter of the height clear, localized on the Chinese site, nothing
