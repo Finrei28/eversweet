@@ -243,9 +243,25 @@ export function GetOfferColumns({
       },
       {
         id: "redemptions",
-        header: language === "en" ? "Redemptions" : "已兑换",
+        /**
+         * Orders, not redemption rows. A row is kept when a use is handed back (out of
+         * the cart, the cart swept, the order cancelled) and written when a gated offer is
+         * unlocked, so counting rows showed customers who had touched the offer - and an
+         * offer nobody had ordered could read as redeemed. See `getOffers`.
+         */
+        header: () => (
+          <span
+            title={
+              language === "en"
+                ? "Orders that used this offer, across every run. Cancelled orders are left out, and so is an offer taken out of a cart."
+                : "使用此优惠的订单数，包括所有轮次。不计已取消的订单，也不计从购物车中移除的优惠。"
+            }
+          >
+            {language === "en" ? "Redeemed in orders" : "已兑换订单"}
+          </span>
+        ),
         cell: ({ row }) => (
-          <div className="font-medium">{row.original._count.redemptions}</div>
+          <div className="font-medium">{row.original.orderCount}</div>
         ),
       },
       {
