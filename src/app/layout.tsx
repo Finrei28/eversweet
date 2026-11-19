@@ -29,6 +29,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 import { Toaster } from "~/components/ui/toaster";
 import StructuredData from "./_components/structured-data";
+import { MotionPreferences } from "./components/motionPreferences";
 import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
@@ -75,13 +76,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${figtree.variable} ${notoSerifSC.variable}`}
-    >
+    <html lang="en" className={`${figtree.variable} ${notoSerifSC.variable}`}>
       <body className={cn("overflow-x-hidden bg-background font-sans")}>
         <TRPCReactProvider>
-          <main>{children}</main>
+          <MotionPreferences>
+            <main>{children}</main>
+          </MotionPreferences>
           <Analytics />
           <StructuredData />
           <Toaster />

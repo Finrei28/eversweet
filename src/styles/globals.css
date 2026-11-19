@@ -50,3 +50,21 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none; /* Chrome, Safari */
 }
+
+/*
+ * "Reduce motion": no transition or animation runs its course. Dialogs, the cart
+ * sheet and the hover fades all arrive at once. The 0.01ms rather than none keeps
+ * their animationend and transitionend events firing, which Radix waits on to
+ * unmount a closing sheet. framer-motion is held to the same setting by
+ * MotionPreferences (src/app/components/motionPreferences.ts).
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
