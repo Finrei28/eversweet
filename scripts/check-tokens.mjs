@@ -57,6 +57,14 @@ const REDESIGNED = [
   "src/app/(customerFacing)/menu/_components/menu-cards.tsx",
   "src/app/components/dessertPrice.tsx",
   "src/app/components/storeBadges.tsx",
+  // Checkout (PR 3): the page, its sections, and Stripe's card fields.
+  "src/app/(customerFacing)/checkout/page.tsx",
+  "src/app/(customerFacing)/checkout/_components/checkoutForm.tsx",
+  "src/app/(customerFacing)/checkout/_components/customerInformation.tsx",
+  "src/app/(customerFacing)/checkout/_components/orderSummary.tsx",
+  "src/app/(customerFacing)/checkout/_components/paymentSection.tsx",
+  "src/app/(customerFacing)/checkout/_components/pick-up-time.tsx",
+  "src/lib/stripeAppearance.ts",
 ];
 
 const PALETTE =
