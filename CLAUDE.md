@@ -872,6 +872,27 @@ before restyling a customer page. The app's `eversweet-design` skill
   `npm run dev` here (`.env` is production): a wrapper that builds the environment itself and
   refuses any database but `127.0.0.1/eversweet_dev`.
 
+### What the browse flow added
+
+- **`Stepper`** (`src/components/ui/stepper.tsx`) is the one minus-count-plus: the cart, each
+  customisation and the dialog's quantity. Each button is named by the caller in the reader's
+  language ("One more Taro Bowl" / 多一份芋泥酪).
+- **`Sheet` has a `center` side**, a desktop's dialog. The customise dialog is `center` from
+  `md` and `bottom` below it; a menu board's full-size view is `center` everywhere.
+- **What a promotion takes off is `promoDiscountInCents`** (`~/lib/dessertPricing`), which the
+  menu, the popular choices and the customise dialog each wrote out inline before. Display and
+  the cart line only; `src/server/pricing.ts` still decides what an order costs.
+  `DessertPrice` and `dessertButtonLabel` (`src/app/components/dessertPrice.tsx`) show it.
+- **"Open today until 10:00 pm"** is `openToday` (`~/lib/openToday`), from the same weekly hours
+  and days off as checkout, in Auckland time. It and the opening hours' "Today" are drawn only once
+  hydrated, since both depend on the minute the page is read. English times are written
+  `timeOfDay`: "10:00 pm" in English, "10:00 PM" in Chinese as before.
+- **A grid that holds truncated text needs `grid-cols-1`**, not a bare `grid`: an implicit column
+  grows to the unwrapped width of its longest line. The menu's rows did, which made the page wider
+  than a phone and pushed the fixed cart bar off screen.
+- **Run Prettier on named files, never a glob** like `src/lib/*.ts`. Most of the repo is not
+  Prettier-clean, and a glob reformats files the change has nothing to do with.
+
 ## Sharp edges
 
 - **An offer carries exactly one price: `itemPriceInCents` or `discountAmount`, never both
