@@ -403,15 +403,25 @@ export default function CustomisationDialog({
     >
       {!customOpen && (
         <SheetTrigger asChild>
-          <Button
-            variant={`${pathName === "/checkout" ? "ghost" : "default"}`}
-            className={`${pathName === "/checkout" ? "" : "w-full"}`}
-            size={`${pathName === "/checkout" ? "checkoutIcon" : "icon"}`}
-          >
-            {pathName === "/checkout" && (
-              <SquarePen className="h-5 w-5 hover:cursor-pointer" />
-            )}
-          </Button>
+          {editing ? (
+            // The order summary's edit button. It had no name, so a screen reader
+            // announced only "button" beside every dessert.
+            <Button
+              variant="ghost"
+              size="round"
+              aria-label={
+                en ? `Edit ${dessert.name}` : `编辑${dessert.chineseName}`
+              }
+            >
+              <SquarePen
+                className="!size-[18px]"
+                strokeWidth={1.8}
+                aria-hidden
+              />
+            </Button>
+          ) : (
+            <Button className="w-full" size="icon" />
+          )}
         </SheetTrigger>
       )}
 
