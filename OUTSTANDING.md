@@ -11,6 +11,24 @@ two repos share one database.
 
 ## Open
 
+From restyling the order page (2026-11-20, `REDESIGN.md` PR 4).
+
+**The order page prices each line from today's menu, not from what was charged**
+
+`/order` works out each line from the dessert's price now (`OrderDessert.dessert.priceInCents`)
+and each topping's price now (`Ingredient.priceInCents`), while its Total is what the customer
+paid (`Order.priceInCents`). Change a price on `/admin/products` during the day an order's page
+is up, and its lines stop adding up to its Total - on screen and on the printed receipt.
+
+The dessert half has an answer already: `placeWebsiteOrder` records the price it charged on
+`OrderDessert.priceInCents`, and the page could read that. A topping's price is recorded nowhere
+(`OrderDessertCustomisation` holds a quantity and a discount), so the rest needs a column - a
+schema change, mirrored to the order server. The sum is not an app order's either: `getOrder`
+finds any order by id, and an app order's lines can carry an offer or points.
+
+The redesign moved the sum as it was into `linePrices` (`order/_components/orderDisplay.ts`),
+where its test pins today's behaviour; a fix changes that test first.
+
 From the hold-then-capture work (2026-09-18).
 
 **One thing to check in Stripe, once** - unless it was done before the sweep first ran
