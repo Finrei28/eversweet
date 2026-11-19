@@ -142,7 +142,7 @@ export function Hero({
         <h1 className="text-balance text-[34px] font-extrabold leading-[1.08] tracking-[-0.01em] md:text-5xl lg:text-[60px] lg:leading-[1.05] lg:tracking-[-0.02em]">
           {en
             ? "Chinese desserts and drinks in Somerville"
-            : "萨默维尔的中式甜品和饮品"}
+            : "Somerville 的中式甜品和饮品"}
         </h1>
         <p className="max-w-[470px] text-[17px] leading-relaxed text-muted-foreground lg:text-[19px]">
           {en
