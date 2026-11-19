@@ -893,6 +893,32 @@ before restyling a customer page. The app's `eversweet-design` skill
 - **Run Prettier on named files, never a glob** like `src/lib/*.ts`. Most of the repo is not
   Prettier-clean, and a glob reformats files the change has nothing to do with.
 
+### What the checkout added
+
+- **The pick-up time is a section of the page**, not a popover. ASAP or Pick up later is a radio
+  group (arrow keys move the choice); a later time is a strip of the next 15 days and that day's
+  times, twelve at first and the rest behind "Later times". The strip scrolls sideways on a
+  phone and wraps from `sm`, because a mouse wheel cannot scroll it sideways. Days are Auckland
+  day keys end to end: the month calendar it replaced converted through browser-local dates.
+- **The words for a time are `~/lib/pickUpLabels`**: the estimate, the strip, the hours line
+  and the summary's "Pick up Fri 20 Nov, about 6:42 pm". Spelled out from `nzDayKey` and
+  `nzMinuteOfDay`, never formatted from a `Date`, and tested on instants whose UTC day differs.
+- **The page's markup runs in the order a customer works through it** - when, what, who, pay -
+  which is the phone's layout. From `lg` a grid moves the order summary into a column of its
+  own; `grid-rows-[auto_auto_1fr]` gives any height it needs beyond the others to the last row.
+- **Stripe's card fields are dressed by `stripeAppearance`** (`~/lib/stripeAppearance`), from
+  the tokens, through `<Elements options>`; the site's CSS cannot reach Stripe's frame. Figtree
+  is named there, not loaded: that frame cannot use the copy next/font serves, and fetching one
+  from Google Fonts would add a third party the privacy policy does not name. The test fails on
+  a colour outside the tokens or on any URL.
+- **The payment section says it is waiting for the details**, rather than spinning, until
+  `detailsComplete` (`checkout/_components/customerDetails.ts`) holds. It is the same check the
+  page makes before it starts a payment.
+- **Screenshots of the card form need Stripe's test keys**, which the local wrapper takes only
+  when asked and only if both are test-mode. Filling in the details creates an incomplete test
+  payment; nothing is held until a card is confirmed. Chrome does not paint a cross-origin frame
+  below the viewport, so a full-page shot grows the viewport to the page instead.
+
 ## Sharp edges
 
 - **An offer carries exactly one price: `itemPriceInCents` or `discountAmount`, never both
