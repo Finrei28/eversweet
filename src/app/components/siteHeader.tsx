@@ -146,6 +146,9 @@ export function SiteHeader() {
                 key={link.href}
                 href={link.href}
                 current={pathName === link.href}
+                // Closed on the tap itself, not only when the path changes: the
+                // current page's own link changes nothing, and left the sheet up.
+                onClick={() => setMenuOpen(false)}
                 className="h-14 justify-start px-5 text-lg"
               >
                 {en ? link.en : link.zh}
@@ -164,17 +167,20 @@ export function SiteHeader() {
 function HeaderLink({
   href,
   current,
+  onClick,
   className,
   children,
 }: {
   href: string;
   current: boolean;
+  onClick?: () => void;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
+      onClick={onClick}
       aria-current={current ? "page" : undefined}
       className={cn(
         "flex h-11 items-center rounded-full px-[18px] text-base text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
