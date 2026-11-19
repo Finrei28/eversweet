@@ -861,6 +861,15 @@ opened the language menu. Check any new link at 1280px, in both languages.
   on unrelated state. Archive (`archivedAt`) instead.
 - **`OfferRedemption.status` has no `@default`** — any `updateMany` touching those rows must
   set it explicitly.
+- **A redemption row is not a redemption.** There is one per customer per offer, and it
+  holds a `used` counter. The order server takes a use when the offer goes into the cart,
+  and every way of handing it back (out of the cart, the cart swept, the order cancelled)
+  lowers the counter and keeps the row. A gated offer's row is written when it is unlocked,
+  before any use, and repeat uses of a weekly offer stay one row. So the Offers table's
+  "Redeemed in orders" is `getOffers`' `orderCount`: the orders that used the offer, not
+  cancelled, over every run. It used to be `_count.redemptions`, which counted customers who
+  had touched the offer and under-counted repeat uses. `_count` is still what Close run's
+  dialog reports, because that is what it deletes.
 - `relationLoadStrategy: "join"` needs the `relationJoins` preview feature (enabled) and works
   on `findMany`/`findUnique` only. Without it Prisma issues one query per relation, each a
   fresh ~160ms round trip to a remote database.
