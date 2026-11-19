@@ -3,9 +3,10 @@
  * Checks that the shared design tokens in this repo still match the customer app's copy.
  *
  * `src/styles/designTokens.json` and the app's `frontend/lib/designTokens.json` are the same
- * file: direction D's colours, radii and shadows, which the website and the app both draw
- * from. Nothing about that is enforceable from CI - two repositories, two runners, no shared
- * checkout - so this is the gate, and it has to be run.
+ * file, holding direction D's colours, radii and shadows for both. Nothing here reads it until
+ * the redesign's foundation wires it into tailwind.config.ts (REDESIGN.md). Nothing about
+ * that is enforceable from CI - two repositories, two runners, no shared checkout - so this
+ * is the gate, and it has to be run.
  *
  * It is modelled on `verify:legal` (scripts/verify-legal.mjs), which does the same for the
  * Terms and the Privacy Policy.
@@ -101,10 +102,10 @@ console.error(
     `  customer app   ${theirPath}`,
     `                 sha256 ${digest(theirs)}`,
     "",
-    "  These two files are meant to be identical - the website and the app draw the",
-    "  same colours, radii and shadows from them. A token change is a paired change,",
-    "  made in both repos under one branch name. Copy whichever is correct over the",
-    "  other, then run this again:",
+    "  These two files are meant to be identical - the website and the app take their",
+    "  design tokens from them. A token change is a paired change, made in both repos",
+    "  under one branch name. Copy whichever is correct over the other, then run this",
+    "  again:",
     "",
     `    cp "${theirPath}" "${MINE}"`,
     "",
