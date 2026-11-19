@@ -3,75 +3,34 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * Every colour the redesign uses comes from designTokens.json, through
+   * tailwind.config.ts. What is left here is website-only, and HSL.
+   *
+   * Space-separated, like every value here: Tailwind's opacity modifiers
+   * (`bg-primary-dark/10`) build `hsl(var(--primary-dark) / 0.1)`, which only that
+   * form can take. src/styles/themeTokens.test.ts holds it.
+   */
   :root {
-    --background: 33.3 100% 96.5%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-
     /*
-     * Space-separated, like every token here: Tailwind's opacity modifiers
-     * (`bg-primary/10`) build `hsl(var(--primary) / 0.1)`, which only that form
-     * can take. This and --secondary were written with commas, so every modifier
-     * on them was dropped by the browser. src/styles/themeTokens.test.ts holds it.
+     * The caramels this site added for contrast before direction D, and not in the
+     * token file. They stay until no customer page uses them (REDESIGN.md).
      */
-    --primary: 28 66% 70%;
     --primary-dark: 24 55% 42%;
-    --primary-foreground: 0 0% 100%;
     /*
      * Near-identical to the logo (#c47e4f) at 3.07:1, which only clears the
      * 3:1 LARGE-text bar. Valid on display headings of 24px+, or 18.66px+ bold,
-     * and nowhere else — card titles are 18px semibold and must stay on
-     * --primary. Exposed as text-primary-display.
+     * and nowhere else. Exposed as text-primary-display.
      */
     --primary-display: 24 50% 54%;
 
-    --secondary: 30.65 83% 83.25%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    /* 45.1% measured 4.47:1 on the cream background — just under AA. */
-    --muted-foreground: 0 0% 42%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    /* Admin's charts. */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-  }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
   }
 }
 

@@ -3,37 +3,133 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import config from "../../tailwind.config";
+import tokens from "./designTokens.json";
+
 /**
- * Every colour token has to be space-separated HSL ("28 66% 70%"), never comma-separated.
- *
- * `tailwind.config.ts` maps each one as `hsl(var(--token))`, and an opacity modifier
- * (`bg-primary/10`) turns that into `hsl(var(--token) / 0.1)`. Only the space-separated form
- * can take the alpha. `--primary` and `--secondary` were written with commas, so every
- * modifier on them was invalid and the browser dropped it: no fill, no tint, and borders in
- * the text colour, near-black. The order details card had a black border, the condensed
- * navbar and the menu's category bar a black line, and the menu's hero gradient and its
- * category dividers did not draw at all.
+ * Tailwind takes direction D's colours, radii and the cart bar's shadow from
+ * `designTokens.json`, the file the customer app holds byte-for-byte as well
+ * (`npm run verify:tokens`). They used to be HSL triples in `globals.css`, typed
+ * a second time beside the app's, and nothing noticed when the two disagreed.
  */
-describe("theme colour tokens", () => {
+const colors: unknown = config.theme.extend.colors;
+
+const at = (path: string) =>
+  path
+    .split(".")
+    .reduce<unknown>(
+      (node, key) =>
+        node && typeof node === "object"
+          ? (node as Record<string, unknown>)[key]
+          : undefined,
+      colors,
+    );
+
+// Where each token is wired into the theme. Keyed by the token file's own names,
+// so a colour added to the file without a place here fails the typecheck.
+const WIRING: Record<keyof typeof tokens.colors, string> = {
+  background: "background",
+  foreground: "foreground",
+  card: "card.DEFAULT",
+  secondary: "secondary.DEFAULT",
+  secondaryForeground: "secondary.foreground",
+  muted: "muted.DEFAULT",
+  mutedForeground: "muted.foreground",
+  primary: "primary.DEFAULT",
+  primaryForeground: "primary.foreground",
+  accent: "accent.DEFAULT",
+  accentForeground: "accent.foreground",
+  inverse: "inverse.DEFAULT",
+  inverseForeground: "inverse.foreground",
+  brand: "brand",
+  scrim: "scrim",
+  border: "border",
+  input: "input",
+  destructive: "destructive.DEFAULT",
+  destructiveSoft: "destructive.soft",
+  success: "success.DEFAULT",
+  successSoft: "success.soft",
+  warning: "warning.DEFAULT",
+  warningSoft: "warning.soft",
+};
+
+describe("the Tailwind theme", () => {
+  it.each(Object.entries(WIRING))(
+    "takes %s from the token file",
+    (token, path) => {
+      expect(at(path)).toBe(tokens.colors[token as keyof typeof tokens.colors]);
+    },
+  );
+
+  it("maps shadcn's other names onto the tokens", () => {
+    expect({
+      popover: at("popover.DEFAULT"),
+      popoverForeground: at("popover.foreground"),
+      cardForeground: at("card.foreground"),
+      destructiveForeground: at("destructive.foreground"),
+      ring: at("ring"),
+    }).toEqual({
+      popover: tokens.colors.card,
+      popoverForeground: tokens.colors.foreground,
+      cardForeground: tokens.colors.foreground,
+      // White on the error red, 6.57:1 (the skill's tokens.md).
+      destructiveForeground: tokens.colors.card,
+      ring: tokens.colors.foreground,
+    });
+  });
+
+  it("takes the radii and the cart bar's shadow from the token file", () => {
+    const { borderRadius, boxShadow } = config.theme.extend as {
+      borderRadius?: Record<string, string>;
+      boxShadow?: Record<string, string>;
+    };
+
+    expect({
+      seal: borderRadius?.seal,
+      card: borderRadius?.card,
+      sheet: borderRadius?.sheet,
+      cartBar: boxShadow?.["cart-bar"],
+    }).toEqual({
+      seal: `${tokens.radius.seal}px`,
+      card: `${tokens.radius.card}px`,
+      sheet: `${tokens.radius.sheet}px`,
+      cartBar: tokens.shadow.cartBar,
+    });
+  });
+});
+
+describe("globals.css", () => {
   const css = readFileSync(
     join(process.cwd(), "src", "styles", "globals.css"),
     "utf8",
   );
-  // Every custom property whose value starts with a number: the HSL colour triples
-  // (`--radius: 0.5rem` has no comma either way, so it passes harmlessly).
-  const tokens = [...css.matchAll(/(--[\w-]+):\s*([\d.][^;]*);/g)].map(
-    ([, name, value]) => ({ name, value: value!.trim() }),
+  const defined = [...css.matchAll(/(--[\w-]+):\s*([^;]*);/g)].map(
+    ([, name, value]) => ({ name: name!, value: value!.trim() }),
   );
 
-  it("finds the tokens", () => {
-    expect(tokens.map((t) => t.name)).toEqual(
-      expect.arrayContaining(["--primary", "--secondary", "--background"]),
+  it("defines no colour the token file owns", () => {
+    // `secondaryForeground` would be `--secondary-foreground` there.
+    const owned = Object.keys(tokens.colors).map(
+      (key) => `--${key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`,
+    );
+
+    expect(defined.map((d) => d.name).filter((n) => owned.includes(n))).toEqual(
+      [],
     );
   });
 
-  it("writes every colour token space-separated, so opacity modifiers work", () => {
-    const withCommas = tokens.filter((t) => t.value.includes(","));
+  /**
+   * What is left there is HSL, mapped as `hsl(var(--token))`, and an opacity
+   * modifier (`bg-primary-dark/10`) builds `hsl(var(--token) / 0.1)`, which only
+   * the space-separated form can take. `--primary` and `--secondary` were written
+   * with commas until 2026-11-20, and the browser dropped every modifier on them.
+   */
+  it("writes the HSL colours it still holds space-separated", () => {
+    const hsl = defined.filter((d) => /^[\d.]/.test(d.value));
 
-    expect(withCommas).toEqual([]);
+    expect(hsl.map((d) => d.name)).toEqual(
+      expect.arrayContaining(["--primary-dark", "--primary-display"]),
+    );
+    expect(hsl.filter((d) => d.value.includes(","))).toEqual([]);
   });
 });
