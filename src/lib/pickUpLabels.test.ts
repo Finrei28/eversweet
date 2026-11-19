@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   dayChip,
   hoursLine,
+  orderPlacedLabel,
+  pickUpDateTimeLabel,
   pickUpTimeLabel,
   SLOTS_SHOWN,
   summaryPickUpLine,
@@ -11,7 +13,7 @@ import {
 import { atNZ } from "./pickUpTimes";
 
 /**
- * What the checkout's pick-up section and order summary say about a time. Every label is
+ * What the checkout's pick-up section and order summary, and the order page, say about a time. Every label is
  * read on the Auckland clock, never the process's: a customer's browser can be anywhere,
  * and CI runs in UTC, where an Auckland morning is still the day before. The cases pick
  * instants whose UTC day differs from their Auckland one, so a label read off the wrong
@@ -44,6 +46,46 @@ describe("pickUpTimeLabel", () => {
     expect(pickUpTimeLabel(atNZ("2026-04-05", 15 * 60 + 30), "en")).toBe(
       "Sun 5 Apr, 3:30 pm",
     );
+  });
+});
+
+describe("pickUpDateTimeLabel", () => {
+  it("writes the order page's pick-up time as the mock-ups do", () => {
+    const friday = atNZ("2026-11-20", 18 * 60 + 42);
+    expect(pickUpDateTimeLabel(friday, "en")).toBe(
+      "6:42 pm, Friday 20 November",
+    );
+    expect(pickUpDateTimeLabel(friday, "zh")).toBe("11月20日（周五）6:42 PM");
+  });
+
+  it("keeps an Auckland morning on its own day, which is the day before in UTC", () => {
+    const saturday = atNZ("2026-11-21", 9 * 60);
+    expect(pickUpDateTimeLabel(saturday, "en")).toBe(
+      "9:00 am, Saturday 21 November",
+    );
+    expect(pickUpDateTimeLabel(saturday, "zh")).toBe("11月21日（周六）9:00 AM");
+  });
+
+  it("names the month in full", () => {
+    expect(pickUpDateTimeLabel(atNZ("2026-09-30", 12 * 60), "en")).toBe(
+      "12:00 pm, Wednesday 30 September",
+    );
+  });
+});
+
+describe("orderPlacedLabel", () => {
+  it("dates an order with its year, on the Auckland clock", () => {
+    // 8:07 am on Friday 20 November is 19:07 UTC on Thursday.
+    const placed = new Date("2026-11-19T19:07:30Z");
+    expect(orderPlacedLabel(placed, "en")).toBe("20 Nov 2026, 8:07 am");
+    expect(orderPlacedLabel(placed, "zh")).toBe("2026年11月20日 8:07 AM");
+  });
+
+  it("puts half past midnight on New Year's Day in the new year", () => {
+    // 12:30 am on 1 January 2027 is 11:30 UTC on 31 December.
+    const placed = new Date("2026-12-31T11:30:00Z");
+    expect(orderPlacedLabel(placed, "en")).toBe("1 Jan 2027, 12:30 am");
+    expect(orderPlacedLabel(placed, "zh")).toBe("2027年1月1日 12:30 AM");
   });
 });
 

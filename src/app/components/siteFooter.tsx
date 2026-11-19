@@ -31,6 +31,9 @@ const LINKS = [
  * While the cart bar is up it leaves room under its last line, so the bar never sits
  * over the trademark notice.
  *
+ * It does not print. The order page's receipt ran onto a second sheet of these links, and
+ * the receipt has its own line on how to reach the shop.
+ *
  * It is a client component because `useLanguage` throws outside its provider, which sits
  * under the client boundary. The legal pages themselves stay server components; only their
  * link labels are translated, because the documents are English-only.
@@ -42,7 +45,7 @@ export default function SiteFooter() {
   return (
     <footer
       className={cn(
-        "mt-auto w-full bg-primary text-primary-foreground",
+        "mt-auto w-full bg-primary text-primary-foreground print:hidden",
         cartBarShown ? "pb-24 md:pb-28" : "pb-9 md:pb-10",
       )}
     >

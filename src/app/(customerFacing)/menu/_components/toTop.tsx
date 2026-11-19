@@ -40,7 +40,7 @@ export default function ScrollToTopButton() {
         onClick={scrollToTop}
         aria-label={language === "en" ? "Back to top" : "回到顶部"}
         className={cn(
-          "fixed left-5 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-[filter,bottom] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "fixed left-5 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-[filter,bottom] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden",
           raised ? "bottom-[92px] md:bottom-24" : "bottom-6",
         )}
       >
