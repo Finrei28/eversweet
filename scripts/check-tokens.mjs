@@ -68,6 +68,18 @@ const REDESIGNED = [
   // Order confirmed (PR 4): the page, its not-found states and the app card under it.
   "src/app/(customerFacing)/order/page.tsx",
   "src/app/(customerFacing)/order/_components/earnInTheApp.tsx",
+  // The rest (PR 5): contact, feedback, the documents, not found, the days-off notice and
+  // the loader.
+  "src/components/ui/checkbox.tsx",
+  "src/app/(customerFacing)/contact/_components/contact.tsx",
+  "src/app/(customerFacing)/feedback/_components/feedback.tsx",
+  "src/app/(customerFacing)/delete-account/page.tsx",
+  "src/app/components/documentPage.tsx",
+  "src/app/components/legalDocument.tsx",
+  "src/app/not-found.tsx",
+  "src/app/components/notFoundMessage.tsx",
+  "src/app/components/daysOffNotice.tsx",
+  "src/app/components/customLoading.tsx",
 ];
 
 const PALETTE =
