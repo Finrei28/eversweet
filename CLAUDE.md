@@ -919,6 +919,27 @@ before restyling a customer page. The app's `eversweet-design` skill
   payment; nothing is held until a card is confirmed. Chrome does not paint a cross-origin frame
   below the viewport, so a full-page shot grows the viewport to the page instead.
 
+### What the order page added
+
+- **One page, four states**, chosen by `orderPageState` (`order/_components/orderDisplay.ts`):
+  a cancelled or collected order says so however old it is; a missing one, a failed read, or
+  one placed more than a day ago is "not found". The three that are not a receipt are drawn as
+  the checkout's empty cart is - a circle, the page's heading, a line, the way home.
+- **The 甜 seal heads the receipt**, the website's one achievement moment, as in the app.
+- **Its two times are `~/lib/pickUpLabels`**: `orderPlacedLabel` ("20 Nov 2026, 6:28 pm") and
+  `pickUpDateTimeLabel` ("6:42 pm, Friday 20 November"), built like the checkout's. They replaced
+  `en-NZ` `Intl` formats, which wrote English dates on the Chinese page too.
+- **The print view prints what it always has, in the same order**: the order number and date,
+  the pick-up time, the details, the items and totals, the thank-you. `print:order-first` puts
+  the details ahead of the items on paper, where the screen has them after. The pick-up card
+  prints with a dashed edge, because a browser leaves backgrounds out of a print by default.
+- **The site's chrome stays off paper**: printed, the header is the logo alone, and the footer,
+  cart bar and back-to-top button do not print. The receipt used to end on a second sheet of
+  footer links.
+- **Screenshots of it need orders in `eversweet_dev`**, written by hand with `createdAt` now.
+  The local cluster's session zone is `Pacific/Auckland` and Prisma's columns have none, so such
+  an insert runs `SET TIME ZONE 'UTC'` first, or every time on the page is 13 hours out.
+
 ## Sharp edges
 
 - **An offer carries exactly one price: `itemPriceInCents` or `discountAmount`, never both
