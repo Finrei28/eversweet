@@ -16,8 +16,8 @@ export default function CustomerFacingLayout({
   const { data: daysOff } = api.store.getDaysOff.useQuery();
 
   // A full-height column with the page growing to fill it, so the footer's mt-auto has
-  // something to push against. Without it the footer sat wherever the content ended -
-  // under the navbar while the menu loaded, since the loader is `fixed` and takes no room.
+  // something to push against. Without it the footer sat wherever a short page ended. The
+  // loader used to be one, `fixed` and taking no room; it now holds the footer down itself.
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />
