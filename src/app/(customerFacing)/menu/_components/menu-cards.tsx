@@ -21,6 +21,7 @@ import { motion } from "framer-motion";
 import { formatCurrency } from "~/lib/formatters";
 import { dessertOnClient } from "~/lib/types";
 import { cn } from "~/lib/utils";
+import { scrollBehavior } from "~/lib/scrollBehavior";
 
 // Gap between the underside of the pinned nav and the heading it scrolls to.
 const SCROLL_TO_GAP = 16;
@@ -242,7 +243,7 @@ export default function MenuCards() {
     const target = Math.max(0, Math.min(maxScroll, centred));
 
     if (Math.abs(target - container.scrollLeft) < 4) return;
-    container.scrollTo({ left: target, behavior: "smooth" });
+    container.scrollTo({ left: target, behavior: scrollBehavior() });
   }, [activeCategory]);
 
   useEffect(() => {
@@ -272,7 +273,7 @@ export default function MenuCards() {
         suppressSpyRef.current = false;
       }, 400);
 
-      window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+      window.scrollTo({ top: Math.max(0, y), behavior: scrollBehavior() });
     }
   };
 

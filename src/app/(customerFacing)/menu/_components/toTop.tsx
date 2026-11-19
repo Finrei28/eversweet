@@ -6,6 +6,7 @@ import { ArrowUp } from "lucide-react";
 import { useCartBarShown } from "~/app/components/cartBar";
 import { useLanguage } from "~/app/components/language";
 import { cn } from "~/lib/utils";
+import { scrollBehavior } from "~/lib/scrollBehavior";
 
 /**
  * Back to the top, on every customer page but checkout. Bottom left, and lifted
@@ -28,7 +29,7 @@ export default function ScrollToTopButton() {
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
-      behavior: "smooth",
+      behavior: scrollBehavior(),
     });
   };
 

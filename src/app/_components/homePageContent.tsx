@@ -17,6 +17,7 @@ import { useSearchParams } from "next/navigation";
 import Loader from "../components/customLoading";
 import NotificationModal from "./_homeComponents/notification";
 import { DessertAnimation } from "./_homeComponents/_top-desserts-components.tsx/dessert-animation";
+import { scrollBehavior } from "~/lib/scrollBehavior";
 
 /**
  * `useSearchParams()` makes the closest Suspense boundary bail out of the
@@ -34,7 +35,7 @@ function ScrollToOpeningHours({
   useEffect(() => {
     if (searchParams.get("scrollTo") === "opening-hours") {
       setTimeout(() => {
-        targetRef.current?.scrollIntoView({ behavior: "smooth" });
+        targetRef.current?.scrollIntoView({ behavior: scrollBehavior() });
       }, 300); // slight delay to ensure DOM is ready
     }
   }, [searchParams, targetRef]);
