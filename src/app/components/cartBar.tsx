@@ -46,7 +46,7 @@ export function CartBar() {
     <button
       type="button"
       onClick={() => cart.setIsCartOpen(true)}
-      className="fixed inset-x-4 bottom-6 z-40 flex h-14 items-center justify-between gap-4 rounded-full bg-inverse px-[22px] text-inverse-foreground shadow-cart-bar transition-[filter] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inset-x-auto md:left-1/2 md:h-[60px] md:w-[560px] md:-translate-x-1/2 md:px-[26px]"
+      className="fixed inset-x-4 bottom-6 z-40 flex h-14 items-center justify-between gap-4 rounded-full bg-inverse px-[22px] text-inverse-foreground shadow-cart-bar transition-[filter] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background md:inset-x-auto md:left-1/2 md:h-[60px] md:w-[560px] md:-translate-x-1/2 md:px-[26px] print:hidden"
     >
       <span className="flex min-w-0 items-center gap-3 text-base font-bold md:text-[17px]">
         <ShoppingBag

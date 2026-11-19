@@ -34,6 +34,9 @@ const LINKS = [
  * apricot, a button naming the other language, and the cart once it has
  * something in it. On a phone: the logo, the cart, and a button opening the same
  * links as a sheet. It scrolls away with the page; the cart bar stays.
+ *
+ * Printed, it is the logo alone, at the head of the order page's receipt; its buttons
+ * do nothing on paper.
  */
 export function SiteHeader() {
   const pathName = usePathname();
@@ -80,7 +83,7 @@ export function SiteHeader() {
 
         <nav
           aria-label={en ? "Main" : "主导航"}
-          className="hidden gap-1 md:flex"
+          className="hidden gap-1 md:flex print:hidden"
         >
           {LINKS.map((link) => (
             <HeaderLink
@@ -92,7 +95,7 @@ export function SiteHeader() {
             </HeaderLink>
           ))}
         </nav>
-        {languageButton("ml-3 hidden md:inline-flex")}
+        {languageButton("ml-3 hidden md:inline-flex print:hidden")}
 
         {showCart && cart && (
           <Button
@@ -100,7 +103,7 @@ export function SiteHeader() {
             size="round"
             aria-label={viewCartLabel(language, count)}
             onClick={() => cart.setIsCartOpen(true)}
-            className="relative"
+            className="relative print:hidden"
           >
             <ShoppingBag strokeWidth={1.8} aria-hidden />
             <span
@@ -118,7 +121,7 @@ export function SiteHeader() {
           aria-label={en ? "Open menu" : "打开导航"}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen(true)}
-          className="md:hidden"
+          className="md:hidden print:hidden"
         >
           <Menu strokeWidth={2} aria-hidden />
         </Button>
