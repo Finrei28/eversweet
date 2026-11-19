@@ -876,3 +876,13 @@ opened the language menu. Check any new link at 1280px, in both languages.
 - Image uploads POST FormData to `/admin/products/api/uploadImage` (Cloudinary,
   content-hash deduped). It files everything under `products/` and returns a public id that
   some callers discard.
+- **Tailwind opacity modifiers do nothing with the theme's colours.** `--primary` and
+  `--secondary` in `globals.css` are comma-separated HSL (`28, 66%, 70%`), so `bg-secondary/40`
+  builds `hsl(30.65, 83%, 83.25% / 0.4)`, which is invalid CSS: the browser drops it, leaving
+  no fill, and a `border-primary/10` falls back to a near-black border (the order details
+  card has one). Use the solid tokens, or check the computed style in the browser.
+- **The store badges are the stores' own artwork** (`public/badges`, `~/lib/appStores`), and
+  both stores' guidelines govern them: Apple's black badge first, both the same height and
+  never under 40px, a quarter of the height clear, localized on the Chinese site, nothing
+  recoloured or stretched, and the trademark credit line in the footer. Draw them with
+  `StoreBadges`; `src/lib/appStores.test.ts` pins the order and sizes.
