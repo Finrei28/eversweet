@@ -8,7 +8,8 @@ import {
 
 /**
  * What the checkout says about a pick-up time: the estimate, the day strip, the hours
- * line and the order summary's line.
+ * line and the order summary's line. And what the order page says about its two times,
+ * when the order was placed and when to pick it up.
  *
  * Built from Auckland day keys and minutes (`nzDayKey`, `nzMinuteOfDay`) and spelled out
  * here, never formatted from a `Date`, so the words cannot depend on the zone the browser
@@ -28,24 +29,25 @@ const EN_WEEKDAYS = [
 ];
 const ZH_WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const EN_MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
+  "January",
+  "February",
+  "March",
+  "April",
   "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
-/** A day key's month, day of the month and weekday, with no clock involved. */
+/** A day key's year, month, day of the month and weekday, with no clock involved. */
 const partsOf = (dayKey: string) => {
   const [year, month, day] = dayKey.split("-").map(Number);
   return {
+    year: year!,
     month: month!,
     day: day!,
     weekday: new Date(Date.UTC(year!, month! - 1, day)).getUTCDay(),
@@ -56,7 +58,7 @@ const partsOf = (dayKey: string) => {
 export const dayLabel = (dayKey: string, language: Language): string => {
   const { month, day, weekday } = partsOf(dayKey);
   return language === "en"
-    ? `${EN_WEEKDAYS[weekday]!.slice(0, 3)} ${day} ${EN_MONTHS[month - 1]}`
+    ? `${EN_WEEKDAYS[weekday]!.slice(0, 3)} ${day} ${EN_MONTHS[month - 1]!.slice(0, 3)}`
     : `${month}月${day}日（${ZH_WEEKDAYS[weekday]}）`;
 };
 
@@ -65,6 +67,25 @@ export const pickUpTimeLabel = (time: Date, language: Language): string => {
   const day = dayLabel(nzDayKey(time), language);
   const clock = timeOfDay(nzMinuteOfDay(time), language);
   return language === "en" ? `${day}, ${clock}` : `${day}${clock}`;
+};
+
+/**
+ * The order page's pick-up time: "6:42 pm, Friday 20 November" as the mock-ups write it, or
+ * "11月20日（周五）6:42 PM" as the checkout does.
+ */
+export const pickUpDateTimeLabel = (time: Date, language: Language): string => {
+  if (language === "zh") return pickUpTimeLabel(time, language);
+  const { month, day, weekday } = partsOf(nzDayKey(time));
+  return `${timeOfDay(nzMinuteOfDay(time), language)}, ${EN_WEEKDAYS[weekday]} ${day} ${EN_MONTHS[month - 1]}`;
+};
+
+/** When an order was placed, with its year: "20 Nov 2026, 6:28 pm" or "2026年11月20日 6:28 PM". */
+export const orderPlacedLabel = (time: Date, language: Language): string => {
+  const { year, month, day } = partsOf(nzDayKey(time));
+  const clock = timeOfDay(nzMinuteOfDay(time), language);
+  return language === "en"
+    ? `${day} ${EN_MONTHS[month - 1]!.slice(0, 3)} ${year}, ${clock}`
+    : `${year}年${month}月${day}日 ${clock}`;
 };
 
 /** The order summary's line under its heading. An ASAP time is the kitchen's estimate. */
