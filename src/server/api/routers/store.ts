@@ -9,7 +9,7 @@ import {
   getPrepTimes,
   getTradingHours,
 } from "~/server/pickUpTimes";
-import { isLeaderboardShown } from "~/server/leaderboardVisibility";
+import { type AppPromotion, getAppPromotion } from "~/server/appPromotion";
 import { itemCountForPayment } from "~/server/paymentItemCount";
 
 export const storeRouter = createTRPCRouter({
@@ -18,12 +18,12 @@ export const storeRouter = createTRPCRouter({
   getDaysOff: publicProcedure.query(() => getDaysOff()),
 
   /**
-   * What the home page's app band may say about the customer app. Only the leaderboard can
-   * be switched off, so only it is asked about; never throws.
+   * What the website's app promotions may say about the customer app: whether points are
+   * earned, whether members earn more, and whether the leaderboard is shown. Never throws.
    */
-  getAppPromotion: publicProcedure.query(async () => ({
-    leaderboardShown: await isLeaderboardShown(),
-  })),
+  getAppPromotion: publicProcedure.query(
+    (): Promise<AppPromotion> => getAppPromotion(),
+  ),
 
   /** The weekly hours, one row per weekday, in minutes past Auckland midnight. */
   getTradingHours: publicProcedure.query(

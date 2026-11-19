@@ -6,53 +6,104 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock("~/server/db", () => ({ db: { loyaltySetting: { findFirst } } }));
 
-import { isLeaderboardShown } from "./leaderboardVisibility";
+import { getAppPromotion } from "./appPromotion";
 
 /**
- * Whether the home page's app band may mention the monthly leaderboard.
+ * What the website's app promotions may claim, read from the settings /admin/settings edits.
  *
- * The switch on /admin/settings hides the board in the app, and a website advertising a
- * leaderboard nobody can find there would be making a claim the app does not keep. So this
- * reads the same column the order server does, and leans the other way when it cannot.
+ * Each of these is something the shop can switch off without a deploy - the leaderboard
+ * hidden, earning paused with a rate or modifier of 0, the member bonus set back to 1x - and
+ * a website still advertising it would be promising what the app no longer gives.
  */
-describe("isLeaderboardShown", () => {
+describe("getAppPromotion", () => {
+  const row = (fields: Record<string, unknown> = {}) => ({
+    pointsPerDollar: 6,
+    memberBonusPercent: 150,
+    modifierPercent: 100,
+    leaderboardHiddenAt: null,
+    ...fields,
+  });
+
   beforeEach(() => {
     findFirst.mockReset();
   });
 
-  it("is shown while the switch is on", async () => {
-    findFirst.mockResolvedValue({ leaderboardHiddenAt: null });
+  it("claims all of it with the usual settings", async () => {
+    findFirst.mockResolvedValue(row());
 
-    await expect(isLeaderboardShown()).resolves.toBe(true);
-  });
-
-  it("is not shown while the switch is off", async () => {
-    findFirst.mockResolvedValue({
-      leaderboardHiddenAt: new Date("2026-11-01T00:00:00+13:00"),
+    await expect(getAppPromotion()).resolves.toEqual({
+      pointsEarned: true,
+      memberRateHigher: true,
+      leaderboardShown: true,
     });
-
-    await expect(isLeaderboardShown()).resolves.toBe(false);
   });
 
-  /** An unseeded table is shown in the app (`isLeaderboardShown` on the order server). */
-  it("is shown when the settings row has never been written", async () => {
+  /** An unseeded table is the order server's DEFAULT_LOYALTY_RATES, and a shown board. */
+  it("claims all of it when the settings row has never been written", async () => {
     findFirst.mockResolvedValue(null);
 
-    await expect(isLeaderboardShown()).resolves.toBe(true);
+    await expect(getAppPromotion()).resolves.toEqual({
+      pointsEarned: true,
+      memberRateHigher: true,
+      leaderboardShown: true,
+    });
+  });
+
+  it("leaves the leaderboard out while it is hidden", async () => {
+    findFirst.mockResolvedValue(
+      row({ leaderboardHiddenAt: new Date("2026-11-01T00:00:00+13:00") }),
+    );
+
+    await expect(getAppPromotion()).resolves.toEqual({
+      pointsEarned: true,
+      memberRateHigher: true,
+      leaderboardShown: false,
+    });
   });
 
   /**
-   * The opposite of the order server, deliberately: there a failed read must not take the
-   * board away from customers, here it only costs one line of advertising, and leaving the
-   * line out can never be untrue.
+   * Both a rate of 0 and a modifier of 0 pause earning. Nothing is earned, so no member
+   * earns more, and a leaderboard of points earned this month has nobody on it.
    */
-  it("leaves the leaderboard out when the setting cannot be read", async () => {
+  it.each([
+    ["a rate of 0", { pointsPerDollar: 0 }],
+    ["a modifier of 0", { modifierPercent: 0 }],
+  ])("claims no points with %s", async (_, fields) => {
+    findFirst.mockResolvedValue(row(fields));
+
+    await expect(getAppPromotion()).resolves.toEqual({
+      pointsEarned: false,
+      memberRateHigher: false,
+      leaderboardShown: false,
+    });
+  });
+
+  it("claims no higher member rate when members earn 1x", async () => {
+    findFirst.mockResolvedValue(row({ memberBonusPercent: 100 }));
+
+    await expect(getAppPromotion()).resolves.toEqual({
+      pointsEarned: true,
+      memberRateHigher: false,
+      leaderboardShown: true,
+    });
+  });
+
+  /**
+   * The opposite of the order server, deliberately: there a failed read must not take
+   * anything from customers, here it only costs a line of advertising, and leaving a line
+   * out can never be untrue.
+   */
+  it("claims none of it when the settings cannot be read", async () => {
     const errorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
     findFirst.mockRejectedValue(new Error("connection refused"));
 
-    await expect(isLeaderboardShown()).resolves.toBe(false);
+    await expect(getAppPromotion()).resolves.toEqual({
+      pointsEarned: false,
+      memberRateHigher: false,
+      leaderboardShown: false,
+    });
     expect(errorSpy).toHaveBeenCalled();
     errorSpy.mockRestore();
   });

@@ -12,7 +12,7 @@ import { revalidateTag } from "next/cache";
 
 import { todayNZ } from "~/lib/aucklandDay";
 import { db } from "~/server/db";
-import { LEADERBOARD_VISIBILITY_TAG } from "~/server/leaderboardVisibility";
+import { APP_PROMOTION_TAG } from "~/server/appPromotion";
 import { lockAnnouncements } from "~/server/api/routers/settings";
 import { adminCaller } from "~/test/caller";
 import { describeIfDb, resetDatabase } from "~/test/db";
@@ -31,6 +31,22 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
   });
 
   describe("loyalty rates", () => {
+    /**
+     * The home page's app band and the order card promise points, and a higher member rate,
+     * only while the rates give them. Without the tag a rate of 0 would go on being
+     * advertised for up to the cache's five minutes.
+     */
+    it("tells the website's app promotions", async () => {
+      vi.mocked(revalidateTag).mockClear();
+      await adminCaller().settings.saveLoyaltyRates({
+        pointsPerDollar: 0,
+        memberBonusPercent: 150,
+        modifierPercent: 100,
+      });
+
+      expect(revalidateTag).toHaveBeenCalledWith(APP_PROMOTION_TAG);
+    });
+
     /**
      * `updateMany` matches nothing on an unseeded table and reports success, so without the
      * create branch a save would look like it worked and change nothing.
@@ -156,11 +172,11 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
 
       vi.mocked(revalidateTag).mockClear();
       await caller.settings.setLeaderboardVisibility({ shown: false });
-      expect(revalidateTag).toHaveBeenCalledWith(LEADERBOARD_VISIBILITY_TAG);
+      expect(revalidateTag).toHaveBeenCalledWith(APP_PROMOTION_TAG);
 
       vi.mocked(revalidateTag).mockClear();
       await caller.settings.setLeaderboardVisibility({ shown: true });
-      expect(revalidateTag).toHaveBeenCalledWith(LEADERBOARD_VISIBILITY_TAG);
+      expect(revalidateTag).toHaveBeenCalledWith(APP_PROMOTION_TAG);
     });
   });
 

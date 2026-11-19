@@ -4,6 +4,7 @@ import Image from "next/image";
 
 import { useLanguage } from "~/app/components/language";
 import StoreBadges from "~/app/components/storeBadges";
+import { api } from "~/trpc/react";
 
 /**
  * Under a confirmed website order: the one thing it did not get.
@@ -12,10 +13,16 @@ import StoreBadges from "~/app/components/storeBadges";
  * 12) - so a customer who has just paid is the one most likely to care. It is the same for
  * every website order, so it needs nothing from the order itself. Kept off the receipt when
  * printed.
+ *
+ * Its whole case is that app orders earn points, which stops being true while /admin/settings
+ * has earning switched off (a rate or modifier of 0), so it waits to be told they do
+ * (`~/server/appPromotion`) and shows nothing until then, or at all on a failed read.
  */
 export default function EarnInTheApp() {
   const { language } = useLanguage();
+  const { data: promotion } = api.store.getAppPromotion.useQuery();
 
+  if (!promotion?.pointsEarned) return null;
   return (
     // Solid tokens, as in the home page's band: the theme's comma-separated HSL makes an
     // opacity modifier invalid CSS.
