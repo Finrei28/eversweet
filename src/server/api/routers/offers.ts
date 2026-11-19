@@ -217,13 +217,42 @@ export const offerRouter = createTRPCRouter({
    * also removes the hazard entirely: `prefetch()` and `useSuspenseQuery()` must be
    * called with identical inputs or the cache key misses, and there is now no input to
    * get wrong. Offers are a handful of rows, so fetching the archived ones is free.
+   *
+   * `orderCount` is how many orders used each offer, cancelled ones left out, over every
+   * run. The table's count used to be `_count.redemptions`, the redemption rows, which is
+   * who has touched the offer rather than how often it was had: the order server takes a
+   * use when the offer goes into the cart, and every way of handing it back - out of the
+   * cart, the cart swept, the order cancelled - lowers the row's counter and keeps the row.
+   * A gated offer's row is written when it is unlocked, before any use. `_count` stays for
+   * Close run, which deletes those rows and says how many.
    */
   getOffers: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.offer.findMany({
-      relationLoadStrategy: "join",
-      orderBy: [{ archivedAt: "asc" }, { name: "asc" }],
-      select: offerSelect,
-    });
+    const [offers, offerOrders] = await Promise.all([
+      ctx.db.offer.findMany({
+        relationLoadStrategy: "join",
+        orderBy: [{ archivedAt: "asc" }, { name: "asc" }],
+        select: offerSelect,
+      }),
+      // One row per order and offer it used, so an order with two lines on the same offer
+      // (each use is its own line) counts once.
+      ctx.db.orderDessert.groupBy({
+        by: ["offerId", "orderId"],
+        where: {
+          offerId: { not: null },
+          order: { status: { not: "CANCELLED" } },
+        },
+      }),
+    ]);
+
+    const orderCount = new Map<string, number>();
+    for (const { offerId } of offerOrders) {
+      if (offerId) orderCount.set(offerId, (orderCount.get(offerId) ?? 0) + 1);
+    }
+
+    return offers.map((offer) => ({
+      ...offer,
+      orderCount: orderCount.get(offer.id) ?? 0,
+    }));
   }),
 
   createOffer: protectedProcedure

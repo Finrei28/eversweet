@@ -14,7 +14,7 @@
  *
  * Skips when TEST_DATABASE_URL is unset; see `src/test/db.ts`.
  */
-import { beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // `orderServer` is `server-only`, which throws outside an RSC, and `trpc.ts` imports
 // `~/server/auth` -> next-auth -> `next/server`, which will not resolve under Vitest. A
@@ -796,5 +796,127 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
         select: { name: true },
       }),
     ).resolves.toEqual({ name: "Second run" });
+  });
+
+  /**
+   * The Offers table's count of how often an offer was used. It used to be the number of
+   * redemption rows, which is not the same thing: a use is taken when the offer goes into
+   * the cart, and every way of handing it back - out of the cart, the cart swept, the order
+   * cancelled - lowers the row's counter and leaves the row. A gated offer's row is written
+   * when it is unlocked, before any use. So the table counted customers who had touched the
+   * offer, and an offer nobody had ordered could read as redeemed.
+   */
+  describe("how many orders used an offer", () => {
+    const placeOrder = (
+      dessertId: string,
+      offerIds: (string | null)[],
+      status: "ACCEPTED" | "PICKED_UP" | "CANCELLED" = "PICKED_UP",
+    ) =>
+      db.order.create({
+        data: {
+          tempOrderId: "test",
+          priceInCents: 1200,
+          GST: 157,
+          customerFirstName: "Aroha",
+          customerLastName: "Ngata",
+          customerEmail: "aroha@example.test",
+          status,
+          source: "APP",
+          desserts: {
+            create: offerIds.map((offerId) => ({
+              dessertId,
+              offerId,
+              quantity: 1,
+            })),
+          },
+        },
+      });
+
+    const offerNamed = async (id: string) => {
+      const offer = (await adminCaller().offer.getOffers()).find(
+        (o) => o.id === id,
+      );
+      if (!offer) throw new Error("offer not returned");
+      return offer;
+    };
+
+    /** Taken into the cart and handed back: the row stays, at `used: 0`. */
+    it("counts nothing for a use handed back before it was ordered", async () => {
+      const { dessert } = await seedMenu();
+      const offer = await adminCaller().offer.createOffer({
+        offer: offerInput({ dessertId: dessert.id }),
+      });
+      const customer = await seedCustomer();
+      await db.offerRedemption.create({
+        data: {
+          offerId: offer.id,
+          userId: customer.id,
+          used: 0,
+          status: "AVAILABLE",
+          redeemedAt: new Date(),
+        },
+      });
+
+      const read = await offerNamed(offer.id);
+      expect(read.orderCount).toBe(0);
+      // The rows are still there for Close run to say how many it deletes.
+      expect(read._count.redemptions).toBe(1);
+    });
+
+    it("counts orders that used it, in progress or collected", async () => {
+      const { dessert } = await seedMenu();
+      const offer = await adminCaller().offer.createOffer({
+        offer: offerInput({ dessertId: dessert.id }),
+      });
+      await placeOrder(dessert.id, [offer.id], "ACCEPTED");
+      await placeOrder(dessert.id, [offer.id], "PICKED_UP");
+
+      expect((await offerNamed(offer.id)).orderCount).toBe(2);
+    });
+
+    /** Staff cancelled it; whatever the counter says, nobody had the offer. */
+    it("leaves out cancelled orders", async () => {
+      const { dessert } = await seedMenu();
+      const offer = await adminCaller().offer.createOffer({
+        offer: offerInput({ dessertId: dessert.id }),
+      });
+      await placeOrder(dessert.id, [offer.id]);
+      await placeOrder(dessert.id, [offer.id], "CANCELLED");
+
+      expect((await offerNamed(offer.id)).orderCount).toBe(1);
+    });
+
+    /** Each use is its own line, so an offer with a limit above one can appear twice. */
+    it("counts an order once however many of its lines used the offer", async () => {
+      const { dessert } = await seedMenu();
+      const offer = await adminCaller().offer.createOffer({
+        offer: offerInput({ dessertId: dessert.id, limit: 2 }),
+      });
+      await placeOrder(dessert.id, [offer.id, offer.id, null]);
+
+      expect((await offerNamed(offer.id)).orderCount).toBe(1);
+    });
+
+    it("counts each offer's orders separately", async () => {
+      const { dessert, cheaper } = await seedMenu();
+      const caller = adminCaller();
+      const first = await caller.offer.createOffer({
+        offer: offerInput({ name: "First", dessertId: dessert.id }),
+      });
+      const second = await caller.offer.createOffer({
+        offer: offerInput({
+          name: "Second",
+          dessertId: cheaper.id,
+          discountAmount: 20,
+        }),
+      });
+      await placeOrder(dessert.id, [first.id]);
+      await placeOrder(cheaper.id, [second.id]);
+      await placeOrder(cheaper.id, [second.id]);
+      await placeOrder(dessert.id, [null]);
+
+      expect((await offerNamed(first.id)).orderCount).toBe(1);
+      expect((await offerNamed(second.id)).orderCount).toBe(2);
+    });
   });
 });
