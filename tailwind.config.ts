@@ -30,15 +30,18 @@ export default {
         "fade-in-zoom-in": "fadeInZoomIn 0.5s ease-out forwards",
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", ...fontFamily.sans],
-        // Latin-only face, so the CJK fallbacks carry the Chinese headings.
-        display: [
-          "var(--font-display)",
+        // Figtree has no Chinese, so the system sans faces after it carry Chinese
+        // interface text: buttons, headings, messages.
+        sans: [
+          "var(--font-figtree)",
           "PingFang SC",
           "Hiragino Sans GB",
           "Microsoft YaHei",
           ...fontFamily.sans,
         ],
+        // Chinese names only - a dessert's, a category's, a customisation's - always
+        // in this serif, whichever language leads (REDESIGN.md, decision 2).
+        zh: ["var(--font-noto-serif-sc)", "Songti SC", "STSong", "serif"],
       },
       borderRadius: {
         lg: "var(--radius)",
