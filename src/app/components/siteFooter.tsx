@@ -43,6 +43,16 @@ export default function SiteFooter() {
             {language === "en" ? "Delete account" : "删除账户"}
           </Link>
         </nav>
+        {/*
+          The credit lines both stores ask for wherever their badges are used, placed once
+          where the site gives its legal notice. Apple allows the notice translated, never
+          the marks themselves.
+        */}
+        <p className="max-w-3xl px-4 text-xs">
+          {language === "en"
+            ? "Apple and the Apple logo are trademarks of Apple Inc., registered in the U.S. and other countries. App Store is a service mark of Apple Inc., registered in the U.S. and other countries. Google Play and the Google Play logo are trademarks of Google LLC."
+            : "Apple 和 Apple 标志是 Apple Inc. 在美国和其他国家/地区注册的商标。App Store 是 Apple Inc. 在美国和其他国家/地区注册的服务标记。Google Play 和 Google Play 标志是 Google LLC 的商标。"}
+        </p>
       </div>
     </footer>
   );
