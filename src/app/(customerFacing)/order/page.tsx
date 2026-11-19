@@ -33,6 +33,11 @@ import {
 import { useLanguage } from "~/app/components/language";
 import Loader from "~/app/components/customLoading";
 import EarnInTheApp from "./_components/earnInTheApp";
+import {
+  customisationPrefix,
+  linePrices,
+  orderPageState,
+} from "./_components/orderDisplay";
 
 /**
  * Where the cancelled, picked-up and not-found cards sit: in the page, centred in a region
@@ -61,7 +66,6 @@ function OrderDetails() {
     { enabled: !!orderId && isClient },
   );
 
-  const twentyFourHours = 24 * 60 * 60 * 1000;
   useEffect(() => {
     setIsClient(true);
 
@@ -81,8 +85,10 @@ function OrderDetails() {
     window.print();
   };
 
+  const state = orderPageState(order, !!error, Date.now());
+
   // Cancelled by the shop: no live receipt for an order that is not going ahead.
-  if (order?.status === "CANCELLED") {
+  if (state === "cancelled") {
     return (
       <div className={CENTRED_MESSAGE}>
         <Card>
@@ -109,7 +115,7 @@ function OrderDetails() {
     );
   }
 
-  if (order?.status === "PICKED_UP") {
+  if (state === "picked-up") {
     return (
       <div className={CENTRED_MESSAGE}>
         <Card>
@@ -136,11 +142,7 @@ function OrderDetails() {
     );
   }
 
-  if (
-    error ||
-    !order ||
-    new Date().getTime() - new Date(order.createdAt).getTime() > twentyFourHours
-  ) {
+  if (state !== "confirmed" || !order) {
     return (
       <div className={CENTRED_MESSAGE}>
         <Card>
@@ -262,17 +264,7 @@ function OrderDetails() {
 
             <div className="space-y-4">
               {order.desserts.map((item) => {
-                const pricePerItem =
-                  (item.dessert.priceInCents -
-                    item.discountedAmountInCents +
-                    item.customisations.reduce((total, customisation) => {
-                      return (
-                        total +
-                        customisation.customisation.priceInCents *
-                          customisation.quantity
-                      );
-                    }, 0)) /
-                  100;
+                const { eachInCents, lineInCents } = linePrices(item);
                 return (
                   <div key={item.id} className="flex gap-4">
                     <div className="relative h-16 w-16 flex-shrink-0 self-start overflow-hidden rounded-md border border-gray-200">
@@ -310,11 +302,7 @@ function OrderDetails() {
                             className="ml-1 mt-1 text-sm text-gray-500"
                             key={customisation.id}
                           >
-                            {customisation.quantity > 1
-                              ? `+ ${customisation.quantity} ${customisationName}`
-                              : customisation.quantity === 1
-                                ? `+ ${customisationName}`
-                                : `- ${customisationName}`}
+                            {`${customisationPrefix(customisation.quantity)} ${customisationName}`}
                           </p>
                         );
                       })}
@@ -325,10 +313,10 @@ function OrderDetails() {
                     </div>
                     <div className="self-start text-right">
                       <p className="font-medium">
-                        {formatCurrency(pricePerItem)}
+                        {formatCurrency(eachInCents / 100)}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {formatCurrency(pricePerItem * item.quantity)}
+                        {formatCurrency(lineInCents / 100)}
                       </p>
                     </div>
                   </div>
