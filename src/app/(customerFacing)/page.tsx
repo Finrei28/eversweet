@@ -2,6 +2,7 @@ import { api, HydrateClient } from "~/trpc/server";
 
 import { Metadata } from "next";
 import HomePage from "../_components/homePageContent";
+import { getShopProfile } from "~/server/shopProfile";
 
 export const metadata: Metadata = {
   title: "Eversweet - Home",
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
  */
 export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
   // Run the query on the server, in parallel with rendering, and ship the
   // result inside the HTML. Without this the browser had to download and
   // hydrate the bundle before it even began asking for the desserts.
@@ -29,10 +30,13 @@ export default function Home() {
   // What the app band may claim (points, the member rate, the leaderboard), from a cache
   // like the desserts.
   void api.store.getAppPromotion.prefetch();
+  // The address for the hero's "Open today until..." line. The same cached read the root
+  // layout's structured data makes on every page, so it costs no further query.
+  const { address } = await getShopProfile();
 
   return (
     <HydrateClient>
-      <HomePage />
+      <HomePage address={address} />
     </HydrateClient>
   );
 }

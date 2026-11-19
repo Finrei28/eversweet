@@ -1,4 +1,5 @@
 import {
+  formatMinutes,
   hoursOn,
   nzDayKey,
   nzMinuteOfDay,
@@ -25,3 +26,12 @@ export function openToday(now: Date, calendar: TradingCalendar): OpenToday {
   if (minute < day.closesAt) return { state: "open", until: day.closesAt };
   return { state: "closed" };
 }
+
+/**
+ * A time of day as the redesigned pages write it: "10:00 pm" in English, as the
+ * mock-ups have it, and "10:00 PM" in Chinese, as the site wrote it before.
+ */
+export const timeOfDay = (minutes: number, language: "en" | "zh"): string =>
+  language === "en"
+    ? formatMinutes(minutes).toLowerCase()
+    : formatMinutes(minutes);

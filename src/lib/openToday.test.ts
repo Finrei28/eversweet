@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { openToday } from "./openToday";
+import { openToday, timeOfDay } from "./openToday";
 import { atNZ, toDaysOffKeys, toWeeklyHours } from "./pickUpTimes";
 
 /**
@@ -66,5 +66,13 @@ describe("openToday", () => {
       state: "open",
       until: 1290,
     });
+  });
+});
+
+describe("timeOfDay", () => {
+  it("writes English times in lower case and Chinese ones as before", () => {
+    expect(timeOfDay(1320, "en")).toBe("10:00 pm");
+    expect(timeOfDay(750, "en")).toBe("12:30 pm");
+    expect(timeOfDay(1320, "zh")).toBe("10:00 PM");
   });
 });
