@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "~/app/components/language";
 import Loader from "~/app/components/customLoading";
+import EarnInTheApp from "./_components/earnInTheApp";
 
 function OrderDetails() {
   const { language } = useLanguage();
@@ -361,6 +362,9 @@ function OrderDetails() {
           </Link>
         </div>
       </div>
+
+      {/* `getOrder` finds any order by id, and an app order did earn its points. */}
+      {order.source === "WEBSITE" && <EarnInTheApp />}
 
       {/* Print-only footer */}
       <div className="mt-8 hidden text-center text-sm text-gray-500 print:block">
