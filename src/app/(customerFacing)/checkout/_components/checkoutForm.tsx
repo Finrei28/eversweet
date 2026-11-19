@@ -11,7 +11,7 @@ import type {
   StripeElements,
 } from "@stripe/stripe-js";
 import { TRPCClientError } from "@trpc/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CartContextType } from "~/app/components/cartContext";
 import { createOrderSchema } from "~/app/components/schemas";
@@ -772,25 +772,38 @@ export default function CheckoutForm({
   return (
     <>
       <form onSubmit={handleSubmit}>
-        <div className="space-y-6">
+        <div className="flex flex-col gap-3.5 lg:gap-4">
           <PaymentElement />
 
           {shownError && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-500">
+            <div
+              role="alert"
+              className="rounded-[14px] bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive"
+            >
               {shownError}
             </div>
           )}
 
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Lock
+              className="h-4 w-4 text-success"
+              strokeWidth={2}
+              aria-hidden
+            />
+            {en ? "Secure payment processing" : "安全支付处理"}
+          </p>
+
           <Button
             type="submit"
-            className="w-full"
+            size="cta"
+            className="mt-1.5 h-[58px] w-full text-lg lg:mt-2 lg:h-[60px]"
             disabled={
               !stripe || !elements || paymentLoading || !inStep || unsellable
             }
           >
             {paymentLoading || updatingTotal ? (
               <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                <Loader2 className="animate-spin" aria-hidden />
                 {paymentLoading
                   ? en
                     ? "Processing..."

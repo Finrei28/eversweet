@@ -1,39 +1,42 @@
 "use client";
 
-import { CartContextType } from "~/app/components/cartContext";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import Image from "next/image";
 import { ShoppingBag, Trash2 } from "lucide-react";
-import { formatCurrency } from "~/lib/formatters";
-import { Separator } from "~/components/ui/separator";
+
+import type { CartContextType, CartItem } from "~/app/components/cartContext";
+import { ItemName } from "~/app/components/itemName";
 import { useLanguage } from "~/app/components/language";
-import CustomisationDialog from "../../menu/_components/customisation";
 import { Button } from "~/components/ui/button";
-import { PickupTimePicker } from "./pick-up-time";
+import { formatCurrency } from "~/lib/formatters";
+import { summaryPickUpLine } from "~/lib/pickUpLabels";
+import { cn } from "~/lib/utils";
+import CustomisationDialog from "../../menu/_components/customisation";
 import { checkoutCartKey, type PricedCart } from "./checkoutItems";
-import { formatNZ } from "~/lib/pickUpTimes";
 
 type orderSummaryProps = {
   cart: CartContextType;
   /** What the server priced this cart at, once it has - see the total below. */
   pricedCart: PricedCart | null;
   pickUpTime: Date | null;
-  setPickUpTime: React.Dispatch<React.SetStateAction<Date | null>>;
-  setPickUpNextOpening: (boolean: boolean) => void;
-  daysOff: Date[];
-  clockSkewMs: number;
+  /** Whether that time is the soonest (ASAP), which is an estimate. */
+  pickUpAsap: boolean;
+  className?: string;
 };
 
+/**
+ * What the customer is paying for: a section of the page on a phone, between the pick-up
+ * time and their details, and a card beside the form on a wide screen. The pick-up time
+ * itself is chosen in its own section above; this only repeats it.
+ */
 export default function OrderSummary({
   cart,
   pricedCart,
   pickUpTime,
-  setPickUpTime,
-  setPickUpNextOpening,
-  daysOff,
-  clockSkewMs,
+  pickUpAsap,
+  className,
 }: orderSummaryProps) {
   const { language } = useLanguage();
+  const en = language === "en";
 
   // What the shop will charge, which is the server's number, not this browser's: prices in a
   // cart that has sat in localStorage can be out of date, and the payment is held for what the
@@ -45,174 +48,157 @@ export default function OrderSummary({
       : cart.totalPrice;
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {language === "en" ? "Order Summary" : "订单摘要"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <PickupTimePicker
-            value={pickUpTime}
-            onChange={setPickUpTime}
-            setPickUpNextOpening={setPickUpNextOpening}
-            numberOfItems={cart.totalItems}
-            daysOff={daysOff}
-            clockSkewMs={clockSkewMs}
+    <section
+      aria-labelledby="order-summary-heading"
+      className={cn(
+        "flex flex-col border-b border-border py-6 lg:rounded-card lg:border lg:bg-card lg:p-6",
+        className,
+      )}
+    >
+      <h2
+        id="order-summary-heading"
+        className="text-xl font-extrabold lg:text-[22px]"
+      >
+        {en ? "Order summary" : "订单摘要"}
+      </h2>
+      {pickUpTime && (
+        <p className="mt-0.5 text-sm tabular-nums text-muted-foreground lg:mt-1 lg:text-[15px]">
+          {summaryPickUpLine(pickUpTime, pickUpAsap, language)}
+        </p>
+      )}
+
+      <ul className="mt-1 lg:mt-2">
+        {cart.cart.map((item) => (
+          <SummaryLine key={item.id} cart={cart} item={item} />
+        ))}
+      </ul>
+
+      <div className="flex justify-between pb-1 pt-3.5 text-[15px] text-muted-foreground lg:pb-1.5 lg:pt-4">
+        <span>{en ? "GST included" : "包含消费税"}</span>
+        <span className="tabular-nums">
+          {formatCurrency((totalInCents * 3) / 23 / 100 || 0)}
+        </span>
+      </div>
+      <div className="flex items-baseline justify-between lg:pt-1.5">
+        <span className="text-[17px] font-extrabold lg:text-lg">
+          {en ? "Total" : "总计"}
+        </span>
+        <span className="text-2xl font-extrabold tabular-nums lg:text-[26px]">
+          {formatCurrency(totalInCents / 100 || 0)}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function SummaryLine({
+  cart,
+  item,
+}: {
+  cart: CartContextType;
+  item: CartItem;
+}) {
+  const { language } = useLanguage();
+  const en = language === "en";
+
+  const priceInCentsBeforeDiscount = item.priceInCents;
+  const priceInCentsAfterDiscount =
+    priceInCentsBeforeDiscount - item.discountedAmountInCents;
+  const discounted = item.discountedAmountInCents > 0;
+
+  return (
+    <li className="flex gap-3 border-b border-border py-3.5 lg:gap-3.5 lg:py-4">
+      <span className="relative flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted lg:h-14 lg:w-14">
+        {item.dessert.imagePath ? (
+          <Image
+            src={item.dessert.imagePath}
+            alt=""
+            fill
+            sizes="56px"
+            className="object-cover"
           />
+        ) : (
+          <ShoppingBag className="h-6 w-6 text-muted-foreground" aria-hidden />
+        )}
+      </span>
 
-          {pickUpTime && (
-            <div className="rounded-md bg-muted p-3">
-              <p className="font-medium">
-                {language === "en" ? "Selected Pickup Time:" : "选定取货时间:"}
-              </p>
-              <p>{formatNZ(pickUpTime, "EEE dd/MM/yyyy h:mm a")}</p>
-            </div>
-          )}
-          {/* <DateTimePicker
-            pickUpTime={pickUpTime}
-            setPickUpTime={setPickUpTime}
-            getNextValidTime={getNextValidTime}
-            setASAP={setASAP}
-            ASAP={ASAP}
-          /> */}
-          {cart.cart.map((item) => {
-            const editButton = (
-              <CustomisationDialog dessert={item.dessert} cartItem={item} />
-            );
-            const priceInCentsBeforeDiscount = item.priceInCents;
-            const priceInCentsAfterDiscount =
-              priceInCentsBeforeDiscount - item.discountedAmountInCents;
-            const deleteButton = (
-              <Button
-                variant="ghost"
-                size="checkoutIcon"
-                className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                onClick={() => cart.removeAllSameItemFromCart(item.id)}
+      <div className="flex min-w-0 flex-1 flex-col gap-px lg:gap-0.5">
+        <div className="flex items-start justify-between gap-2">
+          <ItemName
+            name={item.dessert.name}
+            chineseName={item.dessert.chineseName}
+          />
+          <span className="flex shrink-0 items-baseline gap-1.5 tabular-nums">
+            {discounted && (
+              <span className="text-[13px] text-muted-foreground line-through">
+                {formatCurrency(priceInCentsBeforeDiscount / 100)}
+              </span>
+            )}
+            <span className="text-base font-bold">
+              {formatCurrency(
+                (discounted
+                  ? priceInCentsAfterDiscount
+                  : priceInCentsBeforeDiscount) / 100,
+              )}
+            </span>
+          </span>
+        </div>
+
+        {item.customisations?.map((customisation) => (
+          <p
+            key={customisation.id}
+            className="flex justify-between gap-2 text-[13px] text-muted-foreground lg:text-sm"
+          >
+            <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+              <span className="tabular-nums">
+                {customisation.quantity >= 1
+                  ? `x${customisation.quantity}`
+                  : "-"}
+              </span>
+              <span
+                lang={en ? "en" : "zh-Hans"}
+                className={cn(!en && "font-zh font-semibold")}
               >
-                <Trash2 className="h-5 w-5" />
-              </Button>
-            );
-            return (
-              <div key={item.id} className="flex gap-4">
-                <div className="relative mt-2 h-16 w-16 flex-shrink-0 self-start overflow-hidden rounded-md border border-gray-200">
-                  {item.dessert.imagePath ? (
-                    <Image
-                      src={item.dessert.imagePath}
-                      alt={
-                        language === "en"
-                          ? item.dessert.name
-                          : item.dessert.chineseName
-                      }
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                      <ShoppingBag className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex w-full flex-col justify-between">
-                  <div className="flex flex-row items-start justify-between md:items-center">
-                    <h4 className="font-medium">
-                      {language === "en"
-                        ? item.dessert.name
-                        : item.dessert.chineseName}
-                    </h4>
+                {en ? customisation.name : customisation.chineseName}
+              </span>
+              <span
+                lang={en ? "zh-Hans" : "en"}
+                className={cn("text-xs", en && "font-zh font-semibold")}
+              >
+                {en ? customisation.chineseName : customisation.name}
+              </span>
+            </span>
+            <span className="shrink-0 tabular-nums">
+              {formatCurrency(
+                (customisation.priceInCents * customisation.quantity) / 100,
+              )}
+            </span>
+          </p>
+        ))}
 
-                    <div className="grid grid-cols-1 items-center md:grid-cols-2">
-                      <div className="hidden items-center justify-end gap-1 md:flex">
-                        {editButton} {deleteButton}
-                      </div>
-
-                      <div className="flex flex-col items-end justify-end">
-                        {/* Price Section */}
-                        {item.discountedAmountInCents > 0 ? (
-                          <div className="flex flex-col text-right">
-                            <p className="text-gray-500 line-through">
-                              {formatCurrency(priceInCentsBeforeDiscount / 100)}
-                            </p>
-                            <p className="font-medium">
-                              {formatCurrency(priceInCentsAfterDiscount / 100)}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="font-medium">
-                            {formatCurrency(priceInCentsBeforeDiscount / 100)}
-                          </p>
-                        )}
-
-                        {/* Edit Button */}
-                        <div className="flex items-end justify-end gap-1 md:hidden">
-                          <div>{editButton}</div>
-                          <div>{deleteButton}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center justify-center">
-                    {item.customisations?.map((customisation) => {
-                      const customisationName =
-                        language === "en"
-                          ? customisation.name
-                          : customisation.chineseName;
-                      return (
-                        <div
-                          className="flex w-full items-center justify-between"
-                          key={customisation.id}
-                        >
-                          <p
-                            className="ml-1 mt-1 items-center text-xs text-gray-500 md:text-sm"
-                            key={customisation.id}
-                          >
-                            {customisation.quantity > 1
-                              ? `x${customisation.quantity} ${customisationName}`
-                              : customisation.quantity === 1
-                                ? `x1 ${customisationName}`
-                                : `- ${customisationName}`}
-                          </p>
-                          <div className="flex w-auto flex-col text-right md:text-right">
-                            <p className="text-xs text-gray-500 md:text-sm">
-                              {formatCurrency(
-                                (customisation.priceInCents *
-                                  customisation.quantity) /
-                                  100,
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="flex flex-row items-center justify-between">
-                    <p className="mt-1 text-xs font-semibold text-gray-500 md:text-base">
-                      {language === "en" ? "Quantity: " : "数量: "}
-                      {item.quantity}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          <Separator className="my-4" />
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>{language === "en" ? "GST included" : "包含消费税"}</span>
-              <span>{formatCurrency((totalInCents * 3) / 23 / 100 || 0)}</span>
-            </div>
-            <Separator className="my-2" />
-            <div className="flex justify-between font-bold">
-              <span>{language === "en" ? "Total" : "总计"}</span>
-              <span>{formatCurrency(totalInCents / 100 || 0)}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </>
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] font-semibold text-muted-foreground lg:text-sm">
+            {en ? "Quantity: " : "数量: "}
+            {item.quantity}
+          </span>
+          <span className="-my-1 -mr-2.5 flex">
+            <CustomisationDialog dessert={item.dessert} cartItem={item} />
+            <Button
+              variant="ghost"
+              size="round"
+              aria-label={
+                en
+                  ? `Remove ${item.dessert.name}`
+                  : `删除${item.dessert.chineseName}`
+              }
+              className="text-muted-foreground hover:text-destructive"
+              onClick={() => cart.removeAllSameItemFromCart(item.id)}
+            >
+              <Trash2 className="!size-[19px]" strokeWidth={1.8} aria-hidden />
+            </Button>
+          </span>
+        </div>
+      </div>
+    </li>
   );
 }
