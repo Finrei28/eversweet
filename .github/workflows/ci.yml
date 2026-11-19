@@ -1,10 +1,13 @@
 name: CI
 
+# feat/website-redesign is the long-lived branch the redesign's flow PRs go into, and it
+# merges into main once, at the release (REDESIGN.md). Without it here those PRs would get no
+# lint, typecheck, tests, legal check or token check until then.
 on:
   push:
-    branches: [main]
+    branches: [main, feat/website-redesign]
   pull_request:
-    branches: [main]
+    branches: [main, feat/website-redesign]
 
 jobs:
   lint-and-typecheck:
@@ -51,6 +54,9 @@ jobs:
   # repo and nothing else. Both checkouts take it, and the retry below fetches through the remote
   # they configure, so it is used there too. Rotate by adding a new deploy key and replacing the
   # secret, then removing the old key.
+  #
+  # The design tokens are shared with the customer app the same way, so the same checkout
+  # compares them too, in a step of their own.
   verify-legal:
     runs-on: ubuntu-latest
     steps:
@@ -98,6 +104,37 @@ jobs:
           attempts=10
           for attempt in $(seq 1 "$attempts"); do
             if node scripts/verify-legal.mjs; then
+              exit 0
+            fi
+            if [ "$attempt" -eq "$attempts" ]; then
+              echo "::error::Still different after $attempts attempts - one repo's copy was changed without the other."
+              exit 1
+            fi
+            echo "Attempt $attempt of $attempts: the other copy may not be pushed yet. Fetching it again in 30 seconds."
+            sleep 30
+            if git -C "$SIBLING_DIR" fetch --depth=1 origin "$SIBLING_BRANCH" 2>/dev/null; then
+              git -C "$SIBLING_DIR" checkout --quiet --force FETCH_HEAD
+            elif git -C "$SIBLING_DIR" fetch --depth=1 origin HEAD 2>/dev/null; then
+              git -C "$SIBLING_DIR" checkout --quiet --force FETCH_HEAD
+            else
+              echo "Could not fetch the other repo; comparing against what is already checked out."
+            fi
+          done
+
+      # The design tokens, against the same checkout and with the same retry, since a token
+      # change is a paired push too. It runs when the legal documents fail as well, so one
+      # check's failure cannot hide the other's answer.
+      - name: Compare the design tokens
+        if: ${{ !cancelled() }}
+        timeout-minutes: 7
+        env:
+          EVERSWEET_APP_REPO: .eversweet_app
+          SIBLING_DIR: .eversweet_app
+          SIBLING_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          attempts=10
+          for attempt in $(seq 1 "$attempts"); do
+            if node scripts/verify-tokens.mjs; then
               exit 0
             fi
             if [ "$attempt" -eq "$attempts" ]; then

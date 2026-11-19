@@ -7,6 +7,12 @@
 # verify:legal` fails if the two stop matching.
 src/lib/legalDocuments.ts
 
+# The design tokens are shared with the customer app the same way (see REDESIGN.md). JSON
+# leaves the two formatters less to disagree about than TypeScript does, but a formatter
+# rewriting this copy would still break the byte-for-byte match. `npm run verify:tokens`
+# fails if the two stop matching.
+src/styles/designTokens.json
+
 # Build output and dependencies.
 .next/
 node_modules/

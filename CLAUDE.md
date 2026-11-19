@@ -815,10 +815,19 @@ before restyling a customer page. The app's `eversweet-design` skill
 - **The redesign lands on `feat/website-redesign`, not `main`.** Each flow is a PR into that
   branch, and the branch merges into `main` once, when every flow is done: merging into `main`
   deploys, and customers should never see half the site in the new look. The one exception is
-  PR 0, the token file and its CI check, which changes nothing on screen.
-- **`src/styles/designTokens.json` will be shared byte-for-byte** with
-  `eversweet_app/frontend/lib/designTokens.json` (PR 0 in `REDESIGN.md` adds both). Change both
-  or neither, under one branch name; `npm run verify:tokens` fails otherwise.
+  PR 0, the token file and its CI check, which changes nothing on screen. `ci.yml` runs on
+  pushes and PRs into that branch as well as `main`, so the flow PRs get every check.
+- **`src/styles/designTokens.json` is shared byte-for-byte** with
+  `eversweet_app/frontend/lib/designTokens.json`, where the app's `lib/theme.ts` reads its
+  colours from it. Nothing here reads it until the foundation PR wires it into
+  `tailwind.config.ts`. Change both copies or neither, under one branch name.
+  - `npm run verify:tokens` compares them, like `verify:legal` (`EVERSWEET_APP_REPO` points it
+    at the app's checkout). It compares line endings as git stores them, since `core.autocrlf`
+    can leave one checkout CRLF and the other LF.
+  - CI runs it as a step in the `verify-legal` job, against the same checkout of the app and
+    with the same 30-second retry, so a paired change pushed to one repo first waits for the
+    other. The app's Frontend CI has a `verify-tokens` job that does the same the other way.
+  - It is in `.prettierignore` beside the legal documents.
 - **Names lead in the reader's language.** A dessert, category or customisation shows both
   names: the selected language's first and larger, the other second. Every other string stays in
   the selected language only.

@@ -1,0 +1,32 @@
+{
+  "colors": {
+    "background": "#FCF8F3",
+    "foreground": "#3B1A1C",
+    "card": "#FFFFFF",
+    "secondary": "#F9E1B9",
+    "secondaryForeground": "#3B1A1C",
+    "muted": "#F6EFE7",
+    "mutedForeground": "#7A5F5A",
+    "primary": "#E6AA6B",
+    "primaryForeground": "#3B1A1C",
+    "accent": "#9B2F2B",
+    "accentForeground": "#FCF8F3",
+    "inverse": "#3B1A1C",
+    "inverseForeground": "#FCF8F3",
+    "brand": "#B97B53",
+    "scrim": "rgba(0, 0, 0, 0.5)",
+    "border": "#EFDCC4",
+    "input": "#9C8279",
+    "destructive": "#B42318",
+    "destructiveSoft": "#FDE3DF",
+    "success": "#2F6B45",
+    "successSoft": "#DDEFE2",
+    "warning": "#8A4B08",
+    "warningSoft": "#FCEBC9"
+  },
+  "radius": { "seal": 10, "card": 20, "sheet": 28 },
+  "shadow": {
+    "tabBar": "0 10px 30px rgba(59, 26, 28, 0.16)",
+    "cartBar": "0 10px 24px rgba(59, 26, 28, 0.28)"
+  }
+}
