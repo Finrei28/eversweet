@@ -11,9 +11,9 @@ import CustomerInformation from "./_components/customerInformation";
 import OrderSummary from "./_components/orderSummary";
 import { useLanguage } from "~/app/components/language";
 import Loader from "~/app/components/customLoading";
-import parsePhoneNumberFromString from "libphonenumber-js";
 import { api } from "~/trpc/react";
 import { checkoutItems, type PricedCart } from "./_components/checkoutItems";
+import { detailsComplete } from "./_components/customerDetails";
 
 export default function CheckoutPage() {
   const cart = useContext(CartContext);
@@ -80,17 +80,7 @@ export default function CheckoutPage() {
     if (!cart?.totalPrice) return;
     if (!pickUpTime) return; // delete after holiday
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phone = parsePhoneNumberFromString(debouncedCustomerInfo.phone, "NZ");
-    if (
-      !debouncedCustomerInfo.customerFirstName?.trim() ||
-      !debouncedCustomerInfo.customerLastName?.trim() ||
-      !debouncedCustomerInfo.customerEmail?.trim() ||
-      !emailRegex.test(debouncedCustomerInfo.customerEmail.trim()) ||
-      !phone?.isValid()
-    ) {
-      return;
-    }
+    if (!detailsComplete(debouncedCustomerInfo)) return;
 
     // One payment at a time. Details that change while one is being created would otherwise
     // create a second, and whichever answered last would replace the payment form - clearing
