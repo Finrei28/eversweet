@@ -13,6 +13,8 @@ import { cn } from "~/lib/utils";
  *
  * - `bottom` is a phone's: up from the bottom edge, round top corners, a handle.
  * - `right` is a desktop's panel: full height, in from the right.
+ * - `center` is a desktop's dialog, for what a phone shows as a bottom sheet (the
+ *   customise dialog) or what needs the whole screen (a menu board full size).
  *
  * A caller that wants both picks the side per width (see `cartSheet.tsx`); Tailwind
  * cannot switch the slide direction by breakpoint without leaving the other axis's
@@ -47,6 +49,10 @@ const sheetVariants = cva(
           "inset-x-0 bottom-0 max-h-[88dvh] rounded-t-sheet pb-[env(safe-area-inset-bottom)] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         right:
           "inset-y-0 right-0 h-full w-full max-w-[440px] border-l border-border data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+        // A desktop's dialog: in the middle of the screen, every corner round. The
+        // caller sets the width; it never runs past the screen's edges.
+        center:
+          "left-1/2 top-1/2 max-h-[calc(100dvh-48px)] w-[calc(100vw-48px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-sheet data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
       },
     },
     defaultVariants: { side: "bottom" },
