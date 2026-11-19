@@ -9,12 +9,21 @@ import {
   getPrepTimes,
   getTradingHours,
 } from "~/server/pickUpTimes";
+import { type AppPromotion, getAppPromotion } from "~/server/appPromotion";
 import { itemCountForPayment } from "~/server/paymentItemCount";
 
 export const storeRouter = createTRPCRouter({
   getPrepTimes: publicProcedure.query((): Promise<PrepTimes> => getPrepTimes()),
 
   getDaysOff: publicProcedure.query(() => getDaysOff()),
+
+  /**
+   * What the website's app promotions may say about the customer app: whether points are
+   * earned, whether members earn more, and whether the leaderboard is shown. Never throws.
+   */
+  getAppPromotion: publicProcedure.query(
+    (): Promise<AppPromotion> => getAppPromotion(),
+  ),
 
   /** The weekly hours, one row per weekday, in minutes past Auckland midnight. */
   getTradingHours: publicProcedure.query(

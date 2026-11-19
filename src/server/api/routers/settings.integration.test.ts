@@ -8,8 +8,11 @@ vi.mock("next/cache", () => ({
   unstable_cache: (fn: unknown) => fn,
 }));
 
+import { revalidateTag } from "next/cache";
+
 import { todayNZ } from "~/lib/aucklandDay";
 import { db } from "~/server/db";
+import { APP_PROMOTION_TAG } from "~/server/appPromotion";
 import { lockAnnouncements } from "~/server/api/routers/settings";
 import { adminCaller } from "~/test/caller";
 import { describeIfDb, resetDatabase } from "~/test/db";
@@ -28,6 +31,22 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
   });
 
   describe("loyalty rates", () => {
+    /**
+     * The home page's app band and the order card promise points, and a higher member rate,
+     * only while the rates give them. Without the tag a rate of 0 would go on being
+     * advertised for up to the cache's five minutes.
+     */
+    it("tells the website's app promotions", async () => {
+      vi.mocked(revalidateTag).mockClear();
+      await adminCaller().settings.saveLoyaltyRates({
+        pointsPerDollar: 0,
+        memberBonusPercent: 150,
+        modifierPercent: 100,
+      });
+
+      expect(revalidateTag).toHaveBeenCalledWith(APP_PROMOTION_TAG);
+    });
+
     /**
      * `updateMany` matches nothing on an unseeded table and reports success, so without the
      * create branch a save would look like it worked and change nothing.
@@ -140,6 +159,24 @@ describeIfDb("settings router", { timeout: 30_000 }, () => {
       const rows = await db.loyaltySetting.findMany();
       expect(rows).toHaveLength(1);
       expect(rows[0]!.leaderboardHiddenAt).not.toBeNull();
+    });
+
+    /**
+     * The home page's app band leaves the leaderboard out while it is hidden, from a cached
+     * read. Without the tag it would go on advertising a board taken out of the app for up to
+     * the cache's five minutes, or keep it out after the board came back.
+     */
+    it("tells the home page's cached read, both ways", async () => {
+      await seed();
+      const caller = adminCaller();
+
+      vi.mocked(revalidateTag).mockClear();
+      await caller.settings.setLeaderboardVisibility({ shown: false });
+      expect(revalidateTag).toHaveBeenCalledWith(APP_PROMOTION_TAG);
+
+      vi.mocked(revalidateTag).mockClear();
+      await caller.settings.setLeaderboardVisibility({ shown: true });
+      expect(revalidateTag).toHaveBeenCalledWith(APP_PROMOTION_TAG);
     });
   });
 

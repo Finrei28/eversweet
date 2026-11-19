@@ -32,6 +32,19 @@ import {
 } from "lucide-react";
 import { useLanguage } from "~/app/components/language";
 import Loader from "~/app/components/customLoading";
+import EarnInTheApp from "./_components/earnInTheApp";
+
+/**
+ * Where the cancelled, picked-up and not-found cards sit: in the page, centred in a region
+ * most of a screen tall, with the footer below.
+ *
+ * They used to be `fixed inset-0`, centred on the viewport. Since the footer moved into the
+ * layout and renders on every page, that floated each card over the footer, and the fixed
+ * column, a full screen tall and as wide as the card, sat over the footer's links so they
+ * could not be clicked. `px-4` keeps the card off the edges of a phone.
+ */
+const CENTRED_MESSAGE =
+  "mx-auto flex min-h-[60dvh] max-w-3xl items-center justify-center px-4 py-10";
 
 function OrderDetails() {
   const { language } = useLanguage();
@@ -71,7 +84,7 @@ function OrderDetails() {
   // Cancelled by the shop: no live receipt for an order that is not going ahead.
   if (order?.status === "CANCELLED") {
     return (
-      <div className="fixed inset-0 mx-auto flex max-w-3xl items-center justify-center">
+      <div className={CENTRED_MESSAGE}>
         <Card>
           <CardHeader>
             <CardTitle className="text-center text-red-500">
@@ -98,7 +111,7 @@ function OrderDetails() {
 
   if (order?.status === "PICKED_UP") {
     return (
-      <div className="fixed inset-0 mx-auto flex max-w-3xl items-center justify-center">
+      <div className={CENTRED_MESSAGE}>
         <Card>
           <CardHeader>
             <CardTitle className="text-center text-red-500">
@@ -129,7 +142,7 @@ function OrderDetails() {
     new Date().getTime() - new Date(order.createdAt).getTime() > twentyFourHours
   ) {
     return (
-      <div className="fixed inset-0 mx-auto flex max-w-3xl items-center justify-center">
+      <div className={CENTRED_MESSAGE}>
         <Card>
           <CardHeader>
             <CardTitle className="text-center text-red-500">
@@ -361,6 +374,9 @@ function OrderDetails() {
           </Link>
         </div>
       </div>
+
+      {/* `getOrder` finds any order by id, and an app order did earn its points. */}
+      {order.source === "WEBSITE" && <EarnInTheApp />}
 
       {/* Print-only footer */}
       <div className="mt-8 hidden text-center text-sm text-gray-500 print:block">

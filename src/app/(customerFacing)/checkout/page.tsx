@@ -204,9 +204,14 @@ export default function CheckoutPage() {
 
   // Before the empty-cart check: the cart is emptied the moment the order is placed, and the
   // customer should see that it was, not "Your cart is empty", until the order page loads.
+  //
+  // Both messages sit in the page, centred in a region most of a screen tall. They used to
+  // be `fixed inset-0`, centred on the viewport, which floated them over the footer once it
+  // rendered on every page, and kept the footer's Contact and Feedback links from being
+  // clicked under them.
   if (orderPlaced) {
     return (
-      <div className="fixed inset-0 mx-auto my-auto flex max-h-80 max-w-xs flex-col items-center justify-center text-center md:max-w-md">
+      <div className="mx-auto flex min-h-[60dvh] max-w-xs flex-col items-center justify-center px-4 py-10 text-center md:max-w-md">
         <CheckCircle className="mb-4 h-16 w-16 text-green-500" />
         <h2 className="mb-2 text-2xl font-medium">
           {language === "en" ? "Payment Successful!" : "付款成功！"}
@@ -222,7 +227,7 @@ export default function CheckoutPage() {
 
   if (!cart?.cart || cart.cart.length === 0) {
     return (
-      <div className="fixed inset-0 mx-auto my-auto flex max-h-80 max-w-xs flex-col items-center justify-center md:max-w-md">
+      <div className="mx-auto flex min-h-[60dvh] max-w-xs flex-col items-center justify-center px-4 py-10 md:max-w-md">
         <ShoppingBag className="mb-4 h-16 w-16 text-gray-300" />
         <h2 className="mb-2 text-2xl font-medium">
           {language === "en" ? "Your cart is empty" : "您的购物车是空的"}
