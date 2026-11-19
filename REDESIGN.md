@@ -168,12 +168,16 @@ compares its copy with the other repo's and exits non-zero when they differ.
   to `backend/`), checking out this repo, which is public and needs no key. Same branch first,
   same retry loop.
 - A token change is a paired change: the same branch name in both repos.
+- **This repo's `ci.yml` runs only for pushes and PRs to `main`.** Every flow PR goes into
+  `feat/website-redesign`, so PR 0 adds that branch to both triggers; without it the flow PRs
+  would get no lint, typecheck, tests, legal check or token check until the release. (The app's
+  `frontend-ci.yml` already runs on every branch.)
 
 ## The rollout
 
 | # | PR | Into | What |
 | --- | --- | --- | --- |
-| 0 | Share the design tokens | `main` here, and `main` in `eversweet_app`, paired under one branch name | Here: `src/styles/designTokens.json` (read by nothing yet), `scripts/verify-tokens.mjs`, the `verify:tokens` script, the CI step, `.prettierignore`. App: `frontend/lib/designTokens.json`, `theme.ts` reading it, the check-tokens change, its verify script and CI job. No pixel changes on either side, so both can merge whenever they are reviewed; landing the file on both `main`s first means neither repo's check ever compares against a branch that lacks it. |
+| 0 | Share the design tokens | `main` here, and `main` in `eversweet_app`, paired under one branch name | Here: `src/styles/designTokens.json` (read by nothing yet), `scripts/verify-tokens.mjs`, the `verify:tokens` script, the CI step, `.prettierignore`, and `feat/website-redesign` added to `ci.yml`'s push and pull-request branches. App: `frontend/lib/designTokens.json`, `theme.ts` reading it, the check-tokens change, its verify script and CI job. No pixel changes on either side, so both can merge whenever they are reviewed; landing the file on both `main`s first means neither repo's check ever compares against a branch that lacks it. |
 | 1 | Foundation | `feat/website-redesign` | Tailwind and `globals.css` from the tokens; Figtree and Noto Serif SC; the shadcn primitives restyled (button variants, input, label, badge, dialog, a sheet for phones, toast) with the `accent` hovers moved; the customer header, the footer, the cart bar and the cart sheet or panel; a `scripts/check-tokens.mjs` like the app's, listing finished files; reduced motion. Admin is checked at 1280 in both languages. |
 | 2 | Browse | `feat/website-redesign` | Home, every section; the menu; the customise dialog and sheet. |
 | 3 | Checkout | `feat/website-redesign` | Markup only: the page, the pick-up picker in the page, Stripe Appearance, the empty and "payment successful" states. |
@@ -195,6 +199,10 @@ against it - and before each flow PR is opened.
 check what the Preview environment's variables point at in Vercel: a preview on the production
 database and Stripe key would place real orders. Until that is known, checkout is checked
 locally.
+
+**Reviews.** All 52 PRs in this repo so far went into `main`, so nothing shows yet whether Greptile
+reviews a PR with another base. Before the foundation PR, check in Greptile's settings that it
+reviews PRs into `feat/website-redesign`, or each flow PR goes unreviewed until the release.
 
 ## Found while planning (not for the design PRs)
 
