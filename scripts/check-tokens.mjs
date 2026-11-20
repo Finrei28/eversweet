@@ -53,7 +53,7 @@ const REDESIGNED = [
   "src/app/_components/_homeComponents/menu-photos.tsx",
   "src/app/_components/_homeComponents/opening-hours.tsx",
   "src/app/_components/_homeComponents/top-desserts.tsx",
-  "src/app/_components/_homeComponents/uber-eats.tsx",
+  "src/app/_components/_homeComponents/delivery.tsx",
   "src/app/(customerFacing)/menu/_components/customisation.tsx",
   "src/app/(customerFacing)/menu/_components/menu-cards.tsx",
   "src/app/components/dessertPrice.tsx",
