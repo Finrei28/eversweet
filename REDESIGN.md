@@ -6,7 +6,10 @@ flow in September 2026 (`eversweet_app` PRs #46-#53); its design system is the
 `eversweet-design` skill in `eversweet_app/frontend/.claude/skills/eversweet-design/`, and that
 skill is the brief here too.
 
-Agreed with the owner on 2026-11-20. Nothing below has been built yet.
+Agreed with the owner on 2026-11-20, and released the same day: the five flows went into
+`feat/website-redesign` as #54-#58, and that branch merged into `main` as #59. The branch is
+retired and CI no longer runs on it. This file stays as the record of what was decided and why;
+new work on customer pages goes to `main` like any other change.
 
 - **Mock-ups:** https://claude.ai/artifact/3fkVCikxmMexE61A6XG6Fw ("Eversweet website,
   direction D"). Home, the menu, the customise dialog, the cart, checkout and order confirmed at
