@@ -20,6 +20,7 @@ npm run typecheck    # tsc --noEmit
 npm run lint         # next lint  (lint:fix to autofix)
 npm test             # vitest run (test:watch for watch mode)
 npm run format:write # prettier
+npm run check:tokens # CI: redesigned files take their colours from the tokens
 ```
 
 Run a single test file or case:
@@ -819,8 +820,8 @@ before restyling a customer page. The app's `eversweet-design` skill
   pushes and PRs into that branch as well as `main`, so the flow PRs get every check.
 - **`src/styles/designTokens.json` is shared byte-for-byte** with
   `eversweet_app/frontend/lib/designTokens.json`, where the app's `lib/theme.ts` reads its
-  colours from it. Nothing here reads it until the foundation PR wires it into
-  `tailwind.config.ts`. Change both copies or neither, under one branch name.
+  colours from it, and `tailwind.config.ts` here takes every colour, the `seal`/`card`/`sheet`
+  radii and the `cart-bar` shadow from it. Change both copies or neither, under one branch name.
   - `npm run verify:tokens` compares them, like `verify:legal` (`EVERSWEET_APP_REPO` points it
     at the app's checkout). It compares line endings as git stores them, since `core.autocrlf`
     can leave one checkout CRLF and the other LF.
@@ -830,7 +831,145 @@ before restyling a customer page. The app's `eversweet-design` skill
   - It is in `.prettierignore` beside the legal documents.
 - **Names lead in the reader's language.** A dessert, category or customisation shows both
   names: the selected language's first and larger, the other second. Every other string stays in
-  the selected language only.
+  the selected language only. `ItemName` (`src/app/components/itemName.tsx`) draws a pair;
+  Chinese is always `font-zh` (Noto Serif SC) at 600, since asking for bold gets the 900 the
+  seal uses.
+
+### What the foundation put in place
+
+- **Colours come only from the token file.** `globals.css` keeps `--primary-dark` and
+  `--primary-display` (the website-only caramels, which go once nothing uses them), the admin
+  charts and `--radius`; `src/styles/themeTokens.test.ts` fails if it defines a colour the file
+  owns, or if a colour in the file is not wired into the theme.
+- **`accent` is red bean**, not shadcn's grey hover. The primitives hover, focus and select on
+  `muted` (rice); `src/components/ui/accentSurfaces.test.ts` fails on an `accent` surface there.
+- **Fonts:** Figtree (`font-sans`, with the system Chinese sans after it for Chinese interface
+  text) and Noto Serif SC (`font-zh`), both through `next/font` in the root layout. The Chinese
+  face arrives in unicode-range slices, so a page fetches only the characters it shows.
+- **The primitives keep admin's shapes.** Their defaults changed colour only; direction D's
+  shapes are opt-in: `Button` sizes `cta` (56px), `pill` (52), `pill-sm` (48), `chip` (44) and
+  `round` (44, icon only) and the `inverse` and `destructive-soft` variants; `Input` and
+  `Textarea` `variant="field"`; `Label variant="field"`; `Badge variant="soft"`. A redesigned
+  page uses those; admin's layouts do not move (REDESIGN.md, decision 4).
+- **`Sheet`** (`src/components/ui/sheet.tsx`) is the bottom sheet on a phone and the side panel
+  on desktop. A caller picks the side per width (`useMinWidth(DESKTOP_MIN_WIDTH)`), because the
+  slide direction cannot switch by breakpoint in classes.
+- **The customer header is `SiteHeader`**, the footer `SiteFooter`, and the cart is `CartBar` plus
+  `CartSheet`, all mounted in `(customerFacing)/layout.tsx`. The old `Navbar` is admin's alone now,
+  laid out exactly as before. The cart bar shows on every customer page but checkout while the
+  cart has anything in it; the footer and the scroll-to-top button make room for it through
+  `useCartBarShown`.
+- **Anything drawn from the cart waits for hydration** (`useHydrated` in `~/lib/browserState`).
+  The cart provider reads localStorage in its first client render, so a count rendered straight
+  away differs from the server's empty cart and React throws a hydration mismatch.
+- **Reduced motion is honoured**: `MotionPreferences` gives framer-motion `reducedMotion="user"`
+  (entrances fade instead of sliding), and `globals.css` cuts every CSS transition and animation
+  to 0.01ms under the setting. The falling desserts already drew themselves landed.
+- **`npm run check:tokens`** (`scripts/check-tokens.mjs`, run by CI) lists every finished file and
+  fails on a hex or raw colour, a stock palette class, or `primary-dark`/`primary-display` in one.
+  Each flow PR adds its files; nothing leaves the list.
+- **Screenshots** for a flow PR come from a local `next dev` against `eversweet_dev`, never
+  `npm run dev` here (`.env` is production): a wrapper that builds the environment itself and
+  refuses any database but `127.0.0.1/eversweet_dev`.
+
+### What the browse flow added
+
+- **`Stepper`** (`src/components/ui/stepper.tsx`) is the one minus-count-plus: the cart, each
+  customisation and the dialog's quantity. Each button is named by the caller in the reader's
+  language ("One more Taro Bowl" / 多一份芋泥酪).
+- **`Sheet` has a `center` side**, a desktop's dialog. The customise dialog is `center` from
+  `md` and `bottom` below it; a menu board's full-size view is `center` everywhere.
+- **What a promotion takes off is `promoDiscountInCents`** (`~/lib/dessertPricing`), which the
+  menu, the popular choices and the customise dialog each wrote out inline before. Display and
+  the cart line only; `src/server/pricing.ts` still decides what an order costs.
+  `DessertPrice` and `dessertButtonLabel` (`src/app/components/dessertPrice.tsx`) show it.
+- **"Open today until 10:00 pm"** is `openToday` (`~/lib/openToday`), from the same weekly hours
+  and days off as checkout, in Auckland time. It and the opening hours' "Today" are drawn only once
+  hydrated, since both depend on the minute the page is read. English times are written
+  `timeOfDay`: "10:00 pm" in English, "10:00 PM" in Chinese as before.
+- **A grid that holds truncated text needs `grid-cols-1`**, not a bare `grid`: an implicit column
+  grows to the unwrapped width of its longest line. The menu's rows did, which made the page wider
+  than a phone and pushed the fixed cart bar off screen.
+- **Run Prettier on named files, never a glob** like `src/lib/*.ts`. Most of the repo is not
+  Prettier-clean, and a glob reformats files the change has nothing to do with.
+
+### What the checkout added
+
+- **The pick-up time is a section of the page**, not a popover. ASAP or Pick up later is a radio
+  group (arrow keys move the choice); a later time is a strip of the next 15 days and that day's
+  times, twelve at first and the rest behind "Later times". The strip scrolls sideways on a
+  phone and wraps from `sm`, because a mouse wheel cannot scroll it sideways. Days are Auckland
+  day keys end to end: the month calendar it replaced converted through browser-local dates.
+- **The words for a time are `~/lib/pickUpLabels`**: the estimate, the strip, the hours line
+  and the summary's "Pick up Fri 20 Nov, about 6:42 pm". Spelled out from `nzDayKey` and
+  `nzMinuteOfDay`, never formatted from a `Date`, and tested on instants whose UTC day differs.
+- **The page's markup runs in the order a customer works through it** - when, what, who, pay -
+  which is the phone's layout. From `lg` a grid moves the order summary into a column of its
+  own; `grid-rows-[auto_auto_1fr]` gives any height it needs beyond the others to the last row.
+- **Stripe's card fields are dressed by `stripeAppearance`** (`~/lib/stripeAppearance`), from
+  the tokens, through `<Elements options>`; the site's CSS cannot reach Stripe's frame. Figtree
+  is named there, not loaded: that frame cannot use the copy next/font serves, and fetching one
+  from Google Fonts would add a third party the privacy policy does not name. The test fails on
+  a colour outside the tokens or on any URL.
+- **The payment section says it is waiting for the details**, rather than spinning, until
+  `detailsComplete` (`checkout/_components/customerDetails.ts`) holds. It is the same check the
+  page makes before it starts a payment.
+- **Screenshots of the card form need Stripe's test keys**, which the local wrapper takes only
+  when asked and only if both are test-mode. Filling in the details creates an incomplete test
+  payment; nothing is held until a card is confirmed. Chrome does not paint a cross-origin frame
+  below the viewport, so a full-page shot grows the viewport to the page instead.
+
+### What the order page added
+
+- **One page, four states**, chosen by `orderPageState` (`order/_components/orderDisplay.ts`):
+  a cancelled or collected order says so however old it is; a missing one, a failed read, or
+  one placed more than a day ago is "not found". The three that are not a receipt are drawn as
+  the checkout's empty cart is - a circle, the page's heading, a line, the way home.
+- **The 甜 seal heads the receipt**, the website's one achievement moment, as in the app.
+- **Its two times are `~/lib/pickUpLabels`**: `orderPlacedLabel` ("20 Nov 2026, 6:28 pm") and
+  `pickUpDateTimeLabel` ("6:42 pm, Friday 20 November"), built like the checkout's. They replaced
+  `en-NZ` `Intl` formats, which wrote English dates on the Chinese page too.
+- **The print view prints what it always has, in the same order**: the order number and date,
+  the pick-up time, the details, the items and totals, the thank-you. `print:order-first` puts
+  the details ahead of the items on paper, where the screen has them after. The pick-up card
+  prints with a dashed edge, because a browser leaves backgrounds out of a print by default.
+- **The site's chrome stays off paper**: printed, the header is the logo alone, and the footer,
+  cart bar and back-to-top button do not print. The receipt used to end on a second sheet of
+  footer links.
+- **Screenshots of it need orders in `eversweet_dev`**, written by hand with `createdAt` now.
+  The local cluster's session zone is `Pacific/Auckland` and Prisma's columns have none, so such
+  an insert runs `SET TIME ZONE 'UTC'` first, or every time on the page is 13 hours out.
+
+### What the rest added
+
+- **Contact** is three columns divided by hairlines, stacked below `lg`, with the map in a framed
+  corner. The phone number and email are links: `telHref` (`~/lib/shopSettings`) dials
+  "09 949 1050" as `tel:099491050`.
+- **Feedback's stars are five radio inputs** in a group named by the "Rating" heading, so the
+  arrow keys move between them. Each was a button named "1 stars", in either language. Its
+  errors are still the zod schema's English (OUTSTANDING.md).
+- **The legal pages and delete account share `DocumentPage`** (`src/app/components/documentPage.tsx`):
+  one 760px column, sections divided by hairlines, ink body text, links in red bean. Apricot
+  links were 2.0:1 on cream.
+- **The 404 is `src/app/not-found.tsx`**, outside the customer layout, so it carries the logo
+  itself. Every `notFound()` lands there, a signed-out `/admin` included, so it must say nothing
+  about admin.
+- **The days-off notice** (`src/app/components/daysOffNotice.tsx`) is the `Dialog` primitive:
+  focus stays inside, Escape closes it, and a click outside does not, as before. It lists
+  closures - one day, or days in a row by their first and last - from `closures` and
+  `closureLabel` (`~/lib/pickUpLabels`), read on the Auckland calendar. The old notice formatted
+  each `Date` in the browser's zone, so anywhere west of Auckland was told the day before. Each
+  day is kept whole on its line.
+- **`DialogContent` takes `closeLabel`** for its ✕, which a screen reader heard as "Close" in
+  English on every page.
+- **The loader fills the screen under the header** rather than floating over the page, so a
+  loading page keeps the footer below the fold instead of halfway up a phone. Its height
+  subtracts the customer header's (65px, 81px from `md`); change one and change the other. It
+  tells a screen reader it is loading.
+- **A ticked checkbox is ink**, edged in `input`, admin's included.
+- **Screenshots of the notice need days off in `eversweet_dev`**, and every other page needs
+  none, or the notice covers it. Days off are cached for five minutes, so after adding or
+  removing rows by hand, wait for `store.getDaysOff` to change before shooting.
 
 ## Sharp edges
 
@@ -903,14 +1042,13 @@ before restyling a customer page. The app's `eversweet-design` skill
 - Image uploads POST FormData to `/admin/products/api/uploadImage` (Cloudinary,
   content-hash deduped). It files everything under `products/` and returns a public id that
   some callers discard.
-- **Colour tokens in `globals.css` stay space-separated HSL** (`28 66% 70%`). An opacity
-  modifier builds `hsl(var(--primary) / 0.1)`, which only that form can take. `--primary` and
-  `--secondary` were written with commas until 2026-11-20, so every `bg-primary/10`,
-  `border-primary/40` and the like was invalid at computed-value time. The browser dropped
-  each one: no fill or tint, and borders in the text colour, near-black. That gave the order
-  details card a black border and the condensed navbar a black line, and left the menu's
-  hero gradient and category dividers undrawn. `src/styles/themeTokens.test.ts` fails on a
-  comma.
+- **The colours left in `globals.css` stay space-separated HSL** (`24 50% 54%`). An opacity
+  modifier builds `hsl(var(--primary-display) / 0.1)`, which only that form can take.
+  `--primary` and `--secondary` were written with commas until 2026-11-20, so every
+  `bg-primary/10`, `border-primary/40` and the like was invalid at computed-value time and the
+  browser dropped it: no fill or tint, and borders in the text colour, near-black. Those two
+  are hex from the token file now, which Tailwind parses itself, so their modifiers cannot
+  break that way again; `src/styles/themeTokens.test.ts` still fails on a comma in what is left.
 - **The store badges are the stores' own artwork** (`public/badges`, `~/lib/appStores`), and
   both stores' guidelines govern them: Apple's black badge first, both the same height and
   never under 40px, a quarter of the height clear, localized on the Chinese site, nothing

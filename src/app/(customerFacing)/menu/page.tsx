@@ -29,7 +29,7 @@ export default function MenuPage() {
 
   return (
     <HydrateClient>
-      <MaxWidthWapper>
+      <MaxWidthWapper className="max-w-[1240px] px-5">
         <Suspense fallback={<Loader />}>
           <MenuCards />
         </Suspense>

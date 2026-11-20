@@ -1,43 +1,50 @@
-import { useContext, useEffect, useState } from "react";
-import { ArrowUp } from "lucide-react";
-import { CartContext } from "~/app/components/cartContext";
+"use client";
 
+import { useEffect, useState } from "react";
+import { ArrowUp } from "lucide-react";
+
+import { useCartBarShown } from "~/app/components/cartBar";
+import { useLanguage } from "~/app/components/language";
+import { cn } from "~/lib/utils";
+import { scrollBehavior } from "~/lib/scrollBehavior";
+
+/**
+ * Back to the top, on every customer page but checkout. Bottom left, and lifted
+ * above the cart bar while that is up, which spans the bottom of a phone's
+ * screen. It used to carry the cart's count at 2xl, where the header's cart had
+ * scrolled away; the cart bar shows the count at every width now.
+ */
 export default function ScrollToTopButton() {
   const [isVisible, setIsVisible] = useState(false);
-  const cart = useContext(CartContext);
+  const { language } = useLanguage();
+  const raised = useCartBarShown();
 
   useEffect(() => {
-    const toggleVisibility = () => {
-      if (window.scrollY > 80) {
-        setIsVisible(true);
-      } else {
-        setIsVisible(false);
-      }
-    };
+    const toggleVisibility = () => setIsVisible(window.scrollY > 80);
 
-    window.addEventListener("scroll", toggleVisibility);
+    window.addEventListener("scroll", toggleVisibility, { passive: true });
     return () => window.removeEventListener("scroll", toggleVisibility);
   }, []);
 
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
-      behavior: "smooth",
+      behavior: scrollBehavior(),
     });
   };
 
   return (
     isVisible && (
       <button
+        type="button"
         onClick={scrollToTop}
-        className="fixed bottom-9 left-6 z-50 rounded-full bg-primary p-3 text-white shadow-lg transition hover:bg-secondary 2xl:left-auto 2xl:right-6"
-      >
-        <ArrowUp size={20} />
-        {(cart?.totalItems ?? 0) > 0 && (
-          <span className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white 2xl:flex">
-            {cart?.totalItems}
-          </span>
+        aria-label={language === "en" ? "Back to top" : "回到顶部"}
+        className={cn(
+          "fixed left-5 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-[filter,bottom] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background print:hidden",
+          raised ? "bottom-[92px] md:bottom-24" : "bottom-6",
         )}
+      >
+        <ArrowUp className="h-5 w-5" aria-hidden />
       </button>
     )
   );

@@ -1,53 +1,45 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "~/trpc/react";
-import {
-  formatCurrency,
-  formatDate,
-  getCollectionTime,
-} from "~/lib/formatters";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "~/components/ui/card";
-import { Separator } from "~/components/ui/separator";
-import { Button } from "~/components/ui/button";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import {
+  ArrowLeft,
+  CircleCheck,
+  CircleX,
   Clock,
-  Calendar,
-  User,
   Mail,
   Phone,
-  ShoppingBag,
   Printer,
-  ArrowLeft,
-  CheckCircle,
+  SearchX,
+  ShoppingBag,
+  User,
+  type LucideIcon,
 } from "lucide-react";
-import { useLanguage } from "~/app/components/language";
-import Loader from "~/app/components/customLoading";
-import EarnInTheApp from "./_components/earnInTheApp";
 
-/**
- * Where the cancelled, picked-up and not-found cards sit: in the page, centred in a region
- * most of a screen tall, with the footer below.
- *
- * They used to be `fixed inset-0`, centred on the viewport. Since the footer moved into the
- * layout and renders on every page, that floated each card over the footer, and the fixed
- * column, a full screen tall and as wide as the card, sat over the footer's links so they
- * could not be clicked. `px-4` keeps the card off the edges of a phone.
- */
-const CENTRED_MESSAGE =
-  "mx-auto flex min-h-[60dvh] max-w-3xl items-center justify-center px-4 py-10";
+import Loader from "~/app/components/customLoading";
+import { ItemName } from "~/app/components/itemName";
+import { useLanguage } from "~/app/components/language";
+import { Button } from "~/components/ui/button";
+import { formatCurrency } from "~/lib/formatters";
+import { orderPlacedLabel, pickUpDateTimeLabel } from "~/lib/pickUpLabels";
+import { cn } from "~/lib/utils";
+import { api, type RouterOutputs } from "~/trpc/react";
+import EarnInTheApp from "./_components/earnInTheApp";
+import {
+  customisationPrefix,
+  linePrices,
+  orderPageState,
+} from "./_components/orderDisplay";
+
+type OrderItem = NonNullable<
+  RouterOutputs["order"]["getOrder"]
+>["desserts"][number];
 
 function OrderDetails() {
   const { language } = useLanguage();
+  const en = language === "en";
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
   const [isClient, setIsClient] = useState(false);
@@ -61,7 +53,6 @@ function OrderDetails() {
     { enabled: !!orderId && isClient },
   );
 
-  const twentyFourHours = 24 * 60 * 60 * 1000;
   useEffect(() => {
     setIsClient(true);
 
@@ -71,8 +62,6 @@ function OrderDetails() {
     }
   }, [orderId, router, isLoading]);
 
-  // Handle printing the receipt
-
   if (!isClient || isLoading) {
     return <Loader />;
   }
@@ -81,297 +70,229 @@ function OrderDetails() {
     window.print();
   };
 
+  const state = orderPageState(order, !!error, Date.now());
+
   // Cancelled by the shop: no live receipt for an order that is not going ahead.
-  if (order?.status === "CANCELLED") {
+  if (state === "cancelled") {
     return (
-      <div className={CENTRED_MESSAGE}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center text-red-500">
-              {language === "en" ? "Order cancelled" : "订单已取消"}
-            </CardTitle>
-            <CardDescription className="text-center">
-              {language === "en"
-                ? "Cancelled by the shop due to something wrong with the order or has been refunded already"
-                : "订单出现问题或已退款，已被店家取消"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Link href="/">
-              <Button>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {language === "en" ? "Return to Home" : "返回首页"}
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <OrderMessage
+        icon={CircleX}
+        tone="destructive"
+        title={en ? "Order cancelled" : "订单已取消"}
+      >
+        {en
+          ? "The shop cancelled this order, because something was wrong with it or it has been refunded."
+          : "订单出现问题或已退款，已被店家取消。"}
+      </OrderMessage>
     );
   }
 
-  if (order?.status === "PICKED_UP") {
+  if (state === "picked-up") {
     return (
-      <div className={CENTRED_MESSAGE}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center text-red-500">
-              {language === "en" ? "Order picked up" : "订单已取"}
-            </CardTitle>
-            <CardDescription className="text-center">
-              {language === "en"
-                ? "Seems like your order has already been picked up. Thank you for your order!"
-                : "看起来您的订单已经被取走了。谢谢您的订购!"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Link href="/">
-              <Button>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {language === "en" ? "Return to Home" : "返回首页"}
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <OrderMessage
+        icon={CircleCheck}
+        tone="success"
+        title={en ? "Order picked up" : "订单已取"}
+      >
+        {en
+          ? "Seems like your order has already been picked up. Thank you for your order!"
+          : "看起来您的订单已经被取走了。谢谢您的订购！"}
+      </OrderMessage>
     );
   }
 
-  if (
-    error ||
-    !order ||
-    new Date().getTime() - new Date(order.createdAt).getTime() > twentyFourHours
-  ) {
+  if (state !== "confirmed" || !order) {
     return (
-      <div className={CENTRED_MESSAGE}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center text-red-500">
-              {language === "en" ? "Order Not Found" : "未找到订单"}
-            </CardTitle>
-            <CardDescription className="text-center">
-              {language === "en"
-                ? "Looks like your order has expired or does not exist. Please check the order ID and try again."
-                : "我们找不到您要查找的订单。请检查订单 ID 并重试。"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Link href="/">
-              <Button>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {language === "en" ? "Return to Home" : "返回首页"}
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      <OrderMessage
+        icon={SearchX}
+        tone="muted"
+        title={en ? "Order not found" : "未找到订单"}
+      >
+        {en
+          ? "Looks like your order has expired or does not exist. Please check the order ID and try again."
+          : "我们找不到您要查找的订单。请检查订单 ID 并重试。"}
+      </OrderMessage>
     );
   }
 
+  const placedAt = new Date(order.createdAt);
+  const pickUpAt = new Date(order.pickUpTime);
+
+  // In the pick-up card on a wide screen, and beside "Need help?" on a phone, as the
+  // mock-ups draw it. Neither prints.
+  const printButton = (className: string) => (
+    <Button
+      variant="outline"
+      size="pill-sm"
+      onClick={handlePrint}
+      className={cn("print:hidden [&_svg]:size-[18px]", className)}
+    >
+      <Printer strokeWidth={1.8} aria-hidden />
+      {en ? "Print receipt" : "打印收据"}
+    </Button>
+  );
+
+  // One column on a phone: the heading, when to pick up, the items, who ordered, and where
+  // to go next. From `lg` the items and the details sit side by side under the pick-up card.
+  //
+  // The receipt prints what it printed before the redesign, in the same order: the order
+  // number and date, the pick-up time, the details, the items and totals, and the thank-you
+  // below. The heading, the buttons and the app card stay on screen. A print is narrower
+  // than `lg`, so it takes the phone's single column.
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 print:py-2">
-      {/* Order Status Banner */}
-      <div className="mb-8 rounded-lg bg-green-50 p-4 text-center print:hidden">
-        <div className="flex items-center justify-center">
-          <CheckCircle className="mr-2 h-6 w-6 text-green-500" />
-          <h2 className="text-xl font-semibold text-green-700">
-            {language === "en" ? "Order Confirmed" : "订单已确认"}
+    <div className="mx-auto w-full max-w-[680px] px-5 pb-10 pt-8 lg:max-w-[1240px] lg:pb-14 lg:pt-12 print:max-w-none print:px-0 print:pb-0 print:pt-6">
+      <section className="flex flex-col items-start gap-3.5 lg:flex-row lg:items-center lg:gap-7">
+        {/* The 甜 seal, which the app gives a moment worth marking. */}
+        <span
+          aria-hidden
+          className="flex h-[68px] w-[68px] shrink-0 -rotate-[4deg] items-center justify-center rounded-[11px] bg-accent lg:h-[84px] lg:w-[84px] lg:rounded-[12px] print:hidden"
+        >
+          <span className="font-zh text-[39px] font-black leading-none text-accent-foreground lg:text-5xl lg:leading-none">
+            甜
+          </span>
+        </span>
+        <div className="mt-1 flex flex-col gap-3.5 lg:mt-0 lg:flex-1 lg:gap-1.5 print:hidden">
+          <h1 className="text-[32px] font-extrabold leading-[1.05] lg:text-5xl lg:leading-[1.05] lg:tracking-[-0.01em]">
+            {en ? "Order confirmed" : "订单已确认"}
+          </h1>
+          <p className="text-base leading-[1.45] text-muted-foreground lg:text-lg">
+            {en
+              ? "Your order has been received and is being prepared."
+              : "您的订单已收到并正在准备中。"}
+          </p>
+        </div>
+        <div className="mt-1 flex w-full flex-wrap items-baseline justify-between gap-x-3 gap-y-1 lg:mt-0 lg:w-auto lg:flex-col lg:items-end lg:gap-2.5">
+          <p className="text-2xl font-extrabold tabular-nums lg:text-[30px] lg:leading-tight">
+            {en ? "Order " : "单号 "}#{order.tempOrderId}
+          </p>
+          <p className="text-sm tabular-nums text-muted-foreground lg:text-[15px]">
+            <time dateTime={placedAt.toISOString()}>
+              {orderPlacedLabel(placedAt, language)}
+            </time>
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-5 flex flex-col gap-1.5 rounded-card bg-secondary p-5 lg:mt-7 lg:flex-row lg:items-center lg:gap-[18px] lg:px-7 lg:py-6 print:border print:border-dashed print:border-input">
+        <span
+          aria-hidden
+          className="hidden h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-background lg:flex"
+        >
+          <Clock className="h-[26px] w-[26px]" strokeWidth={1.9} />
+        </span>
+        <div className="flex flex-col gap-1.5 lg:flex-1 lg:gap-0.5">
+          <p className="flex items-center gap-2.5 text-[15px] font-bold lg:hidden">
+            <Clock className="h-5 w-5" strokeWidth={1.9} aria-hidden />
+            {en ? "Pick-up time" : "取货时间"}
+          </p>
+          <p className="text-2xl font-extrabold tabular-nums leading-[1.15] lg:text-[22px] lg:leading-snug">
+            <span className="hidden lg:inline">
+              {en ? "Pick-up time at " : "取货时间："}
+            </span>
+            <time dateTime={pickUpAt.toISOString()}>
+              {pickUpDateTimeLabel(pickUpAt, language)}
+            </time>
+          </p>
+          <p className="text-[15px] leading-[1.45]">
+            {en
+              ? "Please have your order number ready when you arrive."
+              : "来取的时候，请准备好您的订单号。"}
+          </p>
+        </div>
+        {printButton(
+          "hidden border-0 bg-background shadow-none hover:bg-muted lg:inline-flex lg:px-5",
+        )}
+      </section>
+
+      <div className="mt-7 grid grid-cols-1 gap-7 lg:mt-9 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-16">
+        <section
+          aria-labelledby="order-items-heading"
+          className="flex flex-col"
+        >
+          <h2
+            id="order-items-heading"
+            className="mb-0.5 text-xl font-extrabold lg:mb-1 lg:text-[22px]"
+          >
+            {en ? "Order items" : "订购商品"}
           </h2>
-        </div>
-        <p className="mt-1 text-green-600">
-          {language === "en"
-            ? "Your order has been received and is being prepared."
-            : "您的订单已收到并正在准备中。"}
-        </p>
-      </div>
-
-      {/* Order Details Card */}
-      <Card className="mb-8 overflow-hidden border-2 border-primary/10 print:border-none">
-        <div className="bg-primary/5 print:bg-transparent">
-          <CardHeader>
-            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-              <div>
-                <CardTitle className="text-2xl">
-                  {language === "en" ? "Order " : "单号 "} #{order.tempOrderId}
-                </CardTitle>
-                <CardDescription className="mt-1 flex items-center">
-                  <Calendar className="mr-1 h-4 w-4" />
-                  {formatDate(order.createdAt.toISOString())}
-                </CardDescription>
-              </div>
-              <div className="print:hidden">
-                <Button variant="outline" size="sm" onClick={handlePrint}>
-                  <Printer className="mr-2 h-4 w-4" />
-                  {language === "en" ? "Print Receipt" : "打印收据"}
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-        </div>
-
-        <CardContent className="p-6">
-          {/* Collection Information */}
-          <div className="mb-6 rounded-lg bg-amber-50 p-4 print:border print:border-dashed print:border-amber-300 print:bg-transparent">
-            <h3 className="flex items-center text-lg font-semibold text-amber-800">
-              <Clock className="mr-2 h-5 w-5" />
-              {language === "en" ? "Collection Information" : "取时间"}
-            </h3>
-            <p className="mt-2 text-amber-700">
-              {language === "en" ? "Pick up time at " : "取餐时间为 "}
-              <span className="font-bold">
-                {getCollectionTime(order.pickUpTime)}
-              </span>
-            </p>
-            <p className="mt-1 text-sm text-amber-600">
-              {language === "en"
-                ? "Please have your order number ready when you arrive."
-                : "来取的时候，请准备好您的订单号"}
-            </p>
+          <ul>
+            {order.desserts.map((item) => (
+              <ReceiptLine key={item.id} item={item} />
+            ))}
+          </ul>
+          <div className="flex justify-between pb-1 pt-3.5 text-[15px] text-muted-foreground lg:pb-1.5 lg:pt-4">
+            <span>{en ? "GST included" : "包含消费税"}</span>
+            <span className="tabular-nums">
+              {formatCurrency((order.priceInCents * 3) / 23 / 100 || 0)}
+            </span>
           </div>
-
-          {/* Customer Details */}
-          <div className="mb-6">
-            <h3 className="mb-3 text-lg font-semibold">
-              {language === "en" ? "Customer Details" : "客户详情"}
-            </h3>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <User className="mr-2 h-4 w-4 text-gray-500" />
-                <span>
-                  {order.customerFirstName} {order.customerLastName}
-                </span>
-              </div>
-              <div className="flex items-center">
-                <Mail className="mr-2 h-4 w-4 text-gray-500" />
-                <span>{order.customerEmail}</span>
-              </div>
-              <div className="flex items-center">
-                <Phone className="mr-2 h-4 w-4 text-gray-500" />
-                <span>{order.customerPhoneNumber}</span>
-              </div>
-            </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-[17px] font-extrabold lg:text-lg">
+              {en ? "Total" : "总计"}
+            </span>
+            <span className="text-2xl font-extrabold tabular-nums lg:text-[26px]">
+              {formatCurrency(order.priceInCents / 100)}
+            </span>
           </div>
+        </section>
 
-          <Separator className="my-6" />
+        {/* First on paper, where the receipt has always given who ordered before what. */}
+        <div className="flex flex-col gap-6 lg:gap-7 print:order-first">
+          <section
+            aria-labelledby="customer-details-heading"
+            className="flex flex-col"
+          >
+            <h2
+              id="customer-details-heading"
+              className="mb-0.5 text-xl font-extrabold lg:mb-1 lg:text-[22px]"
+            >
+              {en ? "Customer details" : "客户详情"}
+            </h2>
+            <ul className="text-[15px] lg:text-base">
+              <DetailRow icon={User}>
+                {order.customerFirstName} {order.customerLastName}
+              </DetailRow>
+              <DetailRow icon={Mail}>{order.customerEmail}</DetailRow>
+              {/* Optional on the row: an order from the app may have none. */}
+              {order.customerPhoneNumber && (
+                <DetailRow icon={Phone} className="tabular-nums">
+                  {order.customerPhoneNumber}
+                </DetailRow>
+              )}
+            </ul>
+          </section>
 
-          {/* Order Items */}
-          <div>
-            <h3 className="mb-4 flex items-center text-lg font-semibold">
-              <ShoppingBag className="mr-2 h-5 w-5" />
-              {language === "en" ? "Order Items" : "订购商品"}
-            </h3>
-
-            <div className="space-y-4">
-              {order.desserts.map((item) => {
-                const pricePerItem =
-                  (item.dessert.priceInCents -
-                    item.discountedAmountInCents +
-                    item.customisations.reduce((total, customisation) => {
-                      return (
-                        total +
-                        customisation.customisation.priceInCents *
-                          customisation.quantity
-                      );
-                    }, 0)) /
-                  100;
-                return (
-                  <div key={item.id} className="flex gap-4">
-                    <div className="relative h-16 w-16 flex-shrink-0 self-start overflow-hidden rounded-md border border-gray-200">
-                      {item.dessert.imagePath ? (
-                        <Image
-                          src={item.dessert.imagePath}
-                          alt={
-                            language === "en"
-                              ? item.dessert.name
-                              : item.dessert.chineseName
-                          }
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                          <ShoppingBag className="h-8 w-8 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-1 flex-col">
-                      <h4 className="font-medium">
-                        {language === "en"
-                          ? item.dessert.name
-                          : item.dessert.chineseName}
-                      </h4>
-                      {item.customisations?.map((customisation) => {
-                        const customisationName =
-                          language === "en"
-                            ? customisation.customisation.name
-                            : customisation.customisation.chineseName;
-                        return (
-                          <p
-                            className="ml-1 mt-1 text-sm text-gray-500"
-                            key={customisation.id}
-                          >
-                            {customisation.quantity > 1
-                              ? `+ ${customisation.quantity} ${customisationName}`
-                              : customisation.quantity === 1
-                                ? `+ ${customisationName}`
-                                : `- ${customisationName}`}
-                          </p>
-                        );
-                      })}
-                      <p className="text-sm text-gray-500">
-                        {language === "en" ? "Quantity: " : "数量: "}
-                        {item.quantity}
-                      </p>
-                    </div>
-                    <div className="self-start text-right">
-                      <p className="font-medium">
-                        {formatCurrency(pricePerItem)}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {formatCurrency(pricePerItem * item.quantity)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <Separator className="my-4" />
-
-            {/* Order Summary */}
-            <div className="mt-4 space-y-2">
-              <div className="flex justify-between">
-                <span>{language === "en" ? "GST included" : "包含消费税"}</span>
-                <span>
-                  {formatCurrency((order.priceInCents * 3) / 23 / 100 || 0)}
-                </span>
-              </div>
-              <div className="flex justify-between font-bold">
-                <span>{language === "en" ? "Total" : "总计"}</span>
-                <span>{formatCurrency(order.priceInCents / 100)}</span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between print:hidden">
-        <Link href="/menu">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {language === "en" ? "Back to Menu" : "返回菜单"}
-          </Button>
-        </Link>
-        <div className="flex gap-4">
-          <Link href="/contact">
-            <Button variant="outline">
-              {language === "en" ? "Need Help?" : "需要帮助吗"}
+          <div className="flex flex-col gap-2.5 print:hidden">
+            {/* Links drawn as buttons. Each was a button inside a link, which is two
+                controls in one for a keyboard and a screen reader. */}
+            <Button asChild size="cta" className="w-full">
+              <Link href="/">{en ? "Return to home" : "返回首页"}</Link>
             </Button>
-          </Link>
-          <Link href="/">
-            <Button>{language === "en" ? "Return to Home" : "返回首页"}</Button>
-          </Link>
+            <div className="grid grid-cols-2 gap-2.5">
+              <Button
+                asChild
+                variant="secondary"
+                size="pill"
+                className="col-span-2 lg:col-span-1"
+              >
+                <Link href="/menu">
+                  <ArrowLeft strokeWidth={2} aria-hidden />
+                  {en ? "Back to menu" : "返回菜单"}
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="pill-sm"
+                className="shadow-none lg:h-[52px] lg:border-0 lg:bg-secondary lg:text-base lg:hover:bg-secondary lg:hover:brightness-95"
+              >
+                <Link href="/contact">
+                  {en ? "Need help?" : "需要帮助吗？"}
+                </Link>
+              </Button>
+              {printButton("shadow-none lg:hidden")}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -379,16 +300,164 @@ function OrderDetails() {
       {order.source === "WEBSITE" && <EarnInTheApp />}
 
       {/* Print-only footer */}
-      <div className="mt-8 hidden text-center text-sm text-gray-500 print:block">
-        <p>
-          {language === "en" ? "Thank you for your order!" : "感谢您的订购"}
-        </p>
+      <div className="mt-8 hidden text-center text-sm text-muted-foreground print:block">
+        <p>{en ? "Thank you for your order!" : "感谢您的订购！"}</p>
         <p className="mt-1">
-          {language === "en"
+          {en
             ? "For any questions, please contact us at eversweet@eversweet.co.nz"
             : "如有任何疑问，请联系我们: eversweet@eversweet.co.nz"}
         </p>
       </div>
+    </div>
+  );
+}
+
+/** A dessert on the receipt: its photo, both its names, what was changed, and its price. */
+function ReceiptLine({ item }: { item: OrderItem }) {
+  const { language } = useLanguage();
+  const en = language === "en";
+  const { eachInCents, lineInCents } = linePrices(item);
+
+  return (
+    <li className="flex break-inside-avoid gap-3 border-b border-border py-3.5 lg:gap-4 lg:py-4">
+      <span className="relative flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted lg:h-[60px] lg:w-[60px]">
+        {item.dessert.imagePath ? (
+          <Image
+            src={item.dessert.imagePath}
+            alt=""
+            fill
+            sizes="60px"
+            className="object-cover"
+          />
+        ) : (
+          <ShoppingBag className="h-6 w-6 text-muted-foreground" aria-hidden />
+        )}
+      </span>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-px lg:gap-0.5">
+        <ItemName
+          name={item.dessert.name}
+          chineseName={item.dessert.chineseName}
+          leadClassName="text-base lg:text-[17px]"
+        />
+        {item.customisations.map(({ id, quantity, customisation }) => (
+          <p
+            key={id}
+            className="flex flex-wrap items-baseline gap-x-1.5 text-[13px] text-muted-foreground lg:text-sm"
+          >
+            <span className="tabular-nums">
+              {customisationPrefix(quantity)}
+            </span>
+            <span
+              lang={en ? "en" : "zh-Hans"}
+              className={cn(!en && "font-zh font-semibold")}
+            >
+              {en ? customisation.name : customisation.chineseName}
+            </span>
+            <span
+              lang={en ? "zh-Hans" : "en"}
+              className={cn("text-xs", en && "font-zh font-semibold")}
+            >
+              {en ? customisation.chineseName : customisation.name}
+            </span>
+          </p>
+        ))}
+        <p className="text-[13px] text-muted-foreground lg:text-sm">
+          {en ? "Quantity: " : "数量: "}
+          {item.quantity}
+        </p>
+      </div>
+
+      {/* The line's total, and for more than one, what each cost. */}
+      <div className="shrink-0 text-right tabular-nums">
+        <p className="text-base font-bold lg:text-[17px]">
+          {formatCurrency(lineInCents / 100)}
+        </p>
+        {item.quantity > 1 && (
+          <p className="text-[13px] text-muted-foreground lg:text-sm">
+            {item.quantity} × {formatCurrency(eachInCents / 100)}
+          </p>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function DetailRow({
+  icon: Icon,
+  className,
+  children,
+}: {
+  icon: LucideIcon;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <li
+      className={cn(
+        "flex items-center gap-3 border-b border-border py-3 last:border-b-0 lg:py-3.5",
+        className,
+      )}
+    >
+      <Icon
+        className="h-5 w-5 shrink-0 text-muted-foreground"
+        strokeWidth={1.8}
+        aria-hidden
+      />
+      <span className="min-w-0 [overflow-wrap:anywhere]">{children}</span>
+    </li>
+  );
+}
+
+const TONES = {
+  destructive: { circle: "bg-destructive-soft", icon: "text-destructive" },
+  success: { circle: "bg-success-soft", icon: "text-success" },
+  muted: { circle: "bg-muted", icon: "text-muted-foreground" },
+} as const;
+
+/**
+ * The cancelled, picked-up and not-found states, drawn as the checkout's empty cart is: a
+ * circle, the page's heading, a line, and the way home.
+ *
+ * They sit in the page, centred in a region most of a screen tall, with the footer below.
+ * They used to be `fixed inset-0`, centred on the viewport, which floated each over the
+ * footer once it rendered on every page, and kept its links from being clicked.
+ */
+function OrderMessage({
+  icon: Icon,
+  tone,
+  title,
+  children,
+}: {
+  icon: LucideIcon;
+  tone: keyof typeof TONES;
+  title: string;
+  children: ReactNode;
+}) {
+  const { language } = useLanguage();
+
+  return (
+    <div className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-8 py-10 text-center">
+      <span
+        className={cn(
+          "mb-1 flex h-20 w-20 items-center justify-center rounded-full",
+          TONES[tone].circle,
+        )}
+      >
+        <Icon
+          className={cn("h-10 w-10", TONES[tone].icon)}
+          strokeWidth={1.8}
+          aria-hidden
+        />
+      </span>
+      <h1 className="text-2xl font-extrabold">{title}</h1>
+      <p className="text-[15px] text-muted-foreground">{children}</p>
+      {/* A link drawn as a button; it was a button inside a link. */}
+      <Button asChild size="pill-sm" className="mt-3">
+        <Link href="/">
+          {language === "en" ? "Return to home" : "返回首页"}
+        </Link>
+      </Button>
     </div>
   );
 }

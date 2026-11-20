@@ -1,255 +1,139 @@
 "use client";
 
-import { api } from "~/trpc/react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useState } from "react";
+import { ChevronRight, Plus } from "lucide-react";
 
-import { Card, CardContent } from "~/components/ui/card";
-import {
-  Carousel,
-  CarouselApi,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "~/components/ui/carousel";
 import CustomisationDialog from "../../(customerFacing)/menu/_components/customisation";
-import { formatCurrency } from "~/lib/formatters";
-import { Skeleton } from "~/components/ui/skeleton";
+import {
+  DessertPrice,
+  dessertButtonLabel,
+} from "../../components/dessertPrice";
+import { ItemName } from "../../components/itemName";
 import { useLanguage } from "../../components/language";
-import { dessertOnClient, Ingredients } from "~/lib/types";
+import { Skeleton } from "~/components/ui/skeleton";
+import type { dessertOnClient } from "~/lib/types";
+import { cn } from "~/lib/utils";
+import { api } from "~/trpc/react";
+
+/** How many popular choices the desktop row shows; a phone's strip scrolls through them all. */
+export const POPULAR_ROW = 5;
 
 /**
- * Fallback for the Suspense boundary around <TopDesserts />. It used to be an
- * `isLoading` branch inside the component itself, which meant the server always
- * rendered the skeleton while the client rendered the real carousel.
+ * Popular choices: a still row of five on desktop and a strip that scrolls sideways on a
+ * phone. It was a carousel that moved every three seconds. Each opens the customise
+ * dialog, as the carousel's cards did.
  */
-export function TopDessertsSkeleton() {
+function Section({ children }: { children: React.ReactNode }) {
   const { language } = useLanguage();
-
+  const en = language === "en";
   return (
-    <>
-      <h1 className="text-2xl font-extrabold text-primary-display sm:text-4xl">
-        {language === "en" ? "POPULAR CHOICES" : "畅销品"}
-      </h1>
-      <div className="mx-auto w-full max-w-7xl px-4">
-        <div className="relative">
-          <Carousel
-            opts={{
-              align: "center",
-              loop: true,
-              skipSnaps: false,
-              containScroll: "trimSnaps",
-            }}
-            className="w-full border-l-2 border-r-2 border-dashed border-primary"
-            setApi={undefined}
-          >
-            <CarouselContent className="-ml-4">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <CarouselItem
-                  className="basis-1/2 overflow-visible pl-4 md:basis-1/4 lg:basis-1/4"
-                  key={index}
-                >
-                  <div className="h-full overflow-hidden">
-                    <Card className="h-full select-none overflow-hidden border-2 border-secondary">
-                      <CardContent className="flex h-full flex-col p-0">
-                        <div className="relative aspect-square w-full shrink-0">
-                          <Skeleton className="h-full w-full rounded-none bg-secondary" />
-                        </div>
-                        <div className="flex flex-1 flex-col items-center justify-between gap-2 bg-white p-2">
-                          <div className="flex min-h-[6rem] w-full flex-col items-center justify-center gap-2 md:min-h-[4.5rem]">
-                            <Skeleton className="h-4 w-10/12 rounded-xl bg-secondary lg:h-6" />
-                            <Skeleton className="h-4 w-6/12 rounded-xl bg-secondary lg:h-6" />
-                          </div>
-                          <Skeleton className="h-4 w-4/12 rounded-xl bg-secondary lg:h-6" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <div className="absolute left-0 top-0 h-full">
-              <CarouselPrevious
-                className="relative left-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-14 md:translate-y-0 md:rounded-none"
-                disabled
-              />
-            </div>
-            <div className="absolute right-0 top-0 h-full">
-              <CarouselNext
-                className="relative right-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-14 md:translate-y-0 md:rounded-none"
-                disabled
-              />
-            </div>
-          </Carousel>
-        </div>
+    <section className="mx-auto w-full max-w-[1240px] px-5 pb-10 pt-2 lg:pb-20">
+      <div className="mb-[18px] flex items-baseline justify-between gap-4 lg:mb-7">
+        <h2 className="text-2xl font-extrabold lg:text-[32px]">
+          {en ? "Popular choices" : "畅销品"}
+        </h2>
+        <Link
+          href="/menu"
+          className="flex shrink-0 items-center gap-1 rounded-md py-2.5 text-[15px] font-bold text-accent underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:text-base"
+        >
+          {en ? "See the full menu" : "查看完整菜单"}
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </Link>
       </div>
-    </>
+      {/* The strip runs to the screen's edges on a phone; the row sits in the column. */}
+      <div className="-mx-5 flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-1 scrollbar-hide lg:mx-0 lg:grid lg:scroll-px-0 lg:grid-cols-5 lg:gap-6 lg:overflow-visible lg:px-0">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+export function TopDessertsSkeleton() {
+  return (
+    <Section>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div
+          key={index}
+          className="flex w-[156px] shrink-0 snap-start flex-col gap-3 lg:w-auto"
+        >
+          <Skeleton className="aspect-square w-full rounded-full bg-muted" />
+          <Skeleton className="h-5 w-4/5 bg-muted" />
+          <Skeleton className="h-4 w-1/2 bg-muted" />
+        </div>
+      ))}
+    </Section>
   );
 }
 
 export function TopDesserts() {
-  // Prefetched on the server in app/(customerFacing)/page.tsx; suspending here
-  // lets the server render the real carousel into the HTML instead of a
-  // skeleton the client would immediately replace.
   const [topDesserts] = api.dessert.getMostPopularProducts.useSuspenseQuery();
-  const [isPaused, setIsPaused] = useState(false);
-  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const [selectedDessert, setSelectedDessert] =
     useState<dessertOnClient | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { language } = useLanguage();
 
-  // Set up autoplay
-  useEffect(() => {
-    if (!carouselApi || isPaused) return;
-
-    // Start autoplay
-    const autoplayInterval = setInterval(() => {
-      carouselApi.scrollNext();
-    }, 3000); // Move to next slide every 3 seconds
-
-    return () => {
-      clearInterval(autoplayInterval);
-    };
-  }, [carouselApi, isPaused]);
-
-  // Handle button clicks without overriding default behavior
-  const handleButtonClick = () => {
-    setIsPaused(true);
-  };
-
-  const handleCardClick = (dessert: dessertOnClient) => {
+  const open = (dessert: dessertOnClient) => {
     setSelectedDessert(dessert);
     setIsDialogOpen(true);
-    setIsPaused(true); // Pause carousel when dialog opens
   };
 
   return (
     <>
-      <h1 className="flex flex-col items-center justify-center text-2xl font-extrabold text-primary-display sm:text-4xl">
-        {language === "en" ? "POPULAR CHOICES" : "畅销品"}
-      </h1>
-
-      <div className="mx-auto w-full max-w-7xl px-4">
-        <div
-          className="relative"
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={!isDialogOpen ? () => setIsPaused(false) : undefined}
-          onTouchStart={() => setIsPaused(true)}
-          onTouchEnd={!isDialogOpen ? () => setIsPaused(false) : undefined}
-        >
-          <Carousel
-            opts={{
-              align: "center",
-              loop: true,
-              skipSnaps: false,
-              containScroll: "trimSnaps",
-            }}
-            className="w-full border-l-2 border-r-2 border-dashed border-primary"
-            setApi={setCarouselApi}
+      <Section>
+        {topDesserts.map((dessert, index) => (
+          <button
+            key={dessert.id}
+            type="button"
+            aria-label={dessertButtonLabel(dessert, language)}
+            onClick={() => open(dessert)}
+            className={cn(
+              "group flex w-[156px] shrink-0 snap-start flex-col gap-3 rounded-card text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background lg:w-auto lg:gap-3.5",
+              index >= POPULAR_ROW && "lg:hidden",
+            )}
           >
-            <CarouselContent className="-ml-4">
-              {topDesserts?.map((dessert) => {
-                const discountedAmountInCents = dessert.promo
-                  ? dessert.promo.type === "FIXED_AMOUNT"
-                    ? dessert.promo.value
-                    : Math.floor(
-                        dessert.priceInCents * (dessert.promo.value / 100),
-                      )
-                  : 0;
-
-                const priceInCentsAfterPromo =
-                  dessert.priceInCents - discountedAmountInCents;
-                return (
-                  <CarouselItem
-                    key={dessert.id}
-                    className="basis-1/2 overflow-visible pl-4 md:basis-1/4 lg:basis-1/4"
-                  >
-                    <div className="h-full overflow-hidden">
-                      <Card
-                        className="h-full select-none overflow-hidden border-2 border-secondary transition-transform duration-300 md:hover:scale-105 md:hover:cursor-pointer"
-                        onClick={() => handleCardClick(dessert)}
-                      >
-                        <CardContent className="flex h-full flex-col p-0">
-                          <div className="relative aspect-square w-full shrink-0">
-                            <Image
-                              src={
-                                dessert.imagePath ||
-                                (process.env
-                                  .NEXT_PUBLIC_FILLER_IMAGE_URL as string)
-                              }
-                              alt={
-                                language === "en"
-                                  ? dessert.name
-                                  : dessert.chineseName
-                              }
-                              fill
-                              className="object-cover"
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            />
-                          </div>
-                          <div className="flex flex-1 flex-col justify-between bg-white p-2 text-center">
-                            {/* Dessert name */}
-                            <h3 className="min-h-[6rem] text-lg font-semibold text-primary md:min-h-[4.5rem]">
-                              {language === "en"
-                                ? dessert.name
-                                : dessert.chineseName}{" "}
-                            </h3>
-                            {/* Dessert price */}
-                            <span>
-                              {dessert.promo ? (
-                                <span className="flex items-center justify-center gap-2">
-                                  {/* Old price */}
-                                  <span className="relative text-base font-bold text-primary">
-                                    {formatCurrency(dessert.priceInCents / 100)}
-                                    <span className="pointer-events-none absolute left-0 top-1/2 h-[1.5px] w-full rotate-[-8deg] bg-red-500" />
-                                  </span>
-
-                                  {/* New price */}
-                                  <span className="text-lg font-semibold text-red-600">
-                                    {formatCurrency(
-                                      priceInCentsAfterPromo / 100,
-                                    )}
-                                  </span>
-                                </span>
-                              ) : (
-                                <span className="text-lg font-semibold text-primary">
-                                  {formatCurrency(dessert.priceInCents / 100)}
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </CarouselItem>
-                );
-              })}
-            </CarouselContent>
-            <div
-              className="absolute left-0 top-0 h-full"
-              onMouseDown={handleButtonClick}
-            >
-              <CarouselPrevious className="relative left-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-16 md:translate-y-0 md:rounded-none" />
-            </div>
-            <div
-              className="absolute right-0 top-0 h-full"
-              onMouseDown={handleButtonClick}
-            >
-              <CarouselNext className="relative right-0 top-0 hidden bg-gray-100/80 hover:bg-gray-200/90 md:flex md:h-full md:w-16 md:translate-y-0 md:rounded-none" />
-            </div>
-          </Carousel>
-        </div>
-        {isDialogOpen && selectedDessert && (
-          <CustomisationDialog
-            customOpen={isDialogOpen}
-            setCustomOpen={setIsDialogOpen}
-            dessert={selectedDessert}
-            onClose={() => setIsPaused(false)}
-          />
-        )}
-      </div>
+            <span className="relative block aspect-square w-full overflow-hidden rounded-full bg-muted">
+              <Image
+                src={
+                  dessert.imagePath ||
+                  (process.env.NEXT_PUBLIC_FILLER_IMAGE_URL as string)
+                }
+                alt=""
+                fill
+                sizes="(min-width: 1024px) 220px, 156px"
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            </span>
+            <ItemName
+              name={dessert.name}
+              chineseName={dessert.chineseName}
+              leadClassName="text-base leading-tight lg:text-lg"
+              secondClassName="text-sm lg:text-[15px]"
+            />
+            <span className="mt-auto flex w-full items-end justify-between gap-2">
+              <DessertPrice
+                dessert={dessert}
+                language={language}
+                priceClassName="text-base lg:text-[17px]"
+              />
+              <span
+                aria-hidden
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-[filter] group-hover:brightness-95"
+              >
+                <Plus className="h-5 w-5" strokeWidth={2.4} />
+              </span>
+            </span>
+          </button>
+        ))}
+      </Section>
+      {isDialogOpen && selectedDessert && (
+        <CustomisationDialog
+          customOpen={isDialogOpen}
+          setCustomOpen={setIsDialogOpen}
+          dessert={selectedDessert}
+        />
+      )}
     </>
   );
 }

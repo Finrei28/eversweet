@@ -1,4 +1,9 @@
-import MaxWidthWapper from "~/app/components/maxWidthWrapper";
+import {
+  DOC_LIST,
+  DOC_TEXT,
+  DocumentPage,
+  DocumentSection,
+} from "~/app/components/documentPage";
 import {
   type LegalDocument,
   platformLabel,
@@ -36,50 +41,26 @@ export default async function LegalDocumentPage({
   });
 
   return (
-    <MaxWidthWapper>
-      <div className="py-12 md:py-16">
-        <h1 className="mb-2 text-center text-3xl font-bold md:text-4xl">
-          {resolved.title}
-        </h1>
-        <p className="mb-8 text-center text-sm text-muted-foreground">
-          Last updated: {resolved.lastUpdated}
-        </p>
-
-        <div className="mx-auto max-w-3xl">
-          {resolved.sections.map((section) => {
-            const label = platformLabel(section.appliesTo);
-
-            return (
-              <section key={section.heading} className="mt-8">
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <h2 className="text-xl font-semibold md:text-2xl">
-                    {section.heading}
-                  </h2>
-                  {label && (
-                    <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
-                      {label}
-                    </span>
-                  )}
-                </div>
-
-                {section.content && (
-                  <p className="mt-3 text-muted-foreground">
-                    {section.content}
-                  </p>
-                )}
-
-                {section.list && (
-                  <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground">
-                    {section.list.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            );
-          })}
-        </div>
-      </div>
-    </MaxWidthWapper>
+    <DocumentPage
+      title={resolved.title}
+      subtitle={`Last updated: ${resolved.lastUpdated}`}
+    >
+      {resolved.sections.map((section) => (
+        <DocumentSection
+          key={section.heading}
+          heading={section.heading}
+          label={platformLabel(section.appliesTo)}
+        >
+          {section.content && <p className={DOC_TEXT}>{section.content}</p>}
+          {section.list && (
+            <ul className={DOC_LIST}>
+              {section.list.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          )}
+        </DocumentSection>
+      ))}
+    </DocumentPage>
   );
 }

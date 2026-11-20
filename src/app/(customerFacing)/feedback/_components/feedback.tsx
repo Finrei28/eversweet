@@ -1,6 +1,5 @@
 "use client";
 
-import MaxWidthWapper from "~/app/components/maxWidthWrapper";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -19,11 +18,11 @@ import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { Checkbox } from "~/components/ui/checkbox";
 import { useLanguage } from "~/app/components/language";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useToast } from "~/hooks/use-toast";
 import { Star } from "lucide-react";
 import { api } from "~/trpc/react";
-import { motion } from "framer-motion";
+import { cn } from "~/lib/utils";
 
 const formSchema = z
   .object({
@@ -51,9 +50,13 @@ const formSchema = z
     },
   );
 
+const STARS = [1, 2, 3, 4, 5];
+
 export default function FeedbackComponent() {
   const { language } = useLanguage();
+  const en = language === "en";
   const [loading, setLoading] = useState(false);
+  const ratingLabelId = useId();
   const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -97,194 +100,196 @@ export default function FeedbackComponent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-white">
-      {/* Hero section with background image */}
-      <div className="relative h-64 w-full overflow-hidden bg-background sm:h-80">
-        <div className="absolute inset-0 bg-gradient-to-r from-secondary to-primary" />
+    <div className="mx-auto w-full max-w-[600px] px-5 pb-12 pt-8 lg:pb-16 lg:pt-12">
+      <header className="flex flex-col gap-2">
+        <h1 className="text-[30px] font-extrabold leading-tight tracking-[-0.01em] lg:text-5xl">
+          {en ? "Feedback" : "反馈"}
+        </h1>
+        <p className="text-base text-muted-foreground lg:text-lg">
+          {en
+            ? "We would love to hear your feedback!"
+            : "我们很乐意听到您的反馈！"}
+        </p>
+      </header>
 
-        <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
-          <motion.h1
-            className="font-serif text-4xl font-bold text-black sm:text-5xl md:text-6xl"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            {language === "en" ? "Feedback" : "反馈"}
-          </motion.h1>
-          <motion.p
-            className="mt-4 max-w-md text-lg text-gray-700"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            {language === "en"
-              ? "We would love to hear your feedback!"
-              : "我们很乐意听到您的反馈！"}
-          </motion.p>
-        </div>
-      </div>
-      <MaxWidthWapper>
-        <section className="mx-auto max-w-xl py-20">
-          <h2 className="text-xl font-semibold">
-            {language === "en"
-              ? "We would love to hear your feedback!"
-              : "我们很乐意听到您的反馈！"}
-          </h2>
-          <div className="rounded-xl pt-10">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-8"
-              >
-                <div className="space-y-2">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem
-                        className={`${form.getValues().anonymous === true ? "invisible" : ""}`}
-                      >
-                        <FormLabel>
-                          {language === "en" ? "Name" : "名字"}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder={language === "en" ? "Name" : "名字"}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="anonymous"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormLabel className="ml-2">
-                            {language === "en" ? "Anonymous" : "匿名"}
-                          </FormLabel>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        {language === "en" ? "Email" : "电子邮件"}
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder={language === "en" ? "Email" : "电子邮件"}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {language === "en"
-                          ? "This is your email."
-                          : "这是您的电子邮件"}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="flex flex-col gap-[22px] pt-7"
+        >
+          <div className="flex flex-col gap-2">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem
+                  className={cn(
+                    "flex flex-col gap-2 space-y-0",
+                    form.getValues().anonymous === true && "invisible",
                   )}
-                />
-                <FormField
-                  control={form.control}
-                  name="rating"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        {language === "en" ? "Rating" : "评分"}
-                      </FormLabel>
-                      <FormControl>
-                        <div className="flex items-center space-x-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              type="button"
-                              onClick={() => field.onChange(star)}
-                              className="focus:outline-none"
-                              aria-label={`${star} stars`}
-                            >
-                              <Star
-                                className={`h-8 w-8 transition-all ${
-                                  field.value >= star
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        {language === "en"
-                          ? "Rate your experience from 1 to 5 stars."
-                          : "从1到5星评价您的体验。"}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="feedbackMessage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        {language === "en" ? "Feedback message" : "反馈留言"}
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder={
-                            language === "en" ? "Feedback message" : "反馈留言"
-                          }
-                          {...field}
-                          onInput={(e) => {
-                            const target = e.target as HTMLTextAreaElement;
-                            target.style.height = "auto"; // Reset height to recalculate
-                            target.style.height = `${target.scrollHeight}px`; // Set height to content
-                          }}
-                          className="resize-none overflow-hidden"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {language === "en"
-                          ? "This is your message."
-                          : "这是您的反馈留言"}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button disabled={loading} type="submit">
-                  {loading
-                    ? language === "en"
-                      ? "Submitting..."
-                      : "提交中..."
-                    : language === "en"
-                      ? "Submit"
-                      : "提交"}
-                </Button>
-              </form>
-            </Form>
+                >
+                  <FormLabel variant="field">{en ? "Name" : "名字"}</FormLabel>
+                  <FormControl>
+                    <Input variant="field" autoComplete="name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="anonymous"
+              render={({ field }) => (
+                <FormItem className="space-y-0">
+                  <div className="flex min-h-11 items-center gap-3">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="h-6 w-6 rounded-[7px]"
+                      />
+                    </FormControl>
+                    <FormLabel className="text-[15px] font-semibold">
+                      {en ? "Anonymous" : "匿名"}
+                    </FormLabel>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
-        </section>
-      </MaxWidthWapper>
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem className="flex flex-col gap-2 space-y-0">
+                <FormLabel variant="field">
+                  {en ? "Email" : "电子邮件"}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    variant="field"
+                    autoComplete="email"
+                    inputMode="email"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  {en ? "This is your email." : "这是您的电子邮件。"}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="rating"
+            render={({ field }) => (
+              <FormItem className="flex flex-col gap-2 space-y-0">
+                {/* Names the group of stars, which a <label> cannot do. */}
+                <span
+                  id={ratingLabelId}
+                  className="text-[15px] font-bold leading-snug"
+                >
+                  {en ? "Rating" : "评分"}
+                </span>
+                {/* Five radios, so arrow keys move between the stars as a screen reader
+                    expects. Each star was a button named "1 stars" in either language. */}
+                <FormControl>
+                  <div
+                    role="radiogroup"
+                    aria-labelledby={ratingLabelId}
+                    className="-ml-1.5 flex gap-0.5"
+                  >
+                    {STARS.map((star) => (
+                      <label key={star} className="cursor-pointer">
+                        <input
+                          ref={star === 1 ? field.ref : undefined}
+                          type="radio"
+                          name={field.name}
+                          value={star}
+                          checked={field.value === star}
+                          onChange={() => field.onChange(star)}
+                          onBlur={field.onBlur}
+                          className="peer sr-only"
+                        />
+                        <span className="flex h-12 w-12 items-center justify-center rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+                          <Star
+                            className={cn(
+                              "h-8 w-8",
+                              field.value >= star
+                                ? "fill-accent text-accent"
+                                : "text-input",
+                            )}
+                            strokeWidth={1.5}
+                            aria-hidden
+                          />
+                        </span>
+                        <span className="sr-only">
+                          {en
+                            ? `${star} ${star === 1 ? "star" : "stars"}`
+                            : `${star} 星`}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </FormControl>
+                <FormDescription>
+                  {en
+                    ? "Rate your experience from 1 to 5 stars."
+                    : "从1到5星评价您的体验。"}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="feedbackMessage"
+            render={({ field }) => (
+              <FormItem className="flex flex-col gap-2 space-y-0">
+                <FormLabel variant="field">
+                  {en ? "Feedback message" : "反馈留言"}
+                </FormLabel>
+                <FormControl>
+                  <Textarea
+                    variant="field"
+                    {...field}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = "auto"; // Reset height to recalculate
+                      target.style.height = `${target.scrollHeight}px`; // Set height to content
+                    }}
+                    className="min-h-32 resize-none overflow-hidden"
+                  />
+                </FormControl>
+                <FormDescription>
+                  {en ? "This is your message." : "这是您的反馈留言。"}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button
+            disabled={loading}
+            type="submit"
+            size="cta"
+            className="mt-1 w-full"
+          >
+            {loading
+              ? language === "en"
+                ? "Submitting..."
+                : "提交中..."
+              : language === "en"
+                ? "Submit"
+                : "提交"}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 }

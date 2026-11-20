@@ -2,6 +2,13 @@ import { type Config } from "tailwindcss";
 import { fontFamily } from "tailwindcss/defaultTheme";
 import type { PluginAPI } from "tailwindcss/types/config";
 
+// Direction D's colours, radii and shadows, shared byte-for-byte with the customer app
+// (npm run verify:tokens). Hex values, so opacity modifiers (`bg-primary/40`) work as
+// Tailwind parses them itself. src/styles/themeTokens.test.ts holds every one in place.
+import tokens from "./src/styles/designTokens.json";
+
+const { colors: c, radius, shadow } = tokens;
+
 export default {
   darkMode: ["class"],
   content: ["./src/**/*.tsx"],
@@ -23,58 +30,65 @@ export default {
         "fade-in-zoom-in": "fadeInZoomIn 0.5s ease-out forwards",
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", ...fontFamily.sans],
-        // Latin-only face, so the CJK fallbacks carry the Chinese headings.
-        display: [
-          "var(--font-display)",
+        // Figtree has no Chinese, so the system sans faces after it carry Chinese
+        // interface text: buttons, headings, messages.
+        sans: [
+          "var(--font-figtree)",
           "PingFang SC",
           "Hiragino Sans GB",
           "Microsoft YaHei",
           ...fontFamily.sans,
         ],
+        // Chinese names only - a dessert's, a category's, a customisation's - always
+        // in this serif, whichever language leads (REDESIGN.md, decision 2).
+        zh: ["var(--font-noto-serif-sc)", "Songti SC", "STSong", "serif"],
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        // The redesign's radii, by role. The stock sizes above stay as they were,
+        // for admin and the customer pages not yet redesigned.
+        seal: `${radius.seal}px`,
+        card: `${radius.card}px`,
+        sheet: `${radius.sheet}px`,
+      },
+      boxShadow: {
+        // The one shadow the website draws. The app's tab bar has the other.
+        "cart-bar": shadow.cartBar,
       },
       colors: {
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
+        background: c.background,
+        foreground: c.foreground,
+        card: { DEFAULT: c.card, foreground: c.foreground },
+        popover: { DEFAULT: c.card, foreground: c.foreground },
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: c.primary,
+          foreground: c.primaryForeground,
+          // Website-only caramels this site added for contrast before direction D.
+          // Not in the token file: they go once no customer page uses them.
           dark: "hsl(var(--primary-dark))",
           // Large display headings only — see the note in globals.css.
           display: "hsl(var(--primary-display))",
         },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
+        secondary: { DEFAULT: c.secondary, foreground: c.secondaryForeground },
+        muted: { DEFAULT: c.muted, foreground: c.mutedForeground },
+        // Red bean in direction D, where shadcn's own `accent` was a grey hover
+        // surface. The primitives hover on `muted` instead.
+        accent: { DEFAULT: c.accent, foreground: c.accentForeground },
+        inverse: { DEFAULT: c.inverse, foreground: c.inverseForeground },
+        brand: c.brand,
+        scrim: c.scrim,
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: c.destructive,
+          foreground: c.card,
+          soft: c.destructiveSoft,
         },
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
+        success: { DEFAULT: c.success, soft: c.successSoft },
+        warning: { DEFAULT: c.warning, soft: c.warningSoft },
+        border: c.border,
+        input: c.input,
+        ring: c.foreground,
         chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",

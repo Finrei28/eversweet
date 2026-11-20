@@ -2,70 +2,30 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { ComponentProps, useContext, useEffect, useRef, useState } from "react";
+import { ComponentProps, useEffect, useRef, useState } from "react";
 import { cn } from "~/lib/utils";
-import { Menu, Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import { CartContext } from "./cartContext";
-import { formatCurrency } from "~/lib/formatters";
 import Image from "next/image";
 import { useLanguage } from "./language";
 import { Globe } from "lucide-react";
-import ScrollToTopButton from "../(customerFacing)/menu/_components/toTop";
 
-// Stands in for the cart setter when the provider is missing, so the fallback
-// does not mint a new function on every render.
-const noop = () => undefined;
-
-// How far down the page the header trades its full height for the compact bar.
-const CONDENSE_AT = 24;
-// The expanded header, stated once so the spacer that holds its place in the
-// flow cannot drift out of step with it. Desktop is the 60px row of links
-// inside the old py-10; mobile is the logo at its natural 96px plus its pt-4.
-const EXPANDED_HEIGHT = "h-28 xl:h-[8.75rem]";
-
+/**
+ * Admin's navbar. The customer pages have their own header (`siteHeader.tsx`), the
+ * cart sheet and the cart bar; this kept only what admin uses, laid out exactly as
+ * before - the logo reserve and eight links at 1280px (CLAUDE.md, Admin UI
+ * conventions). The `/admin` checks below are what made it admin's layout when the
+ * customer pages shared it.
+ */
 export function Navbar({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const cartRef = useRef<HTMLDivElement>(null);
-  const cart = useContext(CartContext);
-  const [cartQuantity, setCartQuantity] = useState<number | null>(null);
-  // Shared, so the menu page can open this same modal from its pinned bar.
-  // Taken straight off the context rather than wrapped, so it keeps the stable
-  // identity of the underlying setter and the effects below can depend on it.
-  const isCartOpen = cart?.isCartOpen ?? false;
-  const setIsCartOpen = cart?.setIsCartOpen ?? noop;
   const pathName = usePathname();
   const { language, toggleLanguage } = useLanguage();
   const [globeOpen, setGlobeOpen] = useState(false);
   const globeRef = useRef<HTMLDivElement>(null);
   const globeButtonRef = useRef<HTMLButtonElement>(null);
-
-  // The header follows the reader on the home page only. The menu page already
-  // pins its own category bar to the top and a second one would sit on it, and
-  // the remaining customer pages are short enough not to need it.
-  const followsScroll = pathName === "/";
-  const [isCondensed, setIsCondensed] = useState(false);
-
-  useEffect(() => {
-    if (!followsScroll) {
-      setIsCondensed(false);
-      return;
-    }
-
-    const onScroll = () => {
-      const condensed = window.scrollY > CONDENSE_AT;
-      setIsCondensed((previous) =>
-        previous === condensed ? previous : condensed,
-      );
-    };
-
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [followsScroll]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
@@ -82,15 +42,6 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         setIsOpen(false);
       }
 
-      // Check if click is outside the cart
-      if (
-        isCartOpen &&
-        cartRef.current &&
-        !cartRef.current.contains(event.target as Node)
-      ) {
-        setIsCartOpen(false);
-      }
-
       if (
         globeOpen &&
         globeRef.current &&
@@ -102,8 +53,8 @@ export function Navbar({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Add event listener when menu or cart is open
-    if (isOpen || isCartOpen || globeOpen) {
+    // Add event listener when the menu or the language picker is open
+    if (isOpen || globeOpen) {
       document.addEventListener("click", handleClickOutside, true);
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("touchstart", handleClickOutside, {
@@ -118,63 +69,19 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         passive: false,
       } as any);
     };
-  }, [isOpen, isCartOpen, globeOpen, setIsCartOpen]);
-
-  useEffect(() => {
-    if (isCartOpen) {
-      document.body.classList.add("overflow-hidden");
-    } else {
-      document.body.classList.remove("overflow-hidden");
-    }
-    return () => document.body.classList.remove("overflow-hidden");
-  }, [isCartOpen]);
+  }, [isOpen, globeOpen]);
 
   useEffect(() => {
     setIsOpen(false);
   }, [pathName]);
 
-  useEffect(() => {
-    if (cart?.cart) {
-      const total = cart.cart.reduce((acc, item) => acc + item.quantity, 0);
-      setCartQuantity(total);
-    }
-  }, [cart?.cart]);
-
   return (
     <>
-      {followsScroll && (
-        /* Holds the header's place now that it has left the flow, so the page
-           below never shifts as the bar condenses. */
-        <div aria-hidden className={EXPANDED_HEIGHT} />
-      )}
-
-      <div className={cn(followsScroll && "fixed inset-x-0 top-0 z-40")}>
-        {followsScroll && (
-          /* The surface is its own layer rather than a class on the header:
-             backdrop-filter on an ancestor would become the containing block
-             for the fixed hamburger nested below it. */
-          <div
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-0 border-b",
-              "transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out",
-              isCondensed
-                ? "border-primary/40 bg-background/85 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)] backdrop-blur-md"
-                : "border-transparent",
-            )}
-          />
-        )}
-
+      <div>
         {/* Desktop Navbar */}
         <nav
           className={cn(
-            "relative hidden items-center justify-center text-primary xl:flex",
-            followsScroll
-              ? cn(
-                  "transition-[height] duration-300 ease-out",
-                  isCondensed ? "h-20" : "h-[8.75rem]",
-                )
-              : "py-10",
+            "relative hidden items-center justify-center py-10 text-primary xl:flex",
           )}
         >
           <div className="relative mx-auto flex w-full max-w-7xl items-center px-4">
@@ -182,8 +89,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
 
             <div
               className={cn(
-                "absolute transition-[height] duration-300 ease-out xl:left-4",
-                followsScroll && isCondensed ? "h-14" : "lg:h-28 xl:h-32",
+                "absolute transition-[height] duration-300 ease-out lg:h-28 xl:left-4 xl:h-32",
               )}
             >
               <Link href={pathName.startsWith("/admin") ? `${pathName}` : "/"}>
@@ -225,27 +131,6 @@ export function Navbar({ children }: { children: React.ReactNode }) {
             >
               {children}
             </div>
-
-            {/* Shopping cart */}
-            {cartQuantity !== null &&
-              cartQuantity > 0 &&
-              pathName !== "/checkout" &&
-              !pathName.startsWith("/admin") && (
-                <div className="absolute right-4 hidden 2xl:flex">
-                  <Button
-                    onClick={() => setIsCartOpen(true)}
-                    className="h-10 w-12"
-                  >
-                    <ShoppingCart
-                      size={"2rem"}
-                      className="hover:cursor-pointer"
-                    />
-                    <span className="absolute -right-2 -top-2 rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white">
-                      {cartQuantity}
-                    </span>
-                  </Button>
-                </div>
-              )}
           </div>
 
           {/* Language switcher */}
@@ -272,7 +157,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                   onClick={toggleLanguage}
                   disabled={language === "en"}
                   variant={"ghost"}
-                  className={`${language === "en" && "bg-primary text-white"} w-full`}
+                  className={`${language === "en" && "bg-primary text-primary-foreground"} w-full`}
                 >
                   <span>English</span>
                 </Button>
@@ -281,7 +166,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
                   onClick={toggleLanguage}
                   disabled={language === "zh"}
                   variant={"ghost"}
-                  className={`${language === "zh" && "bg-primary text-white"} w-full`}
+                  className={`${language === "zh" && "bg-primary text-primary-foreground"} w-full`}
                 >
                   <span>中文</span>
                 </Button>
@@ -294,12 +179,7 @@ export function Navbar({ children }: { children: React.ReactNode }) {
         <div className="relative flex w-full justify-between px-4 text-primary xl:hidden">
           <Link
             href={pathName.startsWith("/admin") ? `${pathName}` : "/"}
-            className={cn(
-              "pt-4 transition-[height] duration-300 ease-out",
-              // Condensed stays at 72px so the fixed hamburger, which sits 32px
-              // down and is 36px tall, still lands inside the bar.
-              followsScroll && (isCondensed ? "h-[4.5rem]" : "h-28"),
-            )}
+            className="pt-4 transition-[height] duration-300 ease-out"
           >
             <Image
               src={process.env.NEXT_PUBLIC_LOGO_URL as string}
@@ -321,27 +201,6 @@ export function Navbar({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
       </div>
-      {pathName !== "/checkout" && !pathName.startsWith("/admin") && (
-        <ScrollToTopButton />
-      )}
-
-      {cartQuantity !== null &&
-        cartQuantity > 0 &&
-        pathName !== "/checkout" &&
-        !pathName.startsWith("/admin") && (
-          <div className="fixed bottom-10 right-5 z-50 flex pr-5 sm:max-w-lg md:max-w-md md:pr-7 lg:max-w-lg 2xl:hidden">
-            <Button
-              className="border-primary bg-secondary text-base hover:cursor-pointer lg:p-6 lg:text-xl"
-              onClick={() => setIsCartOpen(true)}
-            >
-              View Cart
-            </Button>
-            <span className="absolute -top-2 right-2 rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white">
-              {cartQuantity}
-            </span>
-          </div>
-        )}
-
       {/* Mobile Menu */}
       <div
         ref={menuRef}
@@ -361,168 +220,6 @@ export function Navbar({ children }: { children: React.ReactNode }) {
           </span>
         </div>
       </div>
-
-      {/* Cart Modal */}
-      {isCartOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div
-            ref={cartRef}
-            className="relative mx-4 max-h-[90vh] w-full max-w-md overflow-auto rounded-lg bg-white p-6 shadow-xl"
-          >
-            <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-4">
-              <h2 className="text-2xl font-bold text-primary-display">
-                {language === "en" ? "Your Cart" : "您的购物车"}
-              </h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsCartOpen(false)}
-                className="rounded-full hover:bg-gray-100"
-              >
-                <X className="h-6 w-6" />
-              </Button>
-            </div>
-
-            {cart && cartQuantity && cartQuantity > 0 ? (
-              <>
-                <div className="max-h-[50vh] space-y-4 overflow-y-auto py-2">
-                  {cart?.cart.map((item) => {
-                    const dessertName =
-                      language === "en"
-                        ? item.dessert.name
-                        : item.dessert.chineseName;
-                    return (
-                      <div
-                        key={`${item.id}-${item.promoNumber ?? "no-promo"}-${item.discountedAmountInCents}`}
-                        className="flex items-center gap-4 border-b border-gray-100 pb-4"
-                      >
-                        <div className="flex flex-1 flex-col">
-                          <h3 className="text-sm font-medium text-gray-900">
-                            {dessertName}
-                          </h3>
-                          {item.customisations?.map((customisation) => {
-                            const customisationName =
-                              language === "en"
-                                ? customisation.name
-                                : customisation.chineseName;
-                            return (
-                              <p
-                                className="ml-1 mt-1 items-center text-sm text-gray-500"
-                                key={`${customisation.id}-${item.promoNumber ?? "no-promo"}-${item.discountedAmountInCents}`}
-                              >
-                                {customisation.quantity > 1
-                                  ? `+ ${customisation.quantity} ${customisationName}`
-                                  : customisation.quantity === 1
-                                    ? `+ ${customisationName}`
-                                    : `- ${customisationName}`}
-                              </p>
-                            );
-                          })}
-                          <p className="mt-1 text-sm text-gray-500">
-                            {formatCurrency(
-                              (item.priceInCents -
-                                item.discountedAmountInCents +
-                                item.customisations.reduce(
-                                  (sum, c) => sum + c.priceInCents * c.quantity,
-                                  0,
-                                )) /
-                                100,
-                            )}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7 rounded-full p-0"
-                            onClick={() => cart.removeFromCart(item.id)}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-6 text-center">
-                            {item.quantity}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7 rounded-full p-0"
-                            onClick={() => cart.addExtraToCart(item.id)}
-                            disabled={!!item.promoNumber}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                          onClick={() =>
-                            cart.removeAllSameItemFromCart(item.id)
-                          }
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-6 space-y-4">
-                  <div className="flex items-center justify-between border-t border-gray-200 pt-4">
-                    <span className="text-base font-medium text-gray-900">
-                      {language === "en" ? "Total" : "总计"}
-                    </span>
-                    <span className="text-lg font-bold text-primary">
-                      {formatCurrency(cart.totalPrice / 100)}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <Link href={"/checkout"}>
-                      <Button
-                        className="w-full bg-primary text-white hover:bg-primary/90"
-                        onClick={() => setIsCartOpen(false)}
-                      >
-                        {language === "en" ? "Checkout" : "买单"}
-                      </Button>
-                    </Link>
-
-                    <Button
-                      variant="outline"
-                      className="w-full border-primary text-primary hover:bg-primary/10"
-                      onClick={() => setIsCartOpen(false)}
-                    >
-                      {language === "en" ? "Continue Adding" : "继续购物"}
-                    </Button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12">
-                <ShoppingCart className="mb-4 h-16 w-16 text-gray-300" />
-                <h3 className="mb-2 text-xl font-medium text-gray-900">
-                  {language === "en"
-                    ? "Your cart is empty"
-                    : "您的购物车是空的"}
-                </h3>
-                <p className="mb-6 text-center text-gray-500">
-                  {language === "en"
-                    ? "Looks like you haven't added any items to your cart yet."
-                    : "看起来您还没有将任何商品添加到购物车中。"}
-                </p>
-                <Button
-                  onClick={() => setIsCartOpen(false)}
-                  className="bg-primary text-white hover:bg-primary/90"
-                >
-                  {language === "en" ? "Start Adding" : "开始购物"}
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </>
   );
 }

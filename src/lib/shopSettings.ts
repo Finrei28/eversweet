@@ -108,6 +108,13 @@ export const oneLineAddress = (profile: ShopProfile): string =>
   `${profile.address}, ${profile.city} ${profile.postal}`;
 
 /**
+ * A `tel:` link for the shop's number as the profile writes it ("09 949 1050"): its digits,
+ * and a leading + if it has one.
+ */
+export const telHref = (phone: string): string =>
+  `tel:${phone.trim().startsWith("+") ? "+" : ""}${phone.replace(/\D/g, "")}`;
+
+/**
  * The token a membership benefit uses instead of writing the member multiplier out.
  *
  * Mirrors `MEMBER_RATE_TOKEN` in the order server's `lib/membership.ts`, which is what

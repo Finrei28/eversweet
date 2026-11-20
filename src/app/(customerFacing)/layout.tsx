@@ -1,63 +1,35 @@
 "use client";
 
-import { useState } from "react";
-import NotificationModal from "../_components/_homeComponents/notification";
-import { useLanguage } from "../components/language";
-import { Navbar, NavbarLink } from "../components/navbar";
+import { CartBar } from "../components/cartBar";
+import { CartSheet } from "../components/cartSheet";
+import { DaysOffNotice } from "../components/daysOffNotice";
+import { SiteHeader } from "../components/siteHeader";
 import SiteFooter from "../components/siteFooter";
+import ScrollToTopButton from "./menu/_components/toTop";
 import { api } from "~/trpc/react";
-import { format } from "date-fns";
+import { usePathname } from "next/navigation";
 
 export default function CustomerFacingLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const { language } = useLanguage();
-  const [notificationModalOpen, setNotificationModalOpen] = useState(true);
+  const pathName = usePathname();
   const { data: daysOff } = api.store.getDaysOff.useQuery();
 
-  const formattedDaysOffText =
-    daysOff && daysOff.length > 0
-      ? daysOff.length === 1
-        ? format(daysOff[0]!, "dd/MM")
-        : `${daysOff
-            .slice(0, -1)
-            .map((date) => format(date, "dd/MM"))
-            .join(", ")} and ${format(daysOff[daysOff.length - 1]!, "dd/MM")}`
-      : "";
-
   // A full-height column with the page growing to fill it, so the footer's mt-auto has
-  // something to push against. Without it the footer sat wherever the content ended -
-  // under the navbar while the menu loaded, since the loader is `fixed` and takes no room.
+  // something to push against. Without it the footer sat wherever a short page ended. The
+  // loader used to be one, `fixed` and taking no room; it now holds the footer down itself.
   return (
     <div className="flex min-h-dvh flex-col">
-      <Navbar>
-        <NavbarLink href={"/menu"}>
-          {language === "en" ? "Menu" : "菜单"}
-        </NavbarLink>
-        {/* <NavbarLink href={"/about-us"}>
-          {language === "en" ? "About us" : "关于我们"}
-        </NavbarLink> */}
-        <NavbarLink href={"/contact"}>
-          {language === "en" ? "Contact" : "联系方法"}
-        </NavbarLink>
-        <NavbarLink href={"/feedback"}>
-          {language === "en" ? "Feedback" : "反馈"}
-        </NavbarLink>
-      </Navbar>
+      <SiteHeader />
 
       <div className="flex-1">{children}</div>
       <SiteFooter />
-      {daysOff && daysOff.length > 0 && (
-        <NotificationModal
-          open={notificationModalOpen}
-          onClose={() => setNotificationModalOpen(false)}
-          title={language === "en" ? "Announcement" : "通知"}
-        >
-          {language === "en"
-            ? `We will be closed on ${formattedDaysOffText}. Sorry for the inconvenience! We will be open as usual on all other days. Thank you for your understanding!`
-            : `我们将于 ${formattedDaysOffText} 休息。对于由此带来的不便，我们深表歉意！除上述日期外，我们将照常营业。感谢您的理解！`}
-        </NotificationModal>
-      )}
+
+      <CartBar />
+      <CartSheet />
+      {pathName !== "/checkout" && <ScrollToTopButton />}
+
+      {daysOff && daysOff.length > 0 && <DaysOffNotice daysOff={daysOff} />}
     </div>
   );
 }

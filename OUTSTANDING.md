@@ -11,6 +11,39 @@ two repos share one database.
 
 ## Open
 
+From restyling the rest of the customer pages (2026-11-20, `REDESIGN.md` PR 5).
+
+**The feedback form's errors are in English on the Chinese page**
+
+Every other word on `/feedback` follows the language button; its errors do not. They are the
+messages of the zod schema at the top of `feedback/_components/feedback.tsx` ("Please give us a
+star rating", "Name must be at least 2 characters.", zod's own "Invalid email"), which
+`FormMessage` prints as they are, in either language. One also reads oddly in English: "Please
+give us a proper feedback...".
+
+Fixing it is not markup. The schema is built once, outside the component, and handed to
+`useForm` through `zodResolver`, so the messages cannot follow a language chosen after the page
+loads. Either the schema carries a key for each message and the form translates the key where it
+prints it, or the schema is built per language and the form is told when it changes.
+
+From restyling the order page (2026-11-20, `REDESIGN.md` PR 4).
+
+**The order page prices each line from today's menu, not from what was charged**
+
+`/order` works out each line from the dessert's price now (`OrderDessert.dessert.priceInCents`)
+and each topping's price now (`Ingredient.priceInCents`), while its Total is what the customer
+paid (`Order.priceInCents`). Change a price on `/admin/products` during the day an order's page
+is up, and its lines stop adding up to its Total - on screen and on the printed receipt.
+
+The dessert half has an answer already: `placeWebsiteOrder` records the price it charged on
+`OrderDessert.priceInCents`, and the page could read that. A topping's price is recorded nowhere
+(`OrderDessertCustomisation` holds a quantity and a discount), so the rest needs a column - a
+schema change, mirrored to the order server. The sum is not an app order's either: `getOrder`
+finds any order by id, and an app order's lines can carry an offer or points.
+
+The redesign moved the sum as it was into `linePrices` (`order/_components/orderDisplay.ts`),
+where its test pins today's behaviour; a fix changes that test first.
+
 From the hold-then-capture work (2026-09-18).
 
 **One thing to check in Stripe, once** - unless it was done before the sweep first ran

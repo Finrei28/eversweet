@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import {
   Controller,
@@ -87,9 +86,10 @@ const FormItem = React.forwardRef<
 });
 FormItem.displayName = "FormItem";
 
+// Takes Label's props, its `variant` included, so a form field can use direction D's label.
 const FormLabel = React.forwardRef<
-  React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
+  React.ElementRef<typeof Label>,
+  React.ComponentPropsWithoutRef<typeof Label>
 >(({ className, ...props }, ref) => {
   const { error, formItemId } = useFormField();
 
@@ -113,7 +113,7 @@ const FormInput = React.forwardRef<
   return (
     <Input
       ref={ref}
-      className={cn(error && "border-red-500", className)}
+      className={cn(error && "border-destructive", className)}
       id={formItemId}
       {...props}
     />
