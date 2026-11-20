@@ -5,6 +5,7 @@ import { ArrowUpDown } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { useLanguage } from "~/app/components/language";
 import { Feedback } from "@prisma/client";
+import { formatShortDate } from "~/lib/formatters";
 
 export function GetPastOrderColumns(): ColumnDef<Feedback>[] {
   const { language } = useLanguage();
@@ -70,11 +71,11 @@ export function GetPastOrderColumns(): ColumnDef<Feedback>[] {
           </Button>
         );
       },
-      cell: ({ row }) => {
-        const createdAt = row.original.createdAt;
-        const formatted = new Intl.DateTimeFormat("en-NZ").format(createdAt);
-        return <div className="font-medium">{formatted}</div>;
-      },
+      cell: ({ row }) => (
+        <div className="font-medium">
+          {formatShortDate(row.original.createdAt)}
+        </div>
+      ),
     },
   ];
 }

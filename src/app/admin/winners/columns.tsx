@@ -16,6 +16,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import {
   formatPrizeCode,
+  lastDayToCollect,
   monthLabel,
   rewardStatus,
   type RewardStatus,
@@ -27,8 +28,6 @@ export type WinnerRow = RouterOutputs["winner"]["getWinners"][number];
 type ColumnProps = {
   onEditReward: (winner: WinnerRow) => void;
 };
-
-const dateFormatter = new Intl.DateTimeFormat("en-NZ");
 
 const STATUS_LABELS: Record<RewardStatus, { en: string; zh: string }> = {
   UNASSIGNED: { en: "No reward", zh: "未设置奖品" },
@@ -197,7 +196,7 @@ export function GetWinnerColumns({
           if (!reward) return <div className="text-muted-foreground">—</div>;
           return (
             <div className="whitespace-nowrap font-medium">
-              {dateFormatter.format(reward.expiresAt)}
+              {lastDayToCollect(reward.expiresAt)}
             </div>
           );
         },

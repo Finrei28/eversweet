@@ -1,5 +1,7 @@
 import { DateTime } from "luxon";
 
+import { formatShortDate } from "~/lib/formatters";
+
 /**
  * Dates for the monthly prize a winner collects in store.
  *
@@ -42,6 +44,14 @@ export const daysToCollect = (deadline: Date, now: Date = new Date()): number =>
   // Rounded: a week across a daylight-time change is an hour long or short.
   return Math.round(lastDay.diff(today, "days").days) + 1;
 };
+
+/**
+ * The last Auckland day a prize can be collected, e.g. "31/10/2026", for the winners table.
+ * Read a millisecond before the deadline, as `daysToCollect` reads it, so a deadline from
+ * this site and one from the staff app name the same day.
+ */
+export const lastDayToCollect = (deadline: Date): string =>
+  formatShortDate(new Date(deadline.getTime() - 1));
 
 /**
  * The assign screen's warning when a winner would have under a week to collect, or null.
