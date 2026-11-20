@@ -816,10 +816,13 @@ accepted - and a navigation shows none.
   server rendered text didn't match the client") on almost every Chinese load of the home
   page, and elsewhere React quietly threw the boundary's HTML away and rendered it again.
   `src/app/components/language.test.ts` hydrates a late boundary to hold this.
-- **A component that reads the language and renders a Suspense boundary inside itself** hands
-  that boundary new props when it switches. A boundary not yet hydrated is then rendered on
-  the client instead: no error, and it looks the same. The home page's hero bowls and app
-  features do it on some loads.
+- **A component that reads the language and renders a Suspense boundary inside itself** must
+  make that boundary's element once, at module scope, not in its render. Otherwise the
+  switch re-renders it, a fresh `<Suspense>` hands a boundary not yet hydrated new props,
+  and React renders that boundary on the client instead: no error, and it looks the same,
+  but the server's HTML is thrown away. The home page's hero bowls and app features did it
+  on most Chinese loads; see `heroBowls` in `hero.tsx` and `features` in `get-the-app.tsx`,
+  and `innerBoundaries.test.ts` beside them.
 
 **No `alert-dialog` primitive exists.** Confirmations are composed from `Dialog` (or
 `src/app/components/customDialog.tsx`) with a `variant="destructive"` button. There is no
