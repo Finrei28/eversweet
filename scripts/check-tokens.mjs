@@ -42,6 +42,7 @@ const REDESIGNED = [
   "src/app/components/cartBar.tsx",
   "src/app/components/cartSheet.tsx",
   "src/app/components/itemName.tsx",
+  "src/app/components/itemNameClasses.ts",
   "src/app/components/siteFooter.tsx",
   "src/app/components/siteHeader.tsx",
   // Browse (PR 2): home, the menu, the customise dialog.
