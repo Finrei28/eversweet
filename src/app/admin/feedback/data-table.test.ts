@@ -66,6 +66,11 @@ const cellWith = (text: string) =>
   [...container.querySelectorAll("td > *")].find(
     (el) => el.textContent?.trim() === text,
   );
+/** Each row's rating, top to bottom. */
+const ratings = () =>
+  [...container.querySelectorAll("tbody tr")].map((row) =>
+    row.querySelectorAll("td")[3]?.textContent?.trim(),
+  );
 
 /**
  * The column definitions are made once per language. Rebuilt on every render, their
@@ -75,12 +80,14 @@ const cellWith = (text: string) =>
  */
 describe("the feedback table", () => {
   it("keeps the sort button the admin pressed, and its focus", async () => {
+    expect(ratings()).toEqual(["4", "2"]);
     const rating = button("rating");
     rating.focus();
     await act(async () => rating.click());
 
-    // Sorted, by the same button, still focused for the next key press.
-    expect(cellWith("2")).toBeDefined();
+    // Sorted - so the table did render again - by the same button, still focused for the
+    // next key press.
+    expect(ratings()).toEqual(["2", "4"]);
     expect(rating.isConnected).toBe(true);
     expect(document.activeElement).toBe(rating);
   });
