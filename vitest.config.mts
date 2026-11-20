@@ -36,6 +36,10 @@ export default defineConfig({
         }
       : {}),
   },
+  // tsconfig.json says `"jsx": "preserve"`, which is right for Next (it compiles JSX itself)
+  // and leaves Vitest unable to parse a component. Compile it here instead, with the
+  // automatic runtime Next uses.
+  oxc: { jsx: { runtime: "automatic" } },
   resolve: {
     alias: {
       // Matches the `~/*` path mapping in tsconfig.json.

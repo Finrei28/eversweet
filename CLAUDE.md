@@ -35,6 +35,14 @@ Vitest is `environment: "node"`, picks up `src/**/*.test.ts`, and `src/test/setu
 on missing env. A test that imports a `server-only` module needs
 `vi.mock("server-only", () => ({}))` at the top — see `src/server/notifyAdmin.test.ts`.
 
+A test that needs a DOM says so on its first line, `// @vitest-environment jsdom`. One that
+renders or hydrates a component must also swap in Next's own React 19: the App Router runs
+that build, while the `react` and `react-dom` in node_modules are 18, and hydration is where
+they differ. It mocks the React packages with their `next/dist/compiled/...` copies, as
+`src/app/components/language.test.ts` does; `src/test/nextCompiledReact.d.ts` types those
+paths. `vitest.config.mts` compiles JSX itself (`oxc.jsx`), because the Next `tsconfig` says
+`preserve`.
+
 CI (`.github/workflows/ci.yml`) runs lint, typecheck and tests on Node 22 with dummy
 `DATABASE_URL`/`DIRECT_URL` and `SKIP_ENV_VALIDATION=1`; no database is contacted. The
 integration suites below skip there for want of `TEST_DATABASE_URL`, so CI covers the
@@ -97,11 +105,12 @@ the report, when the constraints are missing.
 them itself, as `src/server/pickUpTimes.integration.test.ts` does.
 
 Testing a router: build a caller from just the routers under test rather than importing
-`~/server/api/root`, which reaches the order router and an email template whose JSX will
-not compile under the Next `tsconfig`. Mock `server-only` and `~/server/auth` (the latter
-drags in next-auth → `next/server`). `protectedProcedure` only checks `ctx.session.user`
-exists, so the context is a plain object. `src/test/caller.ts` does all of that once;
-`src/server/api/routers/offers.integration.test.ts` is the worked example.
+`~/server/api/root`, which reaches the order router and an email template Vitest cannot
+load (it imports `tailwind.config` as a bare module). Mock `server-only` and
+`~/server/auth` (the latter drags in next-auth → `next/server`). `protectedProcedure` only
+checks `ctx.session.user` exists, so the context is a plain object. `src/test/caller.ts`
+does all of that once; `src/server/api/routers/offers.integration.test.ts` is the worked
+example.
 
 Suites that need the database are wrapped in `describeIfDb` (or `itIfDb` for a lone
 case), so a machine without `TEST_DATABASE_URL` skips them rather than failing. Keep new
