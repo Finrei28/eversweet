@@ -6,6 +6,7 @@ import {
   WHILE_POINTS_EXPIRE_TOKEN,
   previewBenefit,
   showsOnlyWhilePointsExpire,
+  telHref,
 } from "./shopSettings";
 
 /**
@@ -64,5 +65,17 @@ describe("isAnnouncementShowing", () => {
   it("never shows one switched off, whatever its end", () => {
     expect(showing({ isActive: false, endsOn: null }, today)).toBe(false);
     expect(showing({ isActive: false, endsOn: "2026-12-31" }, today)).toBe(false);
+  });
+});
+
+/** The contact page's phone number, which a phone dials when it is pressed. */
+describe("telHref", () => {
+  it("dials the shop's number as the contact page writes it", () => {
+    expect(telHref("09 949 1050")).toBe("tel:099491050");
+  });
+
+  it("keeps an international prefix and drops punctuation", () => {
+    expect(telHref("+64 9 949 1050")).toBe("tel:+6499491050");
+    expect(telHref("(09) 949-1050")).toBe("tel:099491050");
   });
 });

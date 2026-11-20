@@ -940,6 +940,37 @@ before restyling a customer page. The app's `eversweet-design` skill
   The local cluster's session zone is `Pacific/Auckland` and Prisma's columns have none, so such
   an insert runs `SET TIME ZONE 'UTC'` first, or every time on the page is 13 hours out.
 
+### What the rest added
+
+- **Contact** is three columns divided by hairlines, stacked below `lg`, with the map in a framed
+  corner. The phone number and email are links: `telHref` (`~/lib/shopSettings`) dials
+  "09 949 1050" as `tel:099491050`.
+- **Feedback's stars are five radio inputs** in a group named by the "Rating" heading, so the
+  arrow keys move between them. Each was a button named "1 stars", in either language. Its
+  errors are still the zod schema's English (OUTSTANDING.md).
+- **The legal pages and delete account share `DocumentPage`** (`src/app/components/documentPage.tsx`):
+  one 760px column, sections divided by hairlines, ink body text, links in red bean. Apricot
+  links were 2.0:1 on cream.
+- **The 404 is `src/app/not-found.tsx`**, outside the customer layout, so it carries the logo
+  itself. Every `notFound()` lands there, a signed-out `/admin` included, so it must say nothing
+  about admin.
+- **The days-off notice** (`src/app/components/daysOffNotice.tsx`) is the `Dialog` primitive:
+  focus stays inside, Escape closes it, and a click outside does not, as before. It lists
+  closures - one day, or days in a row by their first and last - from `closures` and
+  `closureLabel` (`~/lib/pickUpLabels`), read on the Auckland calendar. The old notice formatted
+  each `Date` in the browser's zone, so anywhere west of Auckland was told the day before. Each
+  day is kept whole on its line.
+- **`DialogContent` takes `closeLabel`** for its ✕, which a screen reader heard as "Close" in
+  English on every page.
+- **The loader fills the screen under the header** rather than floating over the page, so a
+  loading page keeps the footer below the fold instead of halfway up a phone. Its height
+  subtracts the customer header's (65px, 81px from `md`); change one and change the other. It
+  tells a screen reader it is loading.
+- **A ticked checkbox is ink**, edged in `input`, admin's included.
+- **Screenshots of the notice need days off in `eversweet_dev`**, and every other page needs
+  none, or the notice covers it. Days off are cached for five minutes, so after adding or
+  removing rows by hand, wait for `store.getDaysOff` to change before shooting.
+
 ## Sharp edges
 
 - **An offer carries exactly one price: `itemPriceInCents` or `discountAmount`, never both

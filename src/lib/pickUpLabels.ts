@@ -1,15 +1,18 @@
 import { timeOfDay } from "./openToday";
 import {
+  addDaysToKey,
   LAST_PICK_UP_OFFSET_MINUTES,
   nzDayKey,
   nzMinuteOfDay,
+  toDaysOffKeys,
   type DayHours,
 } from "./pickUpTimes";
 
 /**
  * What the checkout says about a pick-up time: the estimate, the day strip, the hours
- * line and the order summary's line. And what the order page says about its two times,
- * when the order was placed and when to pick it up.
+ * line and the order summary's line. What the order page says about its two times, when
+ * the order was placed and when to pick it up. And the days the shop will be closed, in
+ * the notice the customer pages show.
  *
  * Built from Auckland day keys and minutes (`nzDayKey`, `nzMinuteOfDay`) and spelled out
  * here, never formatted from a `Date`, so the words cannot depend on the zone the browser
@@ -54,6 +57,12 @@ const partsOf = (dayKey: string) => {
   };
 };
 
+/** "Friday 20 November". */
+const longDayLabel = (dayKey: string): string => {
+  const { month, day, weekday } = partsOf(dayKey);
+  return `${EN_WEEKDAYS[weekday]} ${day} ${EN_MONTHS[month - 1]}`;
+};
+
 /** "Fri 20 Nov" or "11月20日（周五）". */
 export const dayLabel = (dayKey: string, language: Language): string => {
   const { month, day, weekday } = partsOf(dayKey);
@@ -75,8 +84,7 @@ export const pickUpTimeLabel = (time: Date, language: Language): string => {
  */
 export const pickUpDateTimeLabel = (time: Date, language: Language): string => {
   if (language === "zh") return pickUpTimeLabel(time, language);
-  const { month, day, weekday } = partsOf(nzDayKey(time));
-  return `${timeOfDay(nzMinuteOfDay(time), language)}, ${EN_WEEKDAYS[weekday]} ${day} ${EN_MONTHS[month - 1]}`;
+  return `${timeOfDay(nzMinuteOfDay(time), language)}, ${longDayLabel(nzDayKey(time))}`;
 };
 
 /** When an order was placed, with its year: "20 Nov 2026, 6:28 pm" or "2026年11月20日 6:28 PM". */
@@ -86,6 +94,45 @@ export const orderPlacedLabel = (time: Date, language: Language): string => {
   return language === "en"
     ? `${day} ${EN_MONTHS[month - 1]!.slice(0, 3)} ${year}, ${clock}`
     : `${year}年${month}月${day}日 ${clock}`;
+};
+
+/** Days the shop is closed in a row, by their first and last Auckland day. */
+export type Closure = { first: string; last: string };
+
+/**
+ * The days off the notice lists, as closures of days in a row. Each day off is stored as
+ * Auckland midnight and is read by its Auckland day (`toDaysOffKeys`), never off the `Date`:
+ * that midnight is the day before in UTC and anywhere west of it. Two rows on one day, which
+ * a tablet and /admin/settings closing it together can write, count once.
+ */
+export const closures = (daysOff: readonly Date[]): Closure[] => {
+  const result: Closure[] = [];
+  for (const day of [...toDaysOffKeys(daysOff)].sort()) {
+    const current = result[result.length - 1];
+    if (current && addDaysToKey(current.last, 1) === day) current.last = day;
+    else result.push({ first: day, last: day });
+  }
+  return result;
+};
+
+/**
+ * How the notice names a closure: one day, "Tuesday 24 November" or "11月24日（周二）", or
+ * days in a row by their first and last, which read with `joiner` between them. The days come
+ * apart so each can be kept on one line; a narrow screen broke "（周日）" in two.
+ */
+export const closureLabel = (
+  closure: Closure,
+  language: Language,
+): { days: string[]; joiner: string } => {
+  const day = (key: string) =>
+    language === "en" ? longDayLabel(key) : dayLabel(key, language);
+  return {
+    days:
+      closure.first === closure.last
+        ? [day(closure.first)]
+        : [day(closure.first), day(closure.last)],
+    joiner: language === "en" ? "\u00a0– " : "至",
+  };
 };
 
 /** The order summary's line under its heading. An ASAP time is the kitchen's estimate. */
