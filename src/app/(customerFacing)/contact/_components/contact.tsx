@@ -158,10 +158,15 @@ export default function ContactComponent({
         </div>
       </section>
 
-      <ul className="flex justify-center gap-6 pt-10 sm:gap-14 lg:pt-12">
+      {/* Three equal columns whose circles shrink to fit, up to 96px on a phone and 120px
+          from `sm`. A fixed 96px row was 336px wide and clipped the outer bowls at 320. */}
+      <ul className="mx-auto grid max-w-[472px] grid-cols-3 gap-4 pt-10 sm:gap-14 lg:pt-12">
         {BOWLS.map((bowl) => (
-          <li key={bowl.name} className="flex flex-col items-center gap-2.5">
-            <span className="relative h-24 w-24 overflow-hidden rounded-full bg-muted sm:h-[120px] sm:w-[120px]">
+          <li
+            key={bowl.name}
+            className="flex min-w-0 flex-col items-center gap-2.5"
+          >
+            <span className="relative aspect-square w-full max-w-[96px] overflow-hidden rounded-full bg-muted sm:max-w-[120px]">
               {bowl.src && (
                 <Image
                   src={bowl.src}
