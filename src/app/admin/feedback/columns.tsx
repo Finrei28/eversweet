@@ -8,7 +8,7 @@ import { useLanguage } from "~/app/components/language";
 import { Feedback } from "@prisma/client";
 import { formatShortDate } from "~/lib/formatters";
 
-export function GetPastOrderColumns(): ColumnDef<Feedback>[] {
+export function GetFeedbackColumns(): ColumnDef<Feedback>[] {
   const { language } = useLanguage();
 
   // Memoised on the language, as every admin columns hook is (see GetWinnerColumns): rebuilt
