@@ -736,10 +736,11 @@ boundary suspend on the server; its content then streams in after the shell, and
 streamed-in content `useId` tree ids that do not match the ones hydration computes. Every
 Radix `useId` inside the boundary mismatches and React discards and re-renders the subtree.
 The page itself streaming in behind `loading.tsx` is fine, because what streams carries a
-resolved query. One case still client-renders: with Chinese saved, `LanguageProvider` switches
-from `"en"` in an effect, and that update reaches the streamed boundary before it hydrates, so
-React renders it on the client instead. It looks the same, since it re-renders for the language
-anyway, and it happens only on a full page load, never on navigation.
+resolved query. With Chinese saved, that boundary used to be rendered on the client instead,
+because the language switch reached it before it hydrated; it now hydrates in English like
+everything else and switches after (see **Bilingual**). Hydrating it also lets a mismatch
+inside it show, which the client render used to hide from Chinese-speaking admins: the orders
+tables' dates, formatted in the browser's zone (#61).
 Use `Promise.all` when a page prefetches several queries. `prefetch` and `useSuspenseQuery`
 must be called with **identical** inputs or the cache key misses.
 
@@ -799,8 +800,26 @@ answer in it.
 
 **Bilingual** — no translation files. Every user-visible string is inline
 `{language === "en" ? "…" : "…"}` via `useLanguage()`, which throws outside its provider, so
-any component using it must be a client component. `language` starts `"en"` and is corrected
-from `localStorage` in an effect; a brief English flash on first paint is accepted.
+any component using it must be a client component.
+
+`language` comes from `useSyncExternalStore` with a server snapshot of `"en"`, like
+`useHydrated` in `~/lib/browserState`. The server renders English, since it cannot read
+`localStorage`; a component renders English again while it hydrates, whenever that is, and
+switches to the saved language straight after; one mounted later, after a navigation, renders
+the saved language at once. So a full page load shows English until each part has hydrated -
+accepted - and a navigation shows none.
+
+- **Never switch the language in an effect.** It used to be state in the provider, set from
+  `localStorage` in one, and that update reached a Suspense boundary streaming in after the
+  shell before the boundary hydrated. The boundary then hydrated in Chinese against English
+  HTML: a local production build logged React error #418 ("Hydration failed because the
+  server rendered text didn't match the client") on almost every Chinese load of the home
+  page, and elsewhere React quietly threw the boundary's HTML away and rendered it again.
+  `src/app/components/language.test.ts` hydrates a late boundary to hold this.
+- **A component that reads the language and renders a Suspense boundary inside itself** hands
+  that boundary new props when it switches. A boundary not yet hydrated is then rendered on
+  the client instead: no error, and it looks the same. The home page's hero bowls and app
+  features do it on some loads.
 
 **No `alert-dialog` primitive exists.** Confirmations are composed from `Dialog` (or
 `src/app/components/customDialog.tsx`) with a `variant="destructive"` button. There is no
