@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense, useMemo } from "react";
+import { useMemo } from "react";
 import { Clock } from "lucide-react";
 
 import { useLanguage } from "~/app/components/language";
@@ -79,6 +79,11 @@ function OpenTodayLine({ address }: { address?: string }) {
  * from the popular choices, which the page prefetches anyway, so the art is always
  * something on the menu. The three after the row of five below, where there are that
  * many, so the hero does not repeat the row; otherwise the last three.
+ *
+ * In no Suspense boundary of its own: the first bowl is the page's largest paint on a
+ * phone, and React streams a boundary this size (the images' srcsets alone are some 10KB)
+ * after the shell, revealing it only after the first paint - about 400ms late. The home
+ * page awaits the query, so on the server this never waits.
  */
 function HeroBowls() {
   const [popular] = api.dessert.getMostPopularProducts.useSuspenseQuery();
@@ -125,19 +130,6 @@ function BowlCircles({ images }: { images: (string | undefined)[] }) {
   );
 }
 
-/**
- * The bowls' boundary, made once. Hero reads the language, so the saved language switching
- * it after hydration re-renders it, and a fresh `<Suspense>` hands this boundary new props.
- * A boundary given new props before it has hydrated - the bowls wait on a streamed query -
- * is rendered again on the client, the server's HTML thrown away. The same element every
- * time leaves it to hydrate.
- */
-const heroBowls = (
-  <Suspense fallback={<BowlCircles images={[]} />}>
-    <HeroBowls />
-  </Suspense>
-);
-
 export function Hero({
   address,
   onOpeningHours,
@@ -181,7 +173,7 @@ export function Hero({
           </Button>
         </div>
       </div>
-      {heroBowls}
+      <HeroBowls />
     </section>
   );
 }

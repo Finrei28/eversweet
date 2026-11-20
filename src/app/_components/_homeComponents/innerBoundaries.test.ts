@@ -62,6 +62,13 @@ vi.mock("~/components/ui/button", async () => {
         : createElement("button", { onClick }, children as never),
   };
 });
+// The menu boards' sheet is Radix, closed until a board is pressed: drawn as nothing.
+vi.mock("~/components/ui/sheet", () => ({
+  Sheet: () => null,
+  SheetCloseButton: () => null,
+  SheetContent: () => null,
+  SheetTitle: () => null,
+}));
 
 /**
  * The data the inner boundaries wait on. On the server it is there; in the browser it
@@ -93,6 +100,13 @@ function suspenseQuery<T>(value: T) {
 }
 const desserts = Array.from({ length: 8 }, (_, i) => ({
   id: `dessert-${i}`,
+  name: `Dessert ${i}`,
+  chineseName: `甜品 ${i}`,
+  description: "",
+  ingredients: [],
+  priceInCents: 999,
+  promo: null,
+  categoryId: "category-1",
   imagePath: `https://example.com/bowl-${i}.png`,
 }));
 vi.mock("~/trpc/react", () => ({
@@ -141,14 +155,16 @@ afterEach(() => {
 });
 
 /**
- * Server-renders `page` in English, hydrates it with Chinese saved, and lets the late data
- * arrive after the switch. Returns the elements `pick` found in the server's HTML and what
- * React complained about.
+ * Server-renders `page` in English, hydrates it with Chinese saved, and - unless the browser
+ * has the data from the start - lets the late data arrive after the switch. Returns the
+ * elements `pick` found in the server's HTML and what React complained about.
  */
 async function hydrateInChinese(
   loadPage: () => Promise<() => ReactNode>,
   pick: (container: HTMLElement) => Element[],
+  { dataLate = true } = {},
 ) {
+  if (!dataLate) data.arrive();
   // Fresh modules, loaded together, so the section and the provider share one language
   // store and nothing saved by an earlier test is remembered.
   vi.resetModules();
@@ -176,14 +192,54 @@ async function hydrateInChinese(
   return { fromServer, errors };
 }
 
+/**
+ * What a phone paints first. React streams a Suspense boundary after the rest of the HTML,
+ * hidden until a script of its own reveals it - even a boundary that has finished, once the
+ * HTML before it passes 12.8KB - and it runs that script after the first paint, in batches.
+ * The home page's hero sat in two: one around the whole page, with a spinner, and one round
+ * the bowls. On a phone the first paint was the spinner, and the first bowl - the page's
+ * largest paint - came about 400ms later.
+ */
+describe("the home page's first paint", () => {
+  /** How many Suspense boundaries are open at `index` in server HTML. */
+  const openBoundaries = (html: string, index: number) => {
+    const before = html.slice(0, index);
+    return (
+      (before.match(/<!--\$[?!]?-->/g) ?? []).length -
+      (before.match(/<!--\/\$-->/g) ?? []).length
+    );
+  };
+
+  it("draws the hero's heading and bowls in no Suspense boundary", async () => {
+    vi.resetModules();
+    const { LanguageProvider } = await import("~/app/components/language");
+    const { default: HomePage } = await import("../homePageContent");
+
+    onServer.now = true;
+    const html = renderToString(h(LanguageProvider, null, h(HomePage)));
+    onServer.now = false;
+
+    const heading = html.indexOf("<h1");
+    // The first bowl: the three after the row of five, the first of them the largest.
+    // Its <img>, not the preload React puts in the head for it.
+    const firstBowl = html.search(/<img[^>]*bowl-5\.png/);
+    expect(heading).toBeGreaterThan(-1);
+    expect(firstBowl).toBeGreaterThan(-1);
+    expect(openBoundaries(html, heading)).toBe(0);
+    expect(openBoundaries(html, firstBowl)).toBe(0);
+  });
+});
+
 describe("a section that reads the language around a boundary of its own", () => {
-  it("leaves the hero's bowls to hydrate when the language switches", async () => {
+  it("hydrates the hero's bowls in place when the language switches", async () => {
+    // The home page awaits the popular desserts, so the browser has them from the start.
     const { fromServer, errors } = await hydrateInChinese(
       async () => {
         const { Hero } = await import("./hero");
         return () => h(Hero, { onOpeningHours: () => undefined });
       },
       (c) => [...c.querySelectorAll("img")],
+      { dataLate: false },
     );
 
     expect(container.querySelector("h1")?.textContent).toBe(

@@ -130,9 +130,11 @@ function Features() {
 }
 
 /**
- * The features' boundary, made once, as the hero's bowls are (see `heroBowls`): a fresh
- * `<Suspense>` each time the language switches GetTheApp would hand the boundary new props
- * before it had hydrated, and React would throw the server's list away and draw it again.
+ * The features' boundary, made once. GetTheApp reads the language, so the saved language
+ * switching it re-renders it; a fresh `<Suspense>` each time would hand the boundary new
+ * props before it had hydrated - the features wait on a streamed query - and React would
+ * throw the server's list away and draw it again. The same element every time leaves it
+ * to hydrate.
  */
 const features = (
   <Suspense fallback={null}>
