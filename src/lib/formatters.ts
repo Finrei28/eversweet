@@ -16,7 +16,7 @@ export function formatNumber(amount: number) {
 }
 
 /**
- * Both formatters below name the Auckland clock explicitly. Without a `timeZone`, Intl
+ * Every formatter below names the Auckland clock explicitly. Without a `timeZone`, Intl
  * formats in the runtime's own zone - and the order confirmation email is rendered on
  * Vercel, in UTC, so an 8:29 PM pick-up was emailed as 8:29 AM.
  */
@@ -44,3 +44,16 @@ export const getCollectionTime = (date: Date) => {
     minute: "numeric",
   }).format(date);
 };
+
+const Short_Date_Formatter = new Intl.DateTimeFormat("en-NZ", {
+  timeZone: "Pacific/Auckland",
+});
+
+/**
+ * The Auckland day an instant falls on, e.g. "1/10/2026", for a table cell. The admin order
+ * tables used to format with no zone, so the server (UTC) wrote 30/09/2026 for an order
+ * placed at 1 AM on 1 October in Auckland, the browser wrote 1/10/2026, and React logged a
+ * hydration error on every load of /admin/orders.
+ */
+export const formatShortDate = (date: Date) =>
+  Short_Date_Formatter.format(date);

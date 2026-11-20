@@ -23,6 +23,7 @@ import { ItemName } from "~/app/components/itemName";
 import { useLanguage } from "~/app/components/language";
 import { Button } from "~/components/ui/button";
 import { formatCurrency } from "~/lib/formatters";
+import { formatPhoneNumber } from "~/lib/phoneNumber";
 import { orderPlacedLabel, pickUpDateTimeLabel } from "~/lib/pickUpLabels";
 import { cn } from "~/lib/utils";
 import { api, type RouterOutputs } from "~/trpc/react";
@@ -256,7 +257,7 @@ function OrderDetails() {
               {/* Optional on the row: an order from the app may have none. */}
               {order.customerPhoneNumber && (
                 <DetailRow icon={Phone} className="tabular-nums">
-                  {order.customerPhoneNumber}
+                  {formatPhoneNumber(order.customerPhoneNumber)}
                 </DetailRow>
               )}
             </ul>

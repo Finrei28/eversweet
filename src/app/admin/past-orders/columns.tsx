@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { formatCurrency } from "~/lib/formatters";
+import { formatCurrency, formatShortDate } from "~/lib/formatters";
 import { MoreHorizontal, ArrowUpDown } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
@@ -162,7 +162,7 @@ export function GetPastOrderColumns({
         },
         cell: ({ row }) => {
           const createdAt = row.original.createdAt;
-          const formatted = new Intl.DateTimeFormat("en-NZ").format(createdAt);
+          const formatted = formatShortDate(createdAt);
           return <div className="font-medium">{formatted}</div>;
         },
       },
@@ -193,9 +193,7 @@ export function GetPastOrderColumns({
             row.original.status === "CANCELLED"
               ? row.original.cancelledAt
               : row.original.completedAt;
-          const formatted = completedAt
-            ? new Intl.DateTimeFormat("en-NZ").format(completedAt)
-            : null;
+          const formatted = completedAt ? formatShortDate(completedAt) : null;
           return (
             <div className="font-medium">{formatted ? formatted : "-"}</div>
           );

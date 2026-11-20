@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { formatCurrency } from "~/lib/formatters";
+import { formatCurrency, formatShortDate } from "~/lib/formatters";
 import { MoreHorizontal } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
@@ -137,7 +137,7 @@ export function GetOrderColumns({
         header: language === "en" ? "Created" : "创建时间",
         cell: ({ row }) => {
           const createdAt = row.original.createdAt;
-          const formatted = new Intl.DateTimeFormat("en-NZ").format(createdAt);
+          const formatted = formatShortDate(createdAt);
           return <div className="font-medium">{formatted}</div>;
         },
       },
