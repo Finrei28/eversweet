@@ -129,6 +129,17 @@ function Features() {
   );
 }
 
+/**
+ * The features' boundary, made once, as the hero's bowls are (see `heroBowls`): a fresh
+ * `<Suspense>` each time the language switches GetTheApp would hand the boundary new props
+ * before it had hydrated, and React would throw the server's list away and draw it again.
+ */
+const features = (
+  <Suspense fallback={null}>
+    <Features />
+  </Suspense>
+);
+
 export default function GetTheApp() {
   const { language } = useLanguage();
 
@@ -169,9 +180,7 @@ export default function GetTheApp() {
           : "用 iPhone 或 Android 手机提前下单，享受应用独有的功能。"}
       </p>
 
-      <Suspense fallback={null}>
-        <Features />
-      </Suspense>
+      {features}
 
       <StoreBadges
         tone="dark"

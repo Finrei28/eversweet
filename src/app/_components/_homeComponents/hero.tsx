@@ -125,6 +125,19 @@ function BowlCircles({ images }: { images: (string | undefined)[] }) {
   );
 }
 
+/**
+ * The bowls' boundary, made once. Hero reads the language, so the saved language switching
+ * it after hydration re-renders it, and a fresh `<Suspense>` hands this boundary new props.
+ * A boundary given new props before it has hydrated - the bowls wait on a streamed query -
+ * is rendered again on the client, the server's HTML thrown away. The same element every
+ * time leaves it to hydrate.
+ */
+const heroBowls = (
+  <Suspense fallback={<BowlCircles images={[]} />}>
+    <HeroBowls />
+  </Suspense>
+);
+
 export function Hero({
   address,
   onOpeningHours,
@@ -168,9 +181,7 @@ export function Hero({
           </Button>
         </div>
       </div>
-      <Suspense fallback={<BowlCircles images={[]} />}>
-        <HeroBowls />
-      </Suspense>
+      {heroBowls}
     </section>
   );
 }
