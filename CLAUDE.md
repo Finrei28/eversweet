@@ -820,9 +820,10 @@ accepted - and a navigation shows none.
   make that boundary's element once, at module scope, not in its render. Otherwise the
   switch re-renders it, a fresh `<Suspense>` hands a boundary not yet hydrated new props,
   and React renders that boundary on the client instead: no error, and it looks the same,
-  but the server's HTML is thrown away. The home page's hero bowls and app features did it
-  on most Chinese loads; see `heroBowls` in `hero.tsx` and `features` in `get-the-app.tsx`,
-  and `innerBoundaries.test.ts` beside them.
+  but the server's HTML is thrown away. The home page's app features did it on most Chinese
+  loads (as did the hero's bowls, which now have no boundary at all - see the sharp edge on
+  the home page's first paint); see `features` in `get-the-app.tsx` and
+  `innerBoundaries.test.ts` beside it.
 
 **No `alert-dialog` primitive exists.** Confirmations are composed from `Dialog` (or
 `src/app/components/customDialog.tsx`) with a `variant="destructive"` button. There is no
@@ -1072,6 +1073,14 @@ changing how a customer page looks. The app's `eversweet-design` skill
 - Image uploads POST FormData to `/admin/products/api/uploadImage` (Cloudinary,
   content-hash deduped). It files everything under `products/` and returns a public id that
   some callers discard.
+- **The home page's hero paints in the first frame; keep it out of Suspense.** React streams
+  a Suspense boundary separately from the shell - even one that has finished, once the HTML
+  before it passes 12.8KB (`progressiveChunkSize`) - and reveals it only after the first
+  paint, in batches. The page used to sit in a boundary with a spinner, and the hero's bowls
+  in another: a phone painted the spinner, and the first bowl, the page's largest paint,
+  some 400ms after its image had arrived. So `page.tsx` awaits the popular desserts the bowls
+  are drawn from, `HomePage` has no boundary, and `HeroBowls` none either;
+  `innerBoundaries.test.ts` checks the heading and the first bowl are in none.
 - **The colours left in `globals.css` stay space-separated HSL** (`24 50% 54%`). An opacity
   modifier builds `hsl(var(--primary-display) / 0.1)`, which only that form can take.
   `--primary` and `--secondary` were written with commas until 2026-11-20, so every
