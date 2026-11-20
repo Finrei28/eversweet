@@ -808,16 +808,15 @@ opened the language menu. Check any new link at 1280px, in both languages.
 
 ## Customer pages: the direction D redesign
 
-The customer pages are moving onto the customer app's design direction D, from a token file
-both repos share. `REDESIGN.md` holds the plan and what the owner decided on 2026-11-20; read it
-before restyling a customer page. The app's `eversweet-design` skill
+The customer pages are on the customer app's design direction D, from a token file both repos
+share. `REDESIGN.md` holds the plan and what the owner decided on 2026-11-20; read it before
+changing how a customer page looks. The app's `eversweet-design` skill
 (`eversweet_app/frontend/.claude/skills/eversweet-design/`) is the brief.
 
-- **The redesign lands on `feat/website-redesign`, not `main`.** Each flow is a PR into that
-  branch, and the branch merges into `main` once, when every flow is done: merging into `main`
-  deploys, and customers should never see half the site in the new look. The one exception is
-  PR 0, the token file and its CI check, which changes nothing on screen. `ci.yml` runs on
-  pushes and PRs into that branch as well as `main`, so the flow PRs get every check.
+- **Released on 2026-11-20.** The five flows went into the long-lived `feat/website-redesign`
+  as #54-#58, so customers never saw half the site in the new look, and that branch merged into
+  `main` once, as #59. The branch is retired and `ci.yml` runs on `main` alone again; customer
+  page changes now go to `main` like any other.
 - **`src/styles/designTokens.json` is shared byte-for-byte** with
   `eversweet_app/frontend/lib/designTokens.json`, where the app's `lib/theme.ts` reads its
   colours from it, and `tailwind.config.ts` here takes every colour, the `seal`/`card`/`sheet`

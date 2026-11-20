@@ -1,13 +1,10 @@
 name: CI
 
-# feat/website-redesign is the long-lived branch the redesign's flow PRs go into, and it
-# merges into main once, at the release (REDESIGN.md). Without it here those PRs would get no
-# lint, typecheck, tests, legal check or token check until then.
 on:
   push:
-    branches: [main, feat/website-redesign]
+    branches: [main]
   pull_request:
-    branches: [main, feat/website-redesign]
+    branches: [main]
 
 jobs:
   lint-and-typecheck:
