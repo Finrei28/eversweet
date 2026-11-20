@@ -7,16 +7,43 @@ import { withPaymentLock } from "./paymentLock";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Runs `work` under the lock and records when it started and finished. */
-const timed = async (paymentIntentId: string, holdMs: number) => {
+/**
+ * Runs `work` under the lock and records when it started and finished, calling `onLocked`
+ * once it holds the lock.
+ */
+const timed = async (
+  paymentIntentId: string,
+  holdMs: number,
+  onLocked: () => void = () => undefined,
+) => {
   let started = 0;
   let finished = 0;
   await withPaymentLock(paymentIntentId, async () => {
     started = Date.now();
+    onLocked();
     await sleep(holdMs);
     finished = Date.now();
   });
   return { started, finished };
+};
+
+/**
+ * Starts a second call only once the first holds its lock, so the second always arrives
+ * while the first is inside. A fixed head start did not ensure that: the first call of a
+ * run opens a database connection, which took over 100ms on some runs, and the second then
+ * took the lock first - one run in three or so failed for want of an order nobody promised.
+ */
+const whileFirstHoldsTheLock = async (
+  first: { id: string; holdMs: number },
+  second: { id: string; holdMs: number },
+) => {
+  let firstHasLock!: () => void;
+  const locked = new Promise<void>((resolve) => (firstHasLock = resolve));
+  const [a, b] = await Promise.all([
+    timed(first.id, first.holdMs, firstHasLock),
+    locked.then(() => timed(second.id, second.holdMs)),
+  ]);
+  return { first: a, second: b };
 };
 
 /**
@@ -25,19 +52,19 @@ const timed = async (paymentIntentId: string, holdMs: number) => {
  */
 describeIfDb("withPaymentLock", { timeout: 30_000 }, () => {
   it("makes calls for the same payment take turns", async () => {
-    const [first, second] = await Promise.all([
-      timed("pi_lock_same", 400),
-      sleep(50).then(() => timed("pi_lock_same", 50)),
-    ]);
+    const { first, second } = await whileFirstHoldsTheLock(
+      { id: "pi_lock_same", holdMs: 400 },
+      { id: "pi_lock_same", holdMs: 50 },
+    );
 
     expect(second.started).toBeGreaterThanOrEqual(first.finished);
   });
 
   it("lets calls for different payments run together", async () => {
-    const [first, second] = await Promise.all([
-      timed("pi_lock_one", 400),
-      sleep(50).then(() => timed("pi_lock_two", 50)),
-    ]);
+    const { first, second } = await whileFirstHoldsTheLock(
+      { id: "pi_lock_one", holdMs: 400 },
+      { id: "pi_lock_two", holdMs: 50 },
+    );
 
     expect(second.started).toBeLessThan(first.finished);
   });
