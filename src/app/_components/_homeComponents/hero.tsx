@@ -146,8 +146,8 @@ export function Hero({
         </h1>
         <p className="max-w-[470px] text-[17px] leading-relaxed text-muted-foreground lg:text-[19px]">
           {en
-            ? "Order online and pick up at the shop, or have it delivered with Uber Eats."
-            : "网上下单到店自取，或通过 Uber Eats 送货上门。"}
+            ? "Order online and pick up at the shop, or have it delivered with Uber Eats, DoorDash or HungryPanda."
+            : "网上下单到店自取，或通过 Uber Eats、DoorDash 或熊猫外卖送货上门。"}
         </p>
         <div className="mt-1 flex flex-col gap-2.5 sm:flex-row sm:gap-3 lg:mt-2">
           <Button asChild size="cta" className="px-8">

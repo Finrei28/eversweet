@@ -13,7 +13,7 @@ import {
   TopDesserts,
   TopDessertsSkeleton,
 } from "./_homeComponents/top-desserts";
-import UberEats from "./_homeComponents/uber-eats";
+import Delivery from "./_homeComponents/delivery";
 import { scrollBehavior } from "~/lib/scrollBehavior";
 
 /**
@@ -53,7 +53,7 @@ function HomePageContent({ address }: { address?: string }) {
         <ScrollToOpeningHours targetRef={openingHoursRef} />
       </Suspense>
 
-      {/* The falling desserts cover the hero down to Uber Eats, and settle on the menu
+      {/* The falling desserts cover the hero down to delivery, and settle on the menu
           boards. Rendered last so they draw over what they fall past. */}
       <div className="relative">
         <Hero
@@ -68,7 +68,7 @@ function HomePageContent({ address }: { address?: string }) {
           <TopDesserts />
         </Suspense>
         <MenuPhotos imageRefs={menuPhotoRefs} />
-        <UberEats />
+        <Delivery />
         <DessertAnimation
           landingRefs={menuPhotoRefs}
           density={34}
