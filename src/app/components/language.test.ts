@@ -189,6 +189,48 @@ describe("LanguageProvider", () => {
     expect(localStorage.getItem("lang")).toBe("en");
   });
 
+  it("keeps the language it had when saving the switch fails", async () => {
+    const lang = await loadLanguage();
+    let toggle: () => void = () => undefined;
+    let rerender: () => void = () => undefined;
+
+    function Label({ id }: { id: string }) {
+      const { language, toggleLanguage } = lang.useLanguage();
+      const [, setCount] = useState(0);
+      toggle = toggleLanguage;
+      if (id === "a") rerender = () => setCount((n) => n + 1);
+      return h("span", { id }, language);
+    }
+    const app = h(
+      lang.LanguageProvider,
+      null,
+      h(Label, { id: "a" }),
+      h(Label, { id: "b" }),
+    );
+
+    container.innerHTML = renderToString(app);
+    await act(async () => {
+      root = hydrateRoot(container, app);
+    });
+
+    // Storage full, say: the switch throws, as it did when it was provider state.
+    const setItem = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new DOMException("full", "QuotaExceededError");
+      });
+    try {
+      await act(async () => expect(() => toggle()).toThrow("full"));
+    } finally {
+      setItem.mockRestore();
+    }
+
+    // One component rendering again for its own reasons must not take up a language the
+    // rest never switched to.
+    await act(async () => rerender());
+    expect(container.textContent).toBe("enen");
+  });
+
   it("refuses to be used outside the provider", async () => {
     const lang = await loadLanguage();
     function Orphan() {

@@ -54,8 +54,11 @@ function subscribe(onChange: () => void) {
 }
 
 function toggleLanguage() {
-  saved = getSnapshot() === "en" ? "zh" : "en";
-  localStorage.setItem(STORAGE_KEY, saved);
+  const next: Language = getSnapshot() === "en" ? "zh" : "en";
+  // Saved first: if storage refuses it, nothing has switched, rather than whichever
+  // component happens to render next.
+  localStorage.setItem(STORAGE_KEY, next);
+  saved = next;
   listeners.forEach((onChange) => onChange());
 }
 
