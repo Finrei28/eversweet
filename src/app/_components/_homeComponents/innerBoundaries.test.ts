@@ -62,6 +62,13 @@ vi.mock("~/components/ui/button", async () => {
         : createElement("button", { onClick }, children as never),
   };
 });
+// The menu boards' sheet is Radix, closed until a board is pressed: drawn as nothing.
+vi.mock("~/components/ui/sheet", () => ({
+  Sheet: () => null,
+  SheetCloseButton: () => null,
+  SheetContent: () => null,
+  SheetTitle: () => null,
+}));
 
 /**
  * The data the inner boundaries wait on. On the server it is there; in the browser it
@@ -93,6 +100,13 @@ function suspenseQuery<T>(value: T) {
 }
 const desserts = Array.from({ length: 8 }, (_, i) => ({
   id: `dessert-${i}`,
+  name: `Dessert ${i}`,
+  chineseName: `甜品 ${i}`,
+  description: "",
+  ingredients: [],
+  priceInCents: 999,
+  promo: null,
+  categoryId: "category-1",
   imagePath: `https://example.com/bowl-${i}.png`,
 }));
 vi.mock("~/trpc/react", () => ({
@@ -175,6 +189,38 @@ async function hydrateInChinese(
   });
   return { fromServer, errors };
 }
+
+/**
+ * What a phone paints first. React streams a Suspense boundary after the rest of the HTML,
+ * hidden until a script of its own reveals it - even a boundary that has finished, once the
+ * HTML before it passes 12.8KB - and it runs that script after the first paint, in batches.
+ * The home page sat in one, around the whole page, with a spinner: on a phone the first
+ * paint was the spinner, and the page came about 400ms later.
+ */
+describe("the home page's first paint", () => {
+  /** How many Suspense boundaries are open at `index` in server HTML. */
+  const openBoundaries = (html: string, index: number) => {
+    const before = html.slice(0, index);
+    return (
+      (before.match(/<!--\$[?!]?-->/g) ?? []).length -
+      (before.match(/<!--\/\$-->/g) ?? []).length
+    );
+  };
+
+  it("draws the hero's heading in no Suspense boundary", async () => {
+    vi.resetModules();
+    const { LanguageProvider } = await import("~/app/components/language");
+    const { default: HomePage } = await import("../homePageContent");
+
+    onServer.now = true;
+    const html = renderToString(h(LanguageProvider, null, h(HomePage)));
+    onServer.now = false;
+
+    const heading = html.indexOf("<h1");
+    expect(heading).toBeGreaterThan(-1);
+    expect(openBoundaries(html, heading)).toBe(0);
+  });
+});
 
 describe("a section that reads the language around a boundary of its own", () => {
   it("leaves the hero's bowls to hydrate when the language switches", async () => {

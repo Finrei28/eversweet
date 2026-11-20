@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 
-import Loader from "../components/customLoading";
 import { DessertAnimation } from "./_homeComponents/_top-desserts-components.tsx/dessert-animation";
 import GetTheApp from "./_homeComponents/get-the-app";
 import { Hero } from "./_homeComponents/hero";
@@ -94,10 +93,13 @@ function HomePageContent({ address }: { address?: string }) {
   );
 }
 
+/**
+ * No Suspense around the page. There was one, with the spinner as its fallback, and React
+ * streams a completed boundary as large as this whole page separately from the shell: a
+ * phone painted the spinner first and the page some 400ms later, its hero image with it.
+ * Each part that waits on data has a boundary of its own, and `useSearchParams` has its
+ * own in `ScrollToOpeningHours`.
+ */
 export default function HomePage({ address }: { address?: string }) {
-  return (
-    <Suspense fallback={<Loader />}>
-      <HomePageContent address={address} />
-    </Suspense>
-  );
+  return <HomePageContent address={address} />;
 }
