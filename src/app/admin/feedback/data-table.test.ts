@@ -31,7 +31,9 @@ vi.mock("~/trpc/react", () => ({
   api: { feedback: { getFeedbacks: { useSuspenseQuery: () => [rows] } } },
 }));
 
+import { type ColumnDef } from "@tanstack/react-table";
 import { LanguageProvider } from "~/app/components/language";
+import { GetFeedbackColumns } from "./columns";
 import { DataTable } from "./data-table";
 
 declare global {
@@ -79,6 +81,22 @@ const ratings = () =>
  * search box.
  */
 describe("the feedback table", () => {
+  it("reads every column from a field a feedback row has", async () => {
+    // TanStack reads a column's value - for sorting or filtering it - from its accessorKey.
+    let columns: ColumnDef<Feedback>[] = [];
+    function Columns() {
+      columns = GetFeedbackColumns();
+      return null;
+    }
+    await act(async () => {
+      root.render(h(LanguageProvider, null, h(Columns)));
+    });
+    const keys = columns.map(
+      (column) => (column as { accessorKey?: string }).accessorKey,
+    );
+    expect(keys.filter((key) => !key || !(key in rows[0]!))).toEqual([]);
+  });
+
   it("keeps the sort button the admin pressed, and its focus", async () => {
     expect(ratings()).toEqual(["4", "2"]);
     const rating = button("rating");

@@ -39,11 +39,11 @@ export function GetFeedbackColumns(): ColumnDef<Feedback>[] {
         },
       },
       {
-        accessorKey: "message",
+        accessorKey: "feedbackMessage",
         header: language === "en" ? "Feedback" : "反馈",
         cell: ({ row }) => {
-          const status = row.original.feedbackMessage;
-          return <div className="font-medium">{status}</div>;
+          const message = row.original.feedbackMessage;
+          return <div className="font-medium">{message}</div>;
         },
       },
       {
