@@ -9,6 +9,9 @@ import {
 } from "@tanstack/react-table";
 import { type Feedback } from "@prisma/client";
 
+import { endOfDayNZ, startOfDayNZ } from "~/lib/aucklandDay";
+import type { WinnerRow } from "./winners/columns";
+
 /**
  * The admin tables render on the server - Vercel, in UTC - and hydrate in a browser that
  * is usually in Auckland. A date written with no zone came out as a different day on each
@@ -79,12 +82,44 @@ const feedback: Feedback = {
   createdAt: justAfterAucklandMidnight,
 };
 
+function winner(expiresAt: Date): WinnerRow {
+  return {
+    id: "winner-1",
+    month: 9,
+    year: 2026,
+    place: 1,
+    points: 420,
+    createdAt: new Date("2026-10-01T00:00:00Z"),
+    user: {
+      id: "user-1",
+      username: "mei",
+      firstName: "Mei",
+      lastName: "Lin",
+      email: "mei@example.com",
+      phone: null,
+      anonymousEnabled: false,
+    },
+    reward: {
+      id: "reward-1",
+      title: "A free bowl",
+      description: null,
+      code: "ABCD2345",
+      expiresAt,
+      assignedAt: new Date("2026-10-01T00:00:00Z"),
+      assignedByAdminId: null,
+      redeemedAt: null,
+      redeemedByAdminId: null,
+    },
+  };
+}
+
 describe.each(["UTC", "America/Los_Angeles", "Pacific/Auckland"])(
   "admin table dates with the process in %s",
   (zone) => {
     const original = process.env.TZ;
     let lang: LanguageModule;
     let feedbackColumns: typeof import("./feedback/columns");
+    let winnerColumns: typeof import("./winners/columns");
 
     beforeAll(async () => {
       process.env.TZ = zone;
@@ -93,6 +128,7 @@ describe.each(["UTC", "America/Los_Angeles", "Pacific/Auckland"])(
       vi.resetModules();
       lang = await import("~/app/components/language");
       feedbackColumns = await import("./feedback/columns");
+      winnerColumns = await import("./winners/columns");
     });
     afterAll(() => {
       process.env.TZ = original;
@@ -110,6 +146,30 @@ describe.each(["UTC", "America/Los_Angeles", "Pacific/Auckland"])(
         feedback,
       );
       expect(cells.createdAt).toBe("1/10/2026");
+    });
+
+    const winnerColumnsFor = () =>
+      winnerColumns.GetWinnerColumns({ onEditReward: () => undefined });
+
+    it("gives a prize's last day to collect, as this site stores the deadline", () => {
+      // The last instant of 31 October in Auckland.
+      const cells = renderRow(
+        lang,
+        winnerColumnsFor,
+        winner(endOfDayNZ("2026-10-31")),
+      );
+      expect(cells.expires).toBe("31/10/2026");
+    });
+
+    it("gives the same last day for the staff app's deadline, the next day's first instant", () => {
+      // Midnight at the start of 1 November in Auckland: the prize can be collected on 31
+      // October and not on 1 November.
+      const cells = renderRow(
+        lang,
+        winnerColumnsFor,
+        winner(startOfDayNZ("2026-11-01")),
+      );
+      expect(cells.expires).toBe("31/10/2026");
     });
   },
 );
