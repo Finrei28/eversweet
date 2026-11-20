@@ -19,7 +19,7 @@ export function GetFeedbackColumns(): ColumnDef<Feedback>[] {
     () => [
       {
         accessorKey: "name",
-        header: language === "en" ? "name" : "顾客",
+        header: language === "en" ? "Name" : "顾客",
         cell: ({ row }) => {
           const name = row.original.name;
           return <div className="font-medium">{name}</div>;
@@ -56,7 +56,7 @@ export function GetFeedbackColumns(): ColumnDef<Feedback>[] {
                 column.toggleSorting(column.getIsSorted() === "asc")
               }
             >
-              {language === "en" ? "rating" : "评分"}
+              {language === "en" ? "Rating" : "评分"}
               <ArrowUpDown className="h-4 w-4" />
             </Button>
           );

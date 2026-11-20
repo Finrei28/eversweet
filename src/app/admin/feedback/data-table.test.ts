@@ -81,6 +81,12 @@ const ratings = () =>
  * search box.
  */
 describe("the feedback table", () => {
+  it("heads its columns as the other admin tables do", () => {
+    expect(
+      [...container.querySelectorAll("th")].map((th) => th.textContent?.trim()),
+    ).toEqual(["Name", "Email", "Feedback", "Rating", "Created"]);
+  });
+
   it("reads every column from a field a feedback row has", async () => {
     // TanStack reads a column's value - for sorting or filtering it - from its accessorKey.
     let columns: ColumnDef<Feedback>[] = [];
@@ -99,7 +105,7 @@ describe("the feedback table", () => {
 
   it("keeps the sort button the admin pressed, and its focus", async () => {
     expect(ratings()).toEqual(["4", "2"]);
-    const rating = button("rating");
+    const rating = button("Rating");
     rating.focus();
     await act(async () => rating.click());
 
