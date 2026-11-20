@@ -64,26 +64,66 @@ export interface SheetContentProps
     React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
     VariantProps<typeof sheetVariants> {}
 
+/**
+ * Closing a sheet hands focus back to whatever opened it. Radix returns focus only to a
+ * `SheetTrigger`, and most sheets here are opened by buttons that are not one: the header's
+ * menu and cart buttons, the cart bar, a menu board. Closing one left focus on the page
+ * itself, so a keyboard user started again from the top. The opener is read as the sheet
+ * opens, before focus moves into it, and skipped if it has left the page since (the cart bar
+ * goes when the cart is emptied).
+ */
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "bottom", className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {side === "bottom" && (
-        <div aria-hidden className="flex shrink-0 justify-center pt-2.5">
-          <span className="h-[5px] w-10 rounded-full bg-border" />
-        </div>
-      )}
-      {children}
-    </SheetPrimitive.Content>
-  </SheetPortal>
-));
+>(
+  (
+    {
+      side = "bottom",
+      className,
+      children,
+      onOpenAutoFocus,
+      onCloseAutoFocus,
+      ...props
+    },
+    ref,
+  ) => {
+    const opener = React.useRef<HTMLElement | null>(null);
+
+    return (
+      <SheetPortal>
+        <SheetOverlay />
+        <SheetPrimitive.Content
+          ref={ref}
+          className={cn(sheetVariants({ side }), className)}
+          onOpenAutoFocus={(event) => {
+            opener.current =
+              document.activeElement instanceof HTMLElement &&
+              document.activeElement !== document.body
+                ? document.activeElement
+                : null;
+            onOpenAutoFocus?.(event);
+          }}
+          onCloseAutoFocus={(event) => {
+            onCloseAutoFocus?.(event);
+            const element = opener.current;
+            opener.current = null;
+            if (event.defaultPrevented || !element?.isConnected) return;
+            event.preventDefault();
+            element.focus();
+          }}
+          {...props}
+        >
+          {side === "bottom" && (
+            <div aria-hidden className="flex shrink-0 justify-center pt-2.5">
+              <span className="h-[5px] w-10 rounded-full bg-border" />
+            </div>
+          )}
+          {children}
+        </SheetPrimitive.Content>
+      </SheetPortal>
+    );
+  },
+);
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
 const SheetHeader = ({
