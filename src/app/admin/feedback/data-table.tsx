@@ -23,7 +23,7 @@ import {
 } from "~/components/ui/table";
 import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
-import { GetPastOrderColumns } from "./columns";
+import { GetFeedbackColumns } from "./columns";
 import { useState } from "react";
 
 export function DataTable() {
@@ -32,7 +32,7 @@ export function DataTable() {
     [],
   );
   const [data] = api.feedback.getFeedbacks.useSuspenseQuery();
-  const columns = GetPastOrderColumns();
+  const columns = GetFeedbackColumns();
   const table = useReactTable({
     data,
     columns,

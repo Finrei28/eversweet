@@ -142,7 +142,7 @@ describe.each(["UTC", "America/Los_Angeles", "Pacific/Auckland"])(
     it("dates feedback by the Auckland day it was sent", () => {
       const cells = renderRow(
         lang,
-        feedbackColumns.GetPastOrderColumns,
+        feedbackColumns.GetFeedbackColumns,
         feedback,
       );
       expect(cells.createdAt).toBe("1/10/2026");
