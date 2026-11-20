@@ -28,11 +28,14 @@ import {
 } from "~/components/ui/form";
 import { Textarea } from "~/components/ui/textarea";
 import { toast } from "~/hooks/use-toast";
-import { endOfDayNZ, pickedDay } from "~/lib/aucklandDay";
+import { dayAsCalendarDate, pickedDay } from "~/lib/aucklandDay";
 import {
   collectionWarning,
+  deadlineAfterSave,
   defaultRewardExpiry,
+  expiryDayToSend,
   formatPrizeCode,
+  lastCollectionDay,
   monthLabel,
   nextCollectionChange,
 } from "~/lib/winnerRewards";
@@ -93,16 +96,21 @@ export default function RewardDialog({
     onError: (mutationError) => setError(mutationError.message),
   });
 
-  // Prefill from the winner's own month, so assigning a prize is a title and one click.
+  // Prefill from the winner's own month, so assigning a prize is a title and one click. The
+  // calendar starts on the last day to collect, not the stored instant: a staff app deadline
+  // is midnight at the start of the day after, which an Auckland browser showed as that day.
   useEffect(() => {
     if (open && winner) {
       form.reset({
         winnerId: winner.id,
         title: winner.reward?.title ?? "",
         description: winner.reward?.description ?? "",
-        expiresAt:
-          winner.reward?.expiresAt ??
-          defaultRewardExpiry(winner.month, winner.year),
+        expiresAt: dayAsCalendarDate(
+          lastCollectionDay(
+            winner.reward?.expiresAt ??
+              defaultRewardExpiry(winner.month, winner.year),
+          ),
+        ),
       });
       setError(null);
     }
@@ -117,15 +125,15 @@ export default function RewardDialog({
     prevOpen.current = open;
   }, [open, form]);
 
-  // The deadline this save would leave, read the way the submit below sends it: an untouched
-  // edit keeps the stored one, anything else ends with the Auckland day picked.
+  // The deadline this save would leave, read the way the submit below sends it: a day the
+  // stored deadline already names keeps it, anything else ends with the Auckland day picked.
   const pickedExpiry = form.watch("expiresAt");
-  const storedExpiry = winner?.reward?.expiresAt;
   const deadlineTime = !winner
     ? null
-    : storedExpiry && pickedExpiry.getTime() === storedExpiry.getTime()
-      ? storedExpiry.getTime()
-      : endOfDayNZ(pickedDay(pickedExpiry)).getTime();
+    : deadlineAfterSave(
+        pickedDay(pickedExpiry),
+        winner.reward?.expiresAt,
+      ).getTime();
 
   // Re-read the warning when its words would change - at Auckland midnight, or at the
   // deadline. Nothing else re-renders an open dialog as the clock moves, so one left open
@@ -177,13 +185,13 @@ export default function RewardDialog({
                 ...data,
                 // The day is read here, in the browser that showed the calendar; the
                 // server runs in UTC and would read an Auckland click as the day before.
-                // An edit that left the date alone sends none, so rewording a prize
-                // cannot move its deadline — the staff app's deadlines are midnight at
-                // the start of a day, and resending one would add a day to it.
-                expiresOn:
-                  !reward || expiresAt.getTime() !== reward.expiresAt.getTime()
-                    ? pickedDay(expiresAt)
-                    : undefined,
+                // A day the stored deadline already names is not sent, so rewording a
+                // prize cannot move its deadline — the staff app's deadlines are midnight
+                // at the start of a day, and resending one would add a day to it.
+                expiresOn: expiryDayToSend(
+                  pickedDay(expiresAt),
+                  reward?.expiresAt,
+                ),
               }),
             )}
             className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pb-2 pt-2"

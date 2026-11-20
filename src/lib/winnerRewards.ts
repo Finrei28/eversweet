@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 
+import { endOfDayNZ, todayNZ } from "~/lib/aucklandDay";
 import { formatShortDate } from "~/lib/formatters";
 
 /**
@@ -52,6 +53,41 @@ export const daysToCollect = (deadline: Date, now: Date = new Date()): number =>
  */
 export const lastDayToCollect = (deadline: Date): string =>
   formatShortDate(new Date(deadline.getTime() - 1));
+
+/**
+ * The same last day as `lastDayToCollect`, as the Auckland day "2026-10-31": what the reward
+ * dialog's calendar starts on. Safe anywhere, since it reads the instant in Auckland.
+ *
+ * The dialog used to start on the stored instant itself, so in an Auckland browser a staff
+ * app deadline showed the day after the last one.
+ */
+export const lastCollectionDay = (deadline: Date): string =>
+  todayNZ(new Date(deadline.getTime() - 1));
+
+/**
+ * The day a reward save sends for the deadline, or undefined to keep the stored one.
+ *
+ * A day the stored deadline already names is not sent, so rewording a prize never moves its
+ * deadline - and resending a staff app deadline, as the next morning, would end it a day
+ * later.
+ */
+export const expiryDayToSend = (
+  day: string,
+  stored: Date | undefined,
+): string | undefined =>
+  stored && day === lastCollectionDay(stored) ? undefined : day;
+
+/**
+ * The deadline a reward save leaves, for the dialog's warning: the stored one if the day is
+ * not sent, otherwise the end of the day picked, as the winners router pins it.
+ */
+export const deadlineAfterSave = (
+  day: string,
+  stored: Date | undefined,
+): Date =>
+  stored && expiryDayToSend(day, stored) === undefined
+    ? stored
+    : endOfDayNZ(day);
 
 /**
  * The assign screen's warning when a winner would have under a week to collect, or null.

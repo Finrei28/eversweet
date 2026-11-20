@@ -1,13 +1,16 @@
 import { DateTime } from "luxon";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { endOfDayNZ } from "./aucklandDay";
+import { endOfDayNZ, startOfDayNZ } from "./aucklandDay";
 import {
   collectionWarning,
   daysToCollect,
+  deadlineAfterSave,
   defaultRewardExpiry,
+  expiryDayToSend,
   finishedMonths,
   formatPrizeCode,
+  lastCollectionDay,
   monthLabel,
   nextCollectionChange,
   rewardStatus,
@@ -277,3 +280,57 @@ describe("nextCollectionChange", () => {
     expect(collectionWarning(lastDay, "en", change)).toContain("has passed");
   });
 });
+
+/**
+ * The reward dialog: the day its calendar starts on, and whether a save moves the deadline.
+ *
+ * This site stores a deadline as the last instant of the last day to collect; the staff app
+ * stores the first instant of the day after. The dialog used to start its calendar on the
+ * stored instant itself, so in an Auckland browser a staff app deadline showed the day after
+ * the last one - a day the prize cannot be collected on.
+ */
+describe.each(["UTC", "America/Los_Angeles", "Pacific/Auckland"])(
+  "the reward dialog's day with the process in %s",
+  (zone) => {
+    const original = process.env.TZ;
+    beforeAll(() => {
+      process.env.TZ = zone;
+    });
+    afterAll(() => {
+      process.env.TZ = original;
+    });
+
+    // Both mean "collect by 31 October".
+    const thisSites = endOfDayNZ("2026-10-31");
+    const staffApps = startOfDayNZ("2026-11-01");
+
+    it("starts the calendar on the last day to collect, whoever set the deadline", () => {
+      expect(lastCollectionDay(thisSites)).toBe("2026-10-31");
+      expect(lastCollectionDay(staffApps)).toBe("2026-10-31");
+    });
+
+    it("starts a new prize's calendar on the last day of the month after the win", () => {
+      expect(lastCollectionDay(defaultRewardExpiry(9, 2026))).toBe(
+        "2026-10-31",
+      );
+    });
+
+    it("keeps the stored deadline when the day is left as it is", () => {
+      expect(expiryDayToSend("2026-10-31", thisSites)).toBeUndefined();
+      expect(expiryDayToSend("2026-10-31", staffApps)).toBeUndefined();
+      expect(deadlineAfterSave("2026-10-31", staffApps)).toBe(staffApps);
+    });
+
+    it("sends a different day, ending at the end of it", () => {
+      expect(expiryDayToSend("2026-11-07", staffApps)).toBe("2026-11-07");
+      expect(inNZ(deadlineAfterSave("2026-11-07", staffApps))).toBe(
+        "2026-11-07T23:59:59.999+13:00",
+      );
+    });
+
+    it("always sends the day for a prize not yet assigned", () => {
+      expect(expiryDayToSend("2026-10-31", undefined)).toBe("2026-10-31");
+      expect(deadlineAfterSave("2026-10-31", undefined)).toEqual(thisSites);
+    });
+  },
+);
