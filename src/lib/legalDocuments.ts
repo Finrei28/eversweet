@@ -92,7 +92,7 @@ export const LEGAL_TOKENS = [
  * Written the long way round because it is rendered raw by the app, and "12-06-2026" reads
  * as 12 June to a New Zealander and 6 December to an American with equal confidence.
  */
-export const LEGAL_LAST_UPDATED = "23 October 2026"
+export const LEGAL_LAST_UPDATED = "20 November 2026"
 
 const fill = (text: string, contact: LegalContact): string =>
   text.replace(/\{\{(\w+)\}\}/g, (whole, token: string) =>
@@ -216,7 +216,7 @@ export const termAndConditions: LegalDocument = {
       content:
         "Every order placed through the Eversweet app or website is for collection from the shop or to eat in. We do not deliver.",
       list: [
-        "Delivery is available only through Uber Eats. That is a separate service, ordered in the Uber Eats app and carried out under Uber Eats' own terms, and these terms do not apply to it.",
+        "Delivery is available only through Uber Eats, DoorDash and HungryPanda. Each is a separate service, ordered in its own app or website and carried out under its own terms, and these terms do not apply to it.",
         "The last pick-up time on any day is 10 minutes before we close. The last eat-in order is 30 minutes before we close.",
         "You can choose a pick-up time up to 40 days ahead.",
         "The preparation time we quote is an estimate based on how many items you ordered. It is a guide, not a guarantee, and busy periods can run longer.",
@@ -332,7 +332,7 @@ export const termAndConditions: LegalDocument = {
         "Where the law does allow us to limit what we owe you, our total liability for anything connected with an order is limited to what you paid for that order.",
         "We are not liable for indirect or consequential loss.",
         "We are not liable for delays or failures caused by something outside our reasonable control.",
-        "We are not responsible for orders placed through Uber Eats, which are between you and Uber Eats.",
+        "We are not responsible for orders placed through Uber Eats, DoorDash or HungryPanda, which are between you and that service.",
       ],
     },
     {
