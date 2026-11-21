@@ -10,15 +10,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { api } from "~/trpc/react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { OrderType } from "~/lib/types";
 import { useLanguage } from "~/app/components/language";
 import { orderStatusLabel } from "~/lib/orderStatus";
-import { toast } from "~/hooks/use-toast";
 
 type ColumnProps = {
   setCustomerDetailsOpen: React.Dispatch<
@@ -40,31 +37,6 @@ export function GetOrderColumns({
   setOrderDetailsOpen,
 }: ColumnProps): ColumnDef<OrderType>[] {
   const { language } = useLanguage();
-  const utils = api.useUtils();
-  const { mutate: changeStatus } = api.order.changeStatus.useMutation({
-    onSuccess: async (data) => {
-      await utils.order.getAllCurrentOrders.invalidate();
-      toast({
-        variant: `${data.status === "READY" ? "picked_up" : data.status === "PENDING" ? "pending" : "default"}`,
-        title: language === "en" ? `Status Changed` : "状态已更改",
-        description:
-          language === "en"
-            ? `Order ${data.orderId} status has been changed to ${data.status}`
-            : `单号 ${data.orderId} 状态已更改${data.status === "READY" ? "已完成" : data.status === "PENDING" ? "待处理" : "已取货"}`,
-      });
-    },
-    onError: (error) => {
-      // A cancelled order refuses any change - say so rather than nothing.
-      toast({ variant: "destructive", title: error.message });
-    },
-  });
-
-  const handleOrderStatusChange = useCallback(
-    (id: string, status: string) => {
-      changeStatus({ id, status });
-    },
-    [changeStatus],
-  );
 
   /**
    * Memoised on what the column definitions actually depend on.
@@ -152,10 +124,13 @@ export function GetOrderColumns({
         ),
       },
       {
+        // Details only. Status is the kitchen tablets' to change, through the order server,
+        // which pushes the app customer, tells every tablet and marks the order accepted.
+        // This menu wrote the status straight to the database and did none of that, so an
+        // unaccepted order set to READY here, or an accepted one set back to PENDING, dropped
+        // off every tablet's lists.
         id: "actions",
         cell: ({ row }) => {
-          const statusToChange =
-            row.original.status === "PENDING" ? "READY" : "PENDING";
           const id = row.original.id;
           return (
             <DropdownMenu>
@@ -167,25 +142,6 @@ export function GetOrderColumns({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem
-                  className={
-                    row.original.status === "PENDING" ? "bg-green-500" : ""
-                  }
-                  onClick={() => handleOrderStatusChange(id, statusToChange)}
-                >
-                  {language === "zh" && statusToChange === "PENDING"
-                    ? "待处理"
-                    : language === "zh"
-                      ? "已完成"
-                      : statusToChange}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="mt-2 bg-red-500"
-                  onClick={() => handleOrderStatusChange(id, "PICKED_UP")}
-                >
-                  {language === "en" ? "Picked Up" : "已取货"}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setCustomerDetailsOpen({ id, open: true })}
                 >
@@ -202,11 +158,6 @@ export function GetOrderColumns({
         },
       },
     ],
-    [
-      language,
-      handleOrderStatusChange,
-      setCustomerDetailsOpen,
-      setOrderDetailsOpen,
-    ],
+    [language, setCustomerDetailsOpen, setOrderDetailsOpen],
   );
 }

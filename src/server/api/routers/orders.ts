@@ -1,5 +1,3 @@
-import { Prisma, Status } from "@prisma/client";
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createOrderSchema } from "~/app/components/schemas";
 import EmailOrderConfirmation from "~/email/orderConfirmation";
@@ -109,6 +107,11 @@ export const orderRouter = createTRPCRouter({
     }),
 
   // Both lists are in ~/server/adminOrders, which says what each page holds and why.
+  //
+  // Nothing here changes an order's status. The kitchen tablets do, through the order
+  // server's updateOrderStatus, which pushes the app customer, tells every tablet and marks
+  // the order accepted. A `changeStatus` here wrote the status straight to the database and
+  // did none of that, so an order moved from the admin pages could drop off every tablet.
   getAllCurrentOrders: protectedProcedure.query(({ ctx }) =>
     getCurrentOrders(ctx.db),
   ),
@@ -124,47 +127,6 @@ export const orderRouter = createTRPCRouter({
         .optional(),
     )
     .query(({ ctx, input }) => getPastOrders(ctx.db, input?.limit)),
-
-  changeStatus: protectedProcedure
-    .input(z.object({ id: z.string(), status: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      // Cancelling belongs to the order server, through the staff app: it takes back the
-      // points the order earned and returns the ones it spent, which this does not. And a
-      // cancelled order is final, so nothing here moves one on either.
-      if (input.status === "CANCELLED") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Cancel orders from the staff app",
-        });
-      }
-      const order = await ctx.db.order
-        .update({
-          where: { id: input.id, status: { not: "CANCELLED" } },
-          data: {
-            status: input.status as Status,
-            pickedUpAt: input.status === "PICKED_UP" ? new Date() : null,
-            completedAt:
-              input.status === "READY" || input.status === "PICKED_UP"
-                ? new Date()
-                : input.status === "PENDING"
-                  ? null
-                  : undefined,
-          },
-        })
-        .catch((error: unknown) => {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === "P2025"
-          ) {
-            throw new TRPCError({
-              code: "CONFLICT",
-              message: "This order has been cancelled",
-            });
-          }
-          throw error;
-        });
-      return { orderId: order.tempOrderId, status: order.status };
-    }),
 
   getCustomerDetails: protectedProcedure
     .input(z.object({ id: z.string() }))
