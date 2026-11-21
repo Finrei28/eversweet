@@ -23,6 +23,9 @@ import { GetPastOrderColumns } from "./past-orders/columns";
  *   what the kitchen tablets do through the order server: no push to the app customer, no
  *   word to the tablets, and no `notified`, so an order moved here could drop off every
  *   tablet's lists. Status is the tablets' to change; the menus open an order's details.
+ *
+ * Nothing here hydrates, so it renders with the React in node_modules, which TanStack Table
+ * and the UI components are built against, as `feedback/data-table.test.ts` does.
  */
 
 const current = vi.hoisted(() => ({
