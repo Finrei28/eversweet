@@ -11,14 +11,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { api } from "~/trpc/react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { OrderType } from "~/lib/types";
 import { useLanguage } from "~/app/components/language";
-import { toast } from "~/hooks/use-toast";
+import { orderStatusLabel } from "~/lib/orderStatus";
 
 type ColumnProps = {
   setCustomerDetailsOpen: React.Dispatch<
@@ -40,31 +38,7 @@ export function GetPastOrderColumns({
   setOrderDetailsOpen,
 }: ColumnProps): ColumnDef<OrderType>[] {
   const { language } = useLanguage();
-  const utils = api.useUtils();
-  const { mutate: changeStatus } = api.order.changeStatus.useMutation({
-    onSuccess: async (data) => {
-      await utils.order.getAllPastOrders.invalidate();
-      toast({
-        variant: `${data.status === "READY" ? "picked_up" : data.status === "PENDING" ? "pending" : "default"}`,
-        title: language === "en" ? `Status Changed` : "状态已更改",
-        description:
-          language === "en"
-            ? `Order ${data.orderId} status has been changed to ${data.status}`
-            : `单号 ${data.orderId} 状态已更改${data.status === "READY" ? "已完成" : data.status === "PENDING" ? "待处理" : "已取货"}`,
-      });
-    },
-    onError: (error) => {
-      // A cancelled order refuses any change - say so rather than nothing.
-      toast({ variant: "destructive", title: error.message });
-    },
-  });
 
-  const handlePastOrderStatusChange = useCallback(
-    (id: string, status: string) => {
-      changeStatus({ id, status });
-    },
-    [changeStatus],
-  );
   /**
    * Memoised on what the column definitions actually depend on.
    *
@@ -206,29 +180,19 @@ export function GetPastOrderColumns({
       {
         accessorKey: "completed",
         header: language === "en" ? "Status" : "状态",
-        cell: ({ row }) => {
-          const status = row.original.status;
-          const chineseStatus =
-            status === "PENDING"
-              ? "待处理"
-              : status === "READY"
-                ? "已完成"
-                : status === "CANCELLED"
-                  ? "已取消"
-                  : "已取货";
-          return (
-            <div className="font-medium">
-              {language === "en" ? status : chineseStatus}
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="font-medium">
+            {orderStatusLabel(row.original.status, language)}
+          </div>
+        ),
       },
       {
+        // Details only. Status is the kitchen tablets' to change, through the order server.
+        // "Change to PENDING" wrote it straight to the database: a collected order sent back
+        // that way kept the kitchen's accepted mark, so it appeared on no tablet list at all.
         id: "actions",
         cell: ({ row }) => {
           const id = row.original.id;
-          // Cancelled is final: the server refuses to move one, so offer nothing that would.
-          const cancelled = row.original.status === "CANCELLED";
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -241,17 +205,6 @@ export function GetPastOrderColumns({
                 <DropdownMenuLabel>
                   {language === "en" ? "Action" : "行动"}
                 </DropdownMenuLabel>
-                {!cancelled && (
-                  <>
-                    <DropdownMenuItem
-                      className="bg-orange-500"
-                      onClick={() => handlePastOrderStatusChange(id, "PENDING")}
-                    >
-                      {language === "en" ? "Change to PENDING" : "更改为待处理"}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
                 <DropdownMenuItem
                   onClick={() => setCustomerDetailsOpen({ id, open: true })}
                 >
@@ -268,11 +221,6 @@ export function GetPastOrderColumns({
         },
       },
     ],
-    [
-      language,
-      handlePastOrderStatusChange,
-      setCustomerDetailsOpen,
-      setOrderDetailsOpen,
-    ],
+    [language, setCustomerDetailsOpen, setOrderDetailsOpen],
   );
 }

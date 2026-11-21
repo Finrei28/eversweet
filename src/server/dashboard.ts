@@ -3,8 +3,8 @@ import "server-only";
 import type { PrismaClient } from "@prisma/client";
 
 import {
+  currentOrdersWhere,
   dashboardDay,
-  OPEN_ORDER_STATUSES,
   paidInCents,
   type DashboardFigures,
 } from "~/lib/dashboard";
@@ -18,6 +18,7 @@ import {
  * - **Current orders** match the kitchen app's Upcoming and Current lists together: every
  *   open order due by the end of today, overdue ones included, since an order never
  *   accepted is still the shop's to deal with. A booking for a later day is not current.
+ *   The admin Orders page lists the same orders (`currentOrdersWhere`).
  * - **Collected today** goes by `pickedUpAt`, as the kitchen app's Past Orders does, not by
  *   `completedAt`, which an order collected without being marked ready never gets.
  * - **Sales** go by `createdAt`, when the order was placed and paid for, and count what was
@@ -31,12 +32,8 @@ export const getDashboardFigures = async (
   const sums = { priceInCents: true, discountedAmountInCents: true } as const;
 
   const [currentOrders, collectedToday, today, total] = await Promise.all([
-    db.order.count({
-      where: {
-        status: { in: [...OPEN_ORDER_STATUSES] },
-        pickUpTime: { lte: end },
-      },
-    }),
+    // The same orders the admin Orders page lists.
+    db.order.count({ where: currentOrdersWhere(now) }),
     db.order.count({
       where: { status: "PICKED_UP", pickedUpAt: { gte: start, lte: end } },
     }),

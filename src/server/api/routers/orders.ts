@@ -1,5 +1,3 @@
-import { Prisma, Status } from "@prisma/client";
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createOrderSchema } from "~/app/components/schemas";
 import EmailOrderConfirmation from "~/email/orderConfirmation";
@@ -12,6 +10,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import { getDashboardFigures } from "~/server/dashboard";
+import { getCurrentOrders, getPastOrders } from "~/server/adminOrders";
 import { announceOrder } from "~/server/notifyAdmin";
 import { followUpStillDue, placeWebsiteOrder } from "~/server/websiteOrder";
 
@@ -107,46 +106,15 @@ export const orderRouter = createTRPCRouter({
       });
     }),
 
-  getAllCurrentOrders: protectedProcedure.query(async ({ ctx }) => {
-    return await ctx.db.order.findMany({
-      relationLoadStrategy: "join",
-      where: {
-        status: { in: ["PENDING", "READY"] },
-        pickUpTime: {
-          lte: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
-        },
-        OR: [
-          { completedAt: { gte: new Date(Date.now() - 12 * 60 * 60 * 1000) } }, // completed in the last 12 hours
-          { completedAt: null },
-        ],
-        // Get only PENDING or COMPLETED orders
-      },
-      orderBy: [
-        {
-          status: "asc", // PENDING first (since "PENDING" < "COMPLETED" alphabetically)
-        },
-        {
-          createdAt: "desc", // Then sort by createdAt
-        },
-      ],
-      include: {
-        desserts: {
-          include: {
-            dessert: {
-              select: {
-                id: true,
-                name: true,
-                chineseName: true,
-              },
-            },
-            customisations: {
-              include: { customisation: true },
-            },
-          },
-        },
-      },
-    });
-  }),
+  // Both lists are in ~/server/adminOrders, which says what each page holds and why.
+  //
+  // Nothing here changes an order's status. The kitchen tablets do, through the order
+  // server's updateOrderStatus, which pushes the app customer, tells every tablet and marks
+  // the order accepted. A `changeStatus` here wrote the status straight to the database and
+  // did none of that, so an order moved from the admin pages could drop off every tablet.
+  getAllCurrentOrders: protectedProcedure.query(({ ctx }) =>
+    getCurrentOrders(ctx.db),
+  ),
 
   getAllPastOrders: protectedProcedure
     .input(
@@ -158,86 +126,7 @@ export const orderRouter = createTRPCRouter({
         })
         .optional(),
     )
-    .query(async ({ ctx, input }) => {
-      return await ctx.db.order.findMany({
-        relationLoadStrategy: "join",
-        // Bounded: this used to fetch every order ever placed, with two levels
-        // of nested includes, on every visit to the page.
-        take: input?.limit ?? 500,
-        where: {
-          OR: [
-            { completedAt: { lt: new Date(Date.now() - 12 * 60 * 60 * 1000) } }, // Only include orders that have been completed more than 12 hours ago
-            { pickedUpAt: { not: null } },
-            // Cancelled from the staff app: finished with, as a collected order is.
-            { status: "CANCELLED" },
-          ],
-        },
-        // Newest first, so `take` keeps the most recent orders rather than
-        // the oldest ones - by when they were placed, which every order has.
-        // This was `completedAt`, which an order cancelled before it was ready
-        // never gets: Postgres sorts NULL first in descending order, so old
-        // cancellations sat at the top and crowded newer orders out of the
-        // window (Greptile on #37).
-        orderBy: [{ createdAt: "desc" }],
-        include: {
-          desserts: {
-            include: {
-              dessert: {
-                select: {
-                  id: true,
-                  name: true,
-                  chineseName: true,
-                },
-              },
-              customisations: {
-                include: { customisation: true },
-              },
-            },
-          },
-        },
-      });
-    }),
-
-  changeStatus: protectedProcedure
-    .input(z.object({ id: z.string(), status: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      // Cancelling belongs to the order server, through the staff app: it takes back the
-      // points the order earned and returns the ones it spent, which this does not. And a
-      // cancelled order is final, so nothing here moves one on either.
-      if (input.status === "CANCELLED") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Cancel orders from the staff app",
-        });
-      }
-      const order = await ctx.db.order
-        .update({
-          where: { id: input.id, status: { not: "CANCELLED" } },
-          data: {
-            status: input.status as Status,
-            pickedUpAt: input.status === "PICKED_UP" ? new Date() : null,
-            completedAt:
-              input.status === "READY" || input.status === "PICKED_UP"
-                ? new Date()
-                : input.status === "PENDING"
-                  ? null
-                  : undefined,
-          },
-        })
-        .catch((error: unknown) => {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === "P2025"
-          ) {
-            throw new TRPCError({
-              code: "CONFLICT",
-              message: "This order has been cancelled",
-            });
-          }
-          throw error;
-        });
-      return { orderId: order.tempOrderId, status: order.status };
-    }),
+    .query(({ ctx, input }) => getPastOrders(ctx.db, input?.limit)),
 
   getCustomerDetails: protectedProcedure
     .input(z.object({ id: z.string() }))

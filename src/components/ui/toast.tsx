@@ -29,14 +29,11 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        // Each on its own soft ground from the tokens, with the ink text that
-        // reads on all three. They were stock green, orange and red; admin's order
-        // toasts pick one by status.
+        // On its own soft ground from the tokens, with the ink text that reads on it.
+        // It was stock green.
         default: "border-success/30 bg-success-soft text-foreground",
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
-        pending: "border-warning/30 bg-warning-soft text-foreground",
-        picked_up: "border-destructive/30 bg-destructive-soft text-foreground",
       },
     },
     defaultVariants: {

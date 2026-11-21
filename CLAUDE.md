@@ -335,6 +335,21 @@ calendar's `Date` itself, which is
 correct on a machine in Auckland and a day early on Vercel, which runs in UTC. An edit that
 leaves the date alone sends no expiry, and the order server keeps the deadline it has.
 
+**`/admin/orders` and `/admin/past-orders` only read; the kitchen tablets own an order's
+status.** The tablets move an order through PENDING, ACCEPTED, MAKING, READY and PICKED_UP
+by calling the order server's `updateOrderStatus`, which also pushes the app customer, tells
+every tablet over the socket and sets `notified`. The tablets' Upcoming list wants PENDING
+and `notified` false, their Current list `notified` true. Until 2026-11-21 these pages had
+a `changeStatus` that wrote the status straight to the database, so an unaccepted order set
+to READY here, or an accepted one sent back to PENDING, was on no tablet list at all. The
+owner chose to leave status to the tablets rather than route it through the order server.
+
+- **Orders** lists the open orders due by the end of the Auckland day, overdue ones included:
+  `currentOrdersWhere` in `~/lib/dashboard`, the same filter the dashboard counts.
+- **Past Orders** lists every order that is not open, collected or cancelled
+  (`~/server/adminOrders`). So every order due by tonight is on exactly one of the two, and a
+  booking for a later day is on neither until its day.
+
 Two outbound channels, both to the order server's `/api/internal` with an `x-service-secret`
 header (`ADMIN_SERVER_URL` + `INTERNAL_SERVICE_SECRET`, both optional in `src/env.js`), with
 opposite contracts:
