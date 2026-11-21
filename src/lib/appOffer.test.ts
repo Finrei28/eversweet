@@ -163,6 +163,68 @@ describe("waiting for a quiet moment", () => {
   });
 });
 
+/**
+ * The browser holds the offer while it waits, and the wait has no limit: a tab in the
+ * background, or a dialog left open, holds it back for as long as that lasts. By then the
+ * offer may have ended, or been paused or edited on /admin/offers.
+ */
+describe("never showing an offer that has ended", () => {
+  const offer = {
+    id: "sago-offer",
+    discountPercent: 50,
+    audience: "NEW_USERS" as const,
+    limit: 1,
+    renewsWeekly: false,
+    endsAt: "2026-11-30T10:59:59.999Z",
+    imageUrl: null,
+  };
+  const NOW = new Date("2026-11-21T03:00:00.000Z");
+
+  it("has ended once its end has passed, and not at the instant itself", () => {
+    expect(mod.appOfferEnded(offer, new Date("2026-11-30T11:00:00.000Z"))).toBe(
+      true,
+    );
+    expect(mod.appOfferEnded(offer, new Date(offer.endsAt))).toBe(false);
+    expect(mod.appOfferEnded({ endsAt: null }, NOW)).toBe(false);
+  });
+
+  it("knows how long it has left, to close itself when it ends", () => {
+    const tenMinutesLeft = { endsAt: "2026-11-21T03:10:00.000Z" };
+    expect(mod.msUntilAppOfferEnds(tenMinutesLeft, NOW)).toBe(600_001);
+    expect(mod.msUntilAppOfferEnds({ endsAt: null }, NOW)).toBeNull();
+    // Further off than a browser timer can wait, which is the same as no end today.
+    expect(
+      mod.msUntilAppOfferEnds({ endsAt: "2027-06-01T00:00:00.000Z" }, NOW),
+    ).toBeNull();
+  });
+
+  // Asked again just before it opens: the server's answer is what opens, with its terms.
+  it("opens with what the server says now", () => {
+    const edited = { ...offer, discountPercent: 30 };
+    expect(mod.appOfferToOpen({ data: edited, isError: false }, NOW)).toEqual(
+      edited,
+    );
+  });
+
+  it("does not open once the server says it is over", () => {
+    expect(mod.appOfferToOpen({ data: null, isError: false }, NOW)).toBeNull();
+  });
+
+  // React Query keeps the last answer when a refetch fails, so the data is still there.
+  it("does not open on the old answer when asking again failed", () => {
+    expect(mod.appOfferToOpen({ data: offer, isError: true }, NOW)).toBeNull();
+  });
+
+  it("does not open past the end, whatever it was told", () => {
+    expect(
+      mod.appOfferToOpen(
+        { data: offer, isError: false },
+        new Date("2026-12-01T00:00:00.000Z"),
+      ),
+    ).toBeNull();
+  });
+});
+
 describe("what the pop-up says", () => {
   // The offer as it stands in production (2026-11-21): new users, one bowl, 50%.
   const sago = {

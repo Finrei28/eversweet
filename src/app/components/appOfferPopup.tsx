@@ -21,7 +21,9 @@ import {
   APP_OFFER_TICK_MS,
   appOfferAllowedOn,
   appOfferCopy,
+  appOfferToOpen,
   hasSeenAppOffer,
+  msUntilAppOfferEnds,
   quietAfterTick,
   rememberAppOfferSeen,
   sessionStore,
@@ -43,6 +45,9 @@ import { api } from "~/trpc/react";
  * - **Three quiet seconds first.** The countdown starts again whenever another dialog is
  *   open - the cart, the customise sheet, the closure notice, the phone's menu - or the tab
  *   is in the background, so it never stacks on another dialog or opens unseen.
+ * - **Asked again before it opens.** That wait has no limit, so the offer it started with
+ *   may since have ended, or been paused or edited; it opens only on the server's answer at
+ *   that moment, and nothing if the asking fails. Left open, it closes when the offer ends.
  */
 export function AppOfferPopup() {
   const pathname = usePathname();
@@ -57,7 +62,7 @@ export function AppOfferPopup() {
   }, []);
 
   // Asked only by a visitor who has not seen it this session, on a page it may open on.
-  const { data: offer } = api.store.getAppOffer.useQuery(undefined, {
+  const { data: offer, refetch } = api.store.getAppOffer.useQuery(undefined, {
     enabled: unseen && allowed,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
@@ -68,6 +73,7 @@ export function AppOfferPopup() {
 
     // Restarts on every page: three quiet seconds on the page it opens over.
     let quietMs = 0;
+    let cancelled = false;
     const timer = setInterval(() => {
       quietMs = quietAfterTick(
         quietMs,
@@ -77,12 +83,30 @@ export function AppOfferPopup() {
       if (quietMs < APP_OFFER_DELAY_MS) return;
 
       clearInterval(timer);
-      rememberAppOfferSeen(sessionStore(window), offer.id);
-      setUnseen(false);
-      setOpen(true);
+      // An edited offer arrives as new data, which restarts this effect and the count, so
+      // the pop-up opens on the next pass with the new terms.
+      void refetch().then((answer) => {
+        const fresh = appOfferToOpen(answer, new Date());
+        if (cancelled || !fresh) return;
+        rememberAppOfferSeen(sessionStore(window), fresh.id);
+        setUnseen(false);
+        setOpen(true);
+      });
     }, APP_OFFER_TICK_MS);
-    return () => clearInterval(timer);
-  }, [offer, unseen, allowed, pathname]);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [offer, unseen, allowed, pathname, refetch]);
+
+  // An offer that ends while the pop-up is up takes it down.
+  useEffect(() => {
+    if (!open || !offer) return;
+    const ms = msUntilAppOfferEnds(offer, new Date());
+    if (ms === null) return;
+    const timer = setTimeout(() => setOpen(false), ms);
+    return () => clearTimeout(timer);
+  }, [open, offer]);
 
   // The browser's Back button can reach checkout with it up.
   useEffect(() => {

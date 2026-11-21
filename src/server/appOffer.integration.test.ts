@@ -63,6 +63,7 @@ describeIfDb("getAppOffer", () => {
       audience: "NEW_USERS",
       limit: 1,
       renewsWeekly: false,
+      endsAt: null,
       imageUrl: mango.imagePath,
     });
   });

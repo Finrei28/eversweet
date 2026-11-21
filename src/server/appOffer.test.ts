@@ -58,8 +58,18 @@ describe("the offer the pop-up advertises", () => {
       audience: "NEW_USERS",
       limit: 1,
       renewsWeekly: false,
+      endsAt: null,
       imageUrl: SAGO_BOWLS[2]!.imagePath,
     });
+  });
+
+  // The browser holds the offer while it waits for a quiet moment, which can be hours in a
+  // tab left open; it needs the end to refuse to open, or to close, once that has passed.
+  it("tells the browser when the offer ends", () => {
+    expect(
+      pickAppOffer([candidate({ endsAt: "2026-11-30T10:59:59.999Z" })], NOW)
+        ?.endsAt,
+    ).toBe("2026-11-30T10:59:59.999Z");
   });
 
   it("is nothing when there is no offer", () => {

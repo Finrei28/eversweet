@@ -1023,6 +1023,9 @@ visitors to the customer app for its sago offer. The rules are `~/lib/appOffer`;
   (session storage, wrapped in try/catch, with a page-load memory when storage is refused);
   **after three quiet seconds**: the count restarts while any Radix dialog or sheet is open or
   the tab is hidden, so it never stacks on the closure notice, the cart or the customise sheet.
+- **It asks the server again before it opens**, because that wait has no limit and the offer
+  may have ended, been paused or been edited meanwhile; it opens only on that answer, never on
+  a failed one (React Query keeps the old data then). Left open, it closes at the offer's end.
 - **Rendered closed on the server and through hydration**, and opened from a timer, so the home
   page's hero still paints in the first frame and stays the page's largest paint.
 - **Screenshots of it need the offer in `eversweet_dev`**: insert one with `notifiedAt` set, so a

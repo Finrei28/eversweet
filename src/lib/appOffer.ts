@@ -21,6 +21,8 @@ export type AppOffer = {
   limit: number;
   /** `limit` is an allowance per week rather than per run. */
   renewsWeekly: boolean;
+  /** The offer's last instant (ISO), inclusive; null runs until switched off. */
+  endsAt: string | null;
   imageUrl: string | null;
 };
 
@@ -116,6 +118,46 @@ const OPEN_DIALOG =
 export const anotherDialogOpen = (root: {
   querySelector: (selector: string) => unknown;
 }): boolean => root.querySelector(OPEN_DIALOG) != null;
+
+/**
+ * Past the offer's last instant. The server decides whether the offer runs, but the browser
+ * holds its answer while it waits for a quiet moment, and that wait has no limit (a tab in
+ * the background, a dialog left open), so the browser checks the end itself as well.
+ */
+export const appOfferEnded = (
+  offer: Pick<AppOffer, "endsAt">,
+  now: Date,
+): boolean => offer.endsAt !== null && new Date(offer.endsAt) < now;
+
+/** The longest a browser timer can wait (2^31 - 1 ms, about 24.8 days). */
+const LONGEST_TIMER_MS = 2 ** 31 - 1;
+
+/**
+ * How long until the offer has ended, for closing a pop-up left open across it; null when
+ * it has no end, or one further off than a timer can wait.
+ */
+export const msUntilAppOfferEnds = (
+  offer: Pick<AppOffer, "endsAt">,
+  now: Date,
+): number | null => {
+  if (offer.endsAt === null) return null;
+  const ms = new Date(offer.endsAt).getTime() + 1 - now.getTime();
+  return ms > LONGEST_TIMER_MS ? null : Math.max(0, ms);
+};
+
+/**
+ * What opens, from the server's answer to asking again once the quiet moment has come: its
+ * offer, with its current terms, if it still has one that has not ended. Nothing when the
+ * asking failed, even though React Query keeps the previous answer as `data` then, because
+ * that is exactly the stale offer the question was asked to rule out.
+ */
+export const appOfferToOpen = (
+  answer: { data?: AppOffer | null; isError: boolean },
+  now: Date,
+): AppOffer | null =>
+  answer.isError || !answer.data || appOfferEnded(answer.data, now)
+    ? null
+    : answer.data;
 
 export type AppOfferCopy = {
   eyebrow: string;

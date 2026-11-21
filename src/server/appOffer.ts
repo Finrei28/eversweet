@@ -112,6 +112,7 @@ export const pickAppOffer = (
         audience: offer.audience,
         limit: offer.limit,
         renewsWeekly: offer.renewsWeekly,
+        endsAt: offer.endsAt,
         imageUrl: picture,
       } satisfies AppOffer,
     ];
