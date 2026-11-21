@@ -11,6 +11,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+import { getDashboardFigures } from "~/server/dashboard";
 import { announceOrder } from "~/server/notifyAdmin";
 import { followUpStillDue, placeWebsiteOrder } from "~/server/websiteOrder";
 
@@ -288,63 +289,14 @@ export const orderRouter = createTRPCRouter({
       });
     }),
 
-  getCurrentOrders: protectedProcedure.query(async ({ ctx }) => {
-    const Currentorders = await ctx.db.order.count({
-      where: {
-        status: "PENDING",
-      },
-    });
-    return Currentorders;
-  }),
-
-  // None of these count a cancelled order: it is not a sale, whatever it was paid.
-  getCompletedOrders: protectedProcedure.query(async ({ ctx }) => {
-    const CompletedOrders = await ctx.db.order.count({
-      where: {
-        completedAt: {
-          not: null,
-        },
-        status: { not: "CANCELLED" },
-      },
-    });
-    return CompletedOrders;
-  }),
-
-  getSalesToday: protectedProcedure.query(async ({ ctx }) => {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0); // Set to 00:00:00 of today
-
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999); // Set to 23:59:59 of today
-
-    const salesToday = await ctx.db.order.aggregate({
-      _sum: { priceInCents: true },
-      _count: true,
-      where: {
-        createdAt: {
-          gte: startOfToday, // Orders from today 00:00:00 onwards
-          lt: endOfToday, // Orders before tomorrow 00:00:00
-        },
-        status: { not: "CANCELLED" },
-      },
-    });
-
-    return {
-      amount: (salesToday._sum.priceInCents || 0) / 100,
-      numberOfSales: salesToday._count,
-    };
-  }),
-
-  getTotalSales: protectedProcedure.query(async ({ ctx }) => {
-    const totalSales = await ctx.db.order.aggregate({
-      _sum: { priceInCents: true },
-      _count: true,
-      where: { status: { not: "CANCELLED" } },
-    });
-
-    return {
-      totalAmount: (totalSales._sum.priceInCents || 0) / 100,
-      totalNumberOfSales: totalSales._count,
-    };
-  }),
+  /**
+   * The admin dashboard's four figures, on the Auckland day, at what customers paid. One
+   * call rather than the four it replaced, so the cards always agree on what "now" is. See
+   * ~/server/dashboard.
+   *
+   * `protectedProcedure` is the admin gate: only an ADMIN can sign in on this website.
+   */
+  getDashboardFigures: protectedProcedure.query(({ ctx }) =>
+    getDashboardFigures(ctx.db),
+  ),
 });

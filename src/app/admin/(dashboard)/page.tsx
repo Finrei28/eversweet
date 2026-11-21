@@ -13,23 +13,16 @@ export default async function AdminDashboard() {
   }
 
   /**
-   * Awaited rather than `void`-ed, and in parallel.
+   * Awaited rather than `void`-ed.
    *
    * A pending dehydrated promise makes the Suspense boundary suspend on the server, so
    * its content streams in after the shell - and streamed-in content gets `useId` tree
    * ids that do not match the ones hydration computes, which broke every Radix id
    * inside. See the long note in src/app/admin/past-orders/page.tsx.
    *
-   * Promise.all rather than separate awaits: these are independent queries and each is
-   * a round trip to a remote database, so awaiting them in sequence would stack the
-   * latency into the shell.
+   * One query for all four cards; its four database reads run in parallel on the server.
    */
-  await Promise.all([
-    api.order.getCurrentOrders.prefetch(),
-    api.order.getCompletedOrders.prefetch(),
-    api.order.getSalesToday.prefetch(),
-    api.order.getTotalSales.prefetch(),
-  ]);
+  await api.order.getDashboardFigures.prefetch();
 
   return (
     <HydrateClient>
