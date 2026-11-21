@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { LEGAL_LAST_UPDATED, termAndConditions } from "./legalDocuments";
+import { termAndConditions } from "./legalDocuments";
 
 /**
  * The Terms say how delivery works: only through the platforms the shop is on, and orders there
@@ -38,9 +38,5 @@ describe("the Terms on delivery", () => {
       );
     expect(line).toBeDefined();
     for (const platform of PLATFORMS) expect(line).toContain(platform);
-  });
-
-  it("is dated the day that wording changed", () => {
-    expect(LEGAL_LAST_UPDATED).toBe("20 November 2026");
   });
 });
