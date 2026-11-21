@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { pickedDay, todayNZ } from "~/lib/aucklandDay";
+import { STAFF_STATUSES } from "~/lib/orderStatus";
 import {
   DISCOUNT_MAX_PERCENT,
   DISCOUNT_MIN_PERCENT,
@@ -289,6 +290,23 @@ export const settleMonthSchema = z.object({
   month: z.number().int().min(1).max(12),
   year: z.number().int().min(2000),
 });
+
+/**
+ * An admin moving an order's status from the Orders or Past Orders table, through the order
+ * server. `expectedStatus` is the status the table showed, which may be minutes old: the
+ * order server moves the order only if it is still there, so a tablet's move since is never
+ * undone. Neither may be PENDING or CANCELLED - see `STAFF_STATUSES`.
+ */
+export const changeOrderStatusSchema = z
+  .object({
+    orderId: z.string().min(1),
+    newStatus: z.enum(STAFF_STATUSES),
+    expectedStatus: z.enum(STAFF_STATUSES),
+  })
+  .refine((change) => change.newStatus !== change.expectedStatus, {
+    message: "The order already has that status",
+    path: ["newStatus"],
+  });
 
 /**
  * The shop settings that moved out of the order server's code and into the database.

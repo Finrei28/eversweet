@@ -17,6 +17,10 @@ import { useMemo } from "react";
 import { OrderType } from "~/lib/types";
 import { useLanguage } from "~/app/components/language";
 import { orderStatusLabel } from "~/lib/orderStatus";
+import {
+  OrderStatusMenuItems,
+  useChangeOrderStatus,
+} from "~/app/admin/_components/orderStatusMenu";
 
 type ColumnProps = {
   setCustomerDetailsOpen: React.Dispatch<
@@ -38,6 +42,7 @@ export function GetOrderColumns({
   setOrderDetailsOpen,
 }: ColumnProps): ColumnDef<OrderType>[] {
   const { language } = useLanguage();
+  const changeStatus = useChangeOrderStatus();
 
   /**
    * Memoised on what the column definitions actually depend on.
@@ -128,11 +133,10 @@ export function GetOrderColumns({
         ),
       },
       {
-        // Details only. Status is the kitchen tablets' to change, through the order server,
-        // which pushes the app customer, tells every tablet and marks the order accepted.
-        // This menu wrote the status straight to the database and did none of that, so an
-        // unaccepted order set to READY here, or an accepted one set back to PENDING, dropped
-        // off every tablet's lists.
+        // An order's details, then its status, for staff who forgot to move it on the tablet:
+        // through the order server, so every tablet re-reads its lists. This menu once wrote
+        // the status straight to the database, and an order moved that way could appear on no
+        // tablet list at all. See `OrderStatusMenuItems`.
         id: "actions",
         cell: ({ row }) => {
           const id = row.original.id;
@@ -156,12 +160,16 @@ export function GetOrderColumns({
                 >
                   {language === "en" ? "View order details" : "查看订单详情"}
                 </DropdownMenuItem>
+                <OrderStatusMenuItems
+                  order={row.original}
+                  changeStatus={changeStatus}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [language, setCustomerDetailsOpen, setOrderDetailsOpen],
+    [language, changeStatus, setCustomerDetailsOpen, setOrderDetailsOpen],
   );
 }

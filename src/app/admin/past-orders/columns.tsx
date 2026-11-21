@@ -17,6 +17,10 @@ import { useMemo } from "react";
 import { OrderType } from "~/lib/types";
 import { useLanguage } from "~/app/components/language";
 import { orderStatusLabel } from "~/lib/orderStatus";
+import {
+  OrderStatusMenuItems,
+  useChangeOrderStatus,
+} from "~/app/admin/_components/orderStatusMenu";
 
 type ColumnProps = {
   setCustomerDetailsOpen: React.Dispatch<
@@ -38,6 +42,7 @@ export function GetPastOrderColumns({
   setOrderDetailsOpen,
 }: ColumnProps): ColumnDef<OrderType>[] {
   const { language } = useLanguage();
+  const changeStatus = useChangeOrderStatus();
 
   /**
    * Memoised on what the column definitions actually depend on.
@@ -187,9 +192,10 @@ export function GetPastOrderColumns({
         ),
       },
       {
-        // Details only. Status is the kitchen tablets' to change, through the order server.
-        // "Change to PENDING" wrote it straight to the database: a collected order sent back
-        // that way kept the kitchen's accepted mark, so it appeared on no tablet list at all.
+        // An order's details, then its status, for staff who forgot to move it on the tablet:
+        // through the order server, so every tablet re-reads its lists. This menu once wrote
+        // the status straight to the database, and an order moved that way could appear on no
+        // tablet list at all. See `OrderStatusMenuItems`.
         id: "actions",
         cell: ({ row }) => {
           const id = row.original.id;
@@ -215,12 +221,16 @@ export function GetPastOrderColumns({
                 >
                   {language === "en" ? "View order details" : "查看订单详情"}
                 </DropdownMenuItem>
+                <OrderStatusMenuItems
+                  order={row.original}
+                  changeStatus={changeStatus}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [language, setCustomerDetailsOpen, setOrderDetailsOpen],
+    [language, changeStatus, setCustomerDetailsOpen, setOrderDetailsOpen],
   );
 }
