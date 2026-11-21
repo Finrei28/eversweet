@@ -1089,6 +1089,16 @@ visitors to the customer app for its sago offer. The rules are `~/lib/appOffer`;
   on unrelated state. Archive (`archivedAt`) instead.
 - **`OfferRedemption.status` has no `@default`** — any `updateMany` touching those rows must
   set it explicitly.
+- **What a customer paid for an order is `priceInCents - discountedAmountInCents`, never
+  `priceInCents` alone.** The two channels fill the columns differently:
+  - An app order stores its price before discounts and the discount beside it (member price,
+    promotion, offer, points), and charges the difference (`calculateCartPrice` in the order
+    server).
+  - A website order stores what was paid and leaves the discount at 0.
+
+  So the difference is right for both, and summing `priceInCents` counts app discounts as
+  sales. The admin dashboard did until 2026-11-21. It now goes through `paidInCents` in
+  `~/lib/dashboard`, and counts "today" as the Auckland day (`dashboardDay`).
 - **A redemption row is not a redemption.** There is one per customer per offer, and it
   holds a `used` counter. The order server takes a use when the offer goes into the cart,
   and every way of handing it back (out of the cart, the cart swept, the order cancelled)
