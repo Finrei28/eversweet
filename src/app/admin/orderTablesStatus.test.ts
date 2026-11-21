@@ -19,10 +19,11 @@ import { GetPastOrderColumns } from "./past-orders/columns";
  *
  * - The Chinese column called an order a tablet had accepted, or was making, 已取货 (picked
  *   up): it knew four statuses of six.
- * - The menus moved an order's status by writing it straight to the database. That skipped
- *   what the kitchen tablets do through the order server: no push to the app customer, no
- *   word to the tablets, and no `notified`, so an order moved here could drop off every
- *   tablet's lists. Status is the tablets' to change; the menus open an order's details.
+ * - The menus once moved an order's status by writing it straight to the database, so the
+ *   tablets never heard and an order moved here could drop off every tablet's lists. Since
+ *   2026-11-21 they move it through the order server, for staff who forgot to on the tablet:
+ *   the tablet's Update Status set, on an order a tablet has accepted, from the status the
+ *   table shows.
  *
  * Nothing here hydrates, so it renders with the React in node_modules, which TanStack Table
  * and the UI components are built against, as `feedback/data-table.test.ts` does.
@@ -30,7 +31,9 @@ import { GetPastOrderColumns } from "./past-orders/columns";
 
 const current = vi.hoisted(() => ({
   language: "en" as "en" | "zh",
-  mutations: 0,
+  mutate: vi.fn(),
+  /** Each menu item's click, in the order the items rendered. */
+  clicks: [] as (() => void)[],
 }));
 
 vi.mock("~/app/components/language", () => ({
@@ -41,13 +44,10 @@ vi.mock("~/app/components/language", () => ({
 }));
 vi.mock("~/trpc/react", () => ({
   api: {
-    useUtils: () => ({}),
+    useUtils: () => ({ order: { invalidate: async () => undefined } }),
     order: {
       changeStatus: {
-        useMutation: () => {
-          current.mutations++;
-          return { mutate: () => undefined };
-        },
+        useMutation: () => ({ mutate: current.mutate }),
       },
     },
   },
@@ -65,7 +65,16 @@ vi.mock("~/components/ui/dropdown-menu", () => {
     DropdownMenuContent: flat("div"),
     DropdownMenuLabel: flat("div"),
     DropdownMenuSeparator: flat("hr"),
-    DropdownMenuItem: flat("div", "data-menu-item"),
+    DropdownMenuItem: ({
+      children,
+      onClick,
+    }: {
+      children?: ReactNode;
+      onClick?: () => void;
+    }) => {
+      current.clicks.push(onClick ?? (() => undefined));
+      return h("div", { "data-menu-item": "" }, children);
+    },
   };
 });
 
@@ -172,29 +181,86 @@ describe.each(Object.entries(tables))("the %s table", (_, useColumns) => {
     expect(status(order(value))).toBe(value);
   });
 
-  const menu = (row: OrderType) =>
-    [
+  const menu = (row: OrderType) => {
+    current.clicks = [];
+    return [
       ...(renderRow(useColumns, row).actions ?? "").matchAll(
         /<div data-menu-item="">(.*?)<\/div>/g,
       ),
     ].map(([, item]) => text(item!));
+  };
 
   describe.each([
-    ["en", ["View customer details", "View order details"]],
-    ["zh", ["查看顾客详情", "查看订单详情"]],
-  ] as const)("in %s", (language, details) => {
-    it.each(chinese.map(([value]) => value))(
-      "offers a %s order's details and no status change",
+    [
+      "en",
+      ["View customer details", "View order details"],
+      {
+        ACCEPTED: "ACCEPTED",
+        MAKING: "MAKING",
+        READY: "READY",
+        PICKED_UP: "PICKED_UP",
+      },
+    ],
+    [
+      "zh",
+      ["查看顾客详情", "查看订单详情"],
+      {
+        ACCEPTED: "已接单",
+        MAKING: "制作中",
+        READY: "已完成",
+        PICKED_UP: "已取货",
+      },
+    ],
+  ] as const)("in %s", (language, details, name) => {
+    // Accepting prints the receipt on the tablet that accepts, and cancelling is final.
+    it.each(["PENDING", "CANCELLED"] as const)(
+      "offers a %s order its details and no status change",
       (value) => {
         current.language = language;
         expect(menu(order(value))).toEqual(details);
       },
     );
+
+    it.each([
+      ["ACCEPTED", ["MAKING", "READY", "PICKED_UP"]],
+      ["MAKING", ["ACCEPTED", "READY", "PICKED_UP"]],
+      ["READY", ["ACCEPTED", "MAKING", "PICKED_UP"]],
+      ["PICKED_UP", ["ACCEPTED", "MAKING", "READY"]],
+    ] as const)(
+      "offers a %s order its details, then the tablet's other statuses",
+      (value, choices) => {
+        current.language = language;
+        expect(menu(order(value))).toEqual([
+          ...details,
+          ...choices.map((choice) => name[choice]),
+        ]);
+      },
+    );
   });
 
-  it("wires up no way to change a status", () => {
-    current.mutations = 0;
-    renderRow(useColumns, order("PENDING"));
-    expect(current.mutations).toBe(0);
+  it("moves an order from the status the table shows", () => {
+    current.language = "en";
+    current.mutate.mockClear();
+
+    const items = menu(order("READY"));
+    current.clicks[items.indexOf("PICKED_UP")]!();
+
+    expect(current.mutate).toHaveBeenCalledTimes(1);
+    expect(current.mutate.mock.calls[0]![0]).toEqual({
+      orderId: "order-1",
+      newStatus: "PICKED_UP",
+      expectedStatus: "READY",
+    });
+  });
+
+  it("changes nothing when an order's details are opened", () => {
+    current.language = "en";
+    current.mutate.mockClear();
+
+    const items = menu(order("READY"));
+    current.clicks[items.indexOf("View order details")]!();
+    current.clicks[items.indexOf("View customer details")]!();
+
+    expect(current.mutate).not.toHaveBeenCalled();
   });
 });
