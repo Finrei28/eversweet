@@ -309,10 +309,11 @@ Reference: `prisma/migrations/20260908000000_offer_audience_and_redemption_rekey
   `LoyaltyWinner`, `WinnerReward` and the crons (`settleMonthlyWinners`,
   `renewWeeklyOffers`).
 
-So several models in `schema.prisma` are **authored here but never read here** — `Offer` is
-the clearest case. `/admin/offers` is an authoring and reporting surface only; nothing in this
-repo prices against an offer. Before changing the meaning of a column, grep the other repo
-for it.
+So several models in `schema.prisma` are **authored here but served by the order server** —
+`Offer` is the clearest case. `/admin/offers` is an authoring and reporting surface; nothing in
+this repo prices against an offer. Its one read outside admin is the app-offer pop-up (see
+**The app-offer pop-up**), which only advertises the running sago offer. Before changing the
+meaning of a column, grep the other repo for it, and `src/server/appOffer.ts` here.
 
 **`/admin/winners` reads the database but writes through the order server.** Assigning a
 prize and settling a missed month both call the order server rather than touching
@@ -1001,6 +1002,31 @@ changing how a customer page looks. The app's `eversweet-design` skill
 - **Screenshots of the notice need days off in `eversweet_dev`**, and every other page needs
   none, or the notice covers it. Days off are cached for five minutes, so after adding or
   removing rows by hand, wait for `store.getDaysOff` to change before shooting.
+
+### The app-offer pop-up
+
+`AppOfferPopup` (`src/app/components/appOfferPopup.tsx`, mounted in the customer layout) sends
+visitors to the customer app for its sago offer. The rules are `~/lib/appOffer`; the offer is
+`~/server/appOffer`.
+
+- **It advertises an app offer and must never suggest the website applies it.** Carts here are
+  priced with `Promo`; nothing prices against an `Offer`. It says "App-only offer" and "Not
+  available on this website" in both languages.
+- **The offer is read live** - the website's first read of `Offer`. It shows only while a
+  running, non-archived, percentage offer with no requirements sits on a category named like
+  "sago" and still covers a bowl on the menu. The words (percentage, audience, limit, weekly)
+  follow the row, so an edit in `/admin/offers` cannot leave it promising last month's terms.
+  The bowls stay "selected", unnamed (the owner's choice, 2026-11-21).
+- **Cached five minutes under `app-offer`, which every offer write revalidates.** A row written
+  by hand in `eversweet_dev` stays unseen until the five minutes pass or an offer is saved.
+- **Every customer page but checkout, an order and Delete account; once per browser session**
+  (session storage, wrapped in try/catch, with a page-load memory when storage is refused);
+  **after three quiet seconds**: the count restarts while any Radix dialog or sheet is open or
+  the tab is hidden, so it never stacks on the closure notice, the cart or the customise sheet.
+- **Rendered closed on the server and through hydration**, and opened from a timer, so the home
+  page's hero still paints in the first frame and stays the page's largest paint.
+- **Screenshots of it need the offer in `eversweet_dev`**: insert one with `notifiedAt` set, so a
+  local order server never announces it, and delete it afterwards.
 
 ## Sharp edges
 
