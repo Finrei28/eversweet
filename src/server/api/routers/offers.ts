@@ -1,5 +1,6 @@
 import { type Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
 import { createOfferSchema, updateOfferSchema } from "~/app/components/schemas";
@@ -8,12 +9,18 @@ import { formatCurrency } from "~/lib/formatters";
 import { canActivate, hasEnded } from "~/lib/offers";
 import { cheapestDessert, isUnderListPrice } from "~/lib/offerPricing";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { APP_OFFER_TAG } from "~/server/appOffer";
 
 /**
  * Authoring surface for offers. Nothing in this repo *serves* them - offers are a
  * customer mobile app feature, fetched from the order server, and the website's own
- * checkout discounts with Promo instead. So there is no cache to revalidate here and no
- * pricing path to keep in step; these procedures write rows the order server reads.
+ * checkout discounts with Promo instead. So there is no pricing path to keep in step;
+ * these procedures write rows the order server reads.
+ *
+ * The one cache: the website's app-offer pop-up reads the live sago offer
+ * (`~/server/appOffer`) to advertise it, never to price with it. Every write here
+ * revalidates its tag once it has committed, so a paused, archived or edited offer stops
+ * being advertised at once rather than after the cache's five minutes.
  *
  * protectedProcedure is the admin gate. Only ADMIN users can authenticate on this site
  * at all - src/server/auth/config.ts `authorize()` returns null for everyone else - so
@@ -278,6 +285,7 @@ export const offerRouter = createTRPCRouter({
         select: { id: true, name: true },
       });
 
+      revalidateTag(APP_OFFER_TAG);
       return offer;
     }),
 
@@ -293,7 +301,7 @@ export const offerRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const data = input.offer;
 
-      return ctx.db.$transaction(async (tx) => {
+      const saved = await ctx.db.$transaction(async (tx) => {
         const existing = await tx.offer.findUnique({
           where: { id: data.id },
           select: {
@@ -383,6 +391,9 @@ export const offerRouter = createTRPCRouter({
 
         return offer;
       });
+
+      revalidateTag(APP_OFFER_TAG);
+      return saved;
     }),
 
   /**
@@ -429,6 +440,7 @@ export const offerRouter = createTRPCRouter({
         select: { id: true },
       });
 
+      revalidateTag(APP_OFFER_TAG);
       return { name: before.name };
     }),
 
@@ -449,7 +461,7 @@ export const offerRouter = createTRPCRouter({
   closeRun: protectedProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.$transaction(async (tx) => {
+      const closed = await ctx.db.$transaction(async (tx) => {
         const before = await tx.offer.findUnique({
           where: { id: input.id },
           select: { id: true, name: true, endsAt: true },
@@ -495,6 +507,9 @@ export const offerRouter = createTRPCRouter({
 
         return { name: before.name, redemptionsCleared: count };
       });
+
+      revalidateTag(APP_OFFER_TAG);
+      return closed;
     }),
 
   /**
@@ -515,6 +530,7 @@ export const offerRouter = createTRPCRouter({
         select: { id: true, name: true },
       });
 
+      revalidateTag(APP_OFFER_TAG);
       return offer;
     }),
 });

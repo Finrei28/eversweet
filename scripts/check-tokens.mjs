@@ -81,6 +81,8 @@ const REDESIGNED = [
   "src/app/components/notFoundMessage.tsx",
   "src/app/components/daysOffNotice.tsx",
   "src/app/components/customLoading.tsx",
+  // Since the release: the app offer's pop-up.
+  "src/app/components/appOfferPopup.tsx",
 ];
 
 const PALETTE =

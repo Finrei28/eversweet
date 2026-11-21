@@ -1,5 +1,6 @@
 "use client";
 
+import { AppOfferPopup } from "../components/appOfferPopup";
 import { CartBar } from "../components/cartBar";
 import { CartSheet } from "../components/cartSheet";
 import { DaysOffNotice } from "../components/daysOffNotice";
@@ -30,6 +31,8 @@ export default function CustomerFacingLayout({
       {pathName !== "/checkout" && <ScrollToTopButton />}
 
       {daysOff && daysOff.length > 0 && <DaysOffNotice daysOff={daysOff} />}
+      {/* Waits for the closure notice, or any other dialog, to close first. */}
+      <AppOfferPopup />
     </div>
   );
 }

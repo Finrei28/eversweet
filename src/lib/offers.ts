@@ -4,8 +4,9 @@ import { isWithinActiveWindow, type ActiveWindow } from "~/lib/activeWindow";
  * What the admin needs to know about an offer's availability, without the rest of it.
  *
  * Offers are authored here and served by the order server, so nothing in this repo
- * prices against them - these helpers exist for the admin table's status badge and for
- * the guard on the activate mutation.
+ * prices against them - these helpers exist for the admin table's status badge, for
+ * the guard on the activate mutation, and for the website's app-offer pop-up, which
+ * advertises the sago offer only while `isOfferRunning` (`~/server/appOffer`).
  */
 export type OfferWindow = ActiveWindow & { archivedAt: Date | null };
 
