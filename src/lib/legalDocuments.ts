@@ -92,7 +92,7 @@ export const LEGAL_TOKENS = [
  * Written the long way round because it is rendered raw by the app, and "12-06-2026" reads
  * as 12 June to a New Zealander and 6 December to an American with equal confidence.
  */
-export const LEGAL_LAST_UPDATED = "20 November 2026"
+export const LEGAL_LAST_UPDATED = "21 November 2026"
 
 const fill = (text: string, contact: LegalContact): string =>
   text.replace(/\{\{(\w+)\}\}/g, (whole, token: string) =>
@@ -222,6 +222,9 @@ export const termAndConditions: LegalDocument = {
         "The preparation time we quote is an estimate based on how many items you ordered. It is a guide, not a guarantee, and busy periods can run longer.",
         "Our opening hours and any one-off closures are shown in the app and on the website, and can change.",
         "Please collect your order at the time you chose. We make food fresh for that time, and we cannot promise it will be at its best if it is left waiting.",
+        "Eating in is ordered in the app, for the same day. If you order to eat in, it is up to you to arrive on time: by the time you chose, or, if you chose as soon as possible, by the estimated eat-in time shown on your order.",
+        "We prepare an eat-in order for that time. If you arrive late and it has melted, gone cold or spoiled while it waited, we are not responsible for that, and we do not replace or refund it.",
+        "We cannot keep a table free for long. If you arrive more than 15 minutes after your eat-in time, we may give the table to other customers, and you may have to wait for one to come free.",
       ],
     },
     {
