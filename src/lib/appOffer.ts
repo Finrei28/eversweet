@@ -159,6 +159,23 @@ export const appOfferToOpen = (
     ? null
     : answer.data;
 
+/**
+ * What to do once the server has answered. The countdown stopped when it asked, and the
+ * visitor may have opened the cart or a dessert, or left the tab, while the answer was on its
+ * way; `blocked` is the page looked at again. Something to open on a page that is no longer
+ * quiet waits three quiet seconds again (and asks again after them), rather than opening over
+ * another dialog or unseen.
+ */
+export const appOfferAfterRecheck = (
+  answer: { data?: AppOffer | null; isError: boolean },
+  blocked: boolean,
+  now: Date,
+): { next: "open"; offer: AppOffer } | { next: "wait" } | { next: "stop" } => {
+  const offer = appOfferToOpen(answer, now);
+  if (!offer) return { next: "stop" };
+  return blocked ? { next: "wait" } : { next: "open", offer };
+};
+
 export type AppOfferCopy = {
   eyebrow: string;
   title: string;

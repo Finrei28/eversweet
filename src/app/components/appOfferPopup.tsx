@@ -19,9 +19,9 @@ import {
   anotherDialogOpen,
   APP_OFFER_DELAY_MS,
   APP_OFFER_TICK_MS,
+  appOfferAfterRecheck,
   appOfferAllowedOn,
   appOfferCopy,
-  appOfferToOpen,
   hasSeenAppOffer,
   msUntilAppOfferEnds,
   quietAfterTick,
@@ -48,6 +48,8 @@ import { api } from "~/trpc/react";
  * - **Asked again before it opens.** That wait has no limit, so the offer it started with
  *   may since have ended, or been paused or edited; it opens only on the server's answer at
  *   that moment, and nothing if the asking fails. Left open, it closes when the offer ends.
+ *   The page is looked at again when the answer comes: another dialog opened, or the tab
+ *   left, while it was on its way sends it back to three quiet seconds.
  */
 export function AppOfferPopup() {
   const pathname = usePathname();
@@ -71,28 +73,35 @@ export function AppOfferPopup() {
   useEffect(() => {
     if (!offer || !unseen || !allowed) return;
 
-    // Restarts on every page: three quiet seconds on the page it opens over.
-    let quietMs = 0;
     let cancelled = false;
-    const timer = setInterval(() => {
-      quietMs = quietAfterTick(
-        quietMs,
-        APP_OFFER_TICK_MS,
-        document.visibilityState === "hidden" || anotherDialogOpen(document),
-      );
-      if (quietMs < APP_OFFER_DELAY_MS) return;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const blocked = () =>
+      document.visibilityState === "hidden" || anotherDialogOpen(document);
 
-      clearInterval(timer);
-      // An edited offer arrives as new data, which restarts this effect and the count, so
-      // the pop-up opens on the next pass with the new terms.
-      void refetch().then((answer) => {
-        const fresh = appOfferToOpen(answer, new Date());
-        if (cancelled || !fresh) return;
-        rememberAppOfferSeen(sessionStore(window), fresh.id);
-        setUnseen(false);
-        setOpen(true);
-      });
-    }, APP_OFFER_TICK_MS);
+    // Three quiet seconds on the page it opens over, from nothing on every page.
+    const countDown = () => {
+      let quietMs = 0;
+      timer = setInterval(() => {
+        quietMs = quietAfterTick(quietMs, APP_OFFER_TICK_MS, blocked());
+        if (quietMs < APP_OFFER_DELAY_MS) return;
+
+        clearInterval(timer);
+        // An edited offer arrives as new data, which restarts this effect and the count,
+        // so the pop-up opens on the next pass with the new terms.
+        void refetch().then((answer) => {
+          if (cancelled) return;
+          // The page is looked at again: the answer takes a moment to come.
+          const step = appOfferAfterRecheck(answer, blocked(), new Date());
+          if (step.next === "wait") return countDown();
+          if (step.next === "stop") return;
+          rememberAppOfferSeen(sessionStore(window), step.offer.id);
+          setUnseen(false);
+          setOpen(true);
+        });
+      }, APP_OFFER_TICK_MS);
+    };
+
+    countDown();
     return () => {
       cancelled = true;
       clearInterval(timer);

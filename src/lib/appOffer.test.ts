@@ -223,6 +223,44 @@ describe("never showing an offer that has ended", () => {
       ),
     ).toBeNull();
   });
+
+  /**
+   * Asking takes a moment, and the countdown has stopped by then: the visitor can open the
+   * cart or a dessert, or leave the tab, while the server answers. The page is looked at
+   * again when the answer comes.
+   */
+  describe("when the server answers", () => {
+    it("opens when the page is still quiet", () => {
+      expect(
+        mod.appOfferAfterRecheck({ data: offer, isError: false }, false, NOW),
+      ).toEqual({ next: "open", offer });
+    });
+
+    it("waits three quiet seconds again if another dialog opened meanwhile", () => {
+      expect(
+        mod.appOfferAfterRecheck({ data: offer, isError: false }, true, NOW),
+      ).toEqual({ next: "wait" });
+    });
+
+    it("stops when there is nothing to open, quiet or not", () => {
+      for (const blocked of [false, true]) {
+        expect(
+          mod.appOfferAfterRecheck(
+            { data: null, isError: false },
+            blocked,
+            NOW,
+          ),
+        ).toEqual({ next: "stop" });
+        expect(
+          mod.appOfferAfterRecheck(
+            { data: offer, isError: true },
+            blocked,
+            NOW,
+          ),
+        ).toEqual({ next: "stop" });
+      }
+    });
+  });
 });
 
 describe("what the pop-up says", () => {

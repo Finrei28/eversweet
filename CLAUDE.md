@@ -1025,7 +1025,9 @@ visitors to the customer app for its sago offer. The rules are `~/lib/appOffer`;
   the tab is hidden, so it never stacks on the closure notice, the cart or the customise sheet.
 - **It asks the server again before it opens**, because that wait has no limit and the offer
   may have ended, been paused or been edited meanwhile; it opens only on that answer, never on
-  a failed one (React Query keeps the old data then). Left open, it closes at the offer's end.
+  a failed one (React Query keeps the old data then). The answer takes a moment, so the page is
+  looked at again when it comes, and a dialog opened or the tab left meanwhile sends it back to
+  three quiet seconds. Left open, it closes at the offer's end.
 - **Rendered closed on the server and through hydration**, and opened from a timer, so the home
   page's hero still paints in the first frame and stays the page's largest paint.
 - **Screenshots of it need the offer in `eversweet_dev`**: insert one with `notifiedAt` set, so a
