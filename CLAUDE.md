@@ -1097,8 +1097,9 @@ visitors to the customer app for its sago offer. The rules are `~/lib/appOffer`;
   - A website order stores what was paid and leaves the discount at 0.
 
   So the difference is right for both, and summing `priceInCents` counts app discounts as
-  sales. The admin dashboard did until 2026-11-21. It now goes through `paidInCents` in
-  `~/lib/dashboard`, and counts "today" as the Auckland day (`dashboardDay`).
+  sales. The admin dashboard did until 2026-11-21, and the Orders and Past Orders tables
+  showed it as each order's amount. All three now go through `paidInCents` in
+  `~/lib/dashboard`, and the dashboard counts "today" as the Auckland day (`dashboardDay`).
 - **A redemption row is not a redemption.** There is one per customer per offer, and it
   holds a `used` counter. The order server takes a use when the offer goes into the cart,
   and every way of handing it back (out of the cart, the cart swept, the order cancelled)
