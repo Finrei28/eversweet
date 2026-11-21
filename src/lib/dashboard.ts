@@ -20,13 +20,15 @@ export const dashboardDay = (now: Date): { start: Date; end: Date } => {
 };
 
 /**
- * What customers paid for a set of orders, from the sums of their two price columns.
+ * What a customer paid for an order, or customers for a set of orders from the sums of
+ * their two price columns.
  *
  * An app order stores its price before discounts in `priceInCents` and the discount
  * (member price, promotion, offer, points) in `discountedAmountInCents`, and charges the
  * difference (`calculateCartPrice` in the order server). A website order stores what was
  * paid and leaves the discount at 0. So the difference is what was paid either way. The
- * dashboard summed `priceInCents` alone, which counted app discounts as sales.
+ * dashboard summed `priceInCents` alone, which counted app discounts as sales, and the
+ * admin Orders and Past Orders tables showed it as an order's amount.
  */
 export const paidInCents = (sums: {
   priceInCents: number | null;

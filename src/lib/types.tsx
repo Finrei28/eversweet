@@ -72,7 +72,9 @@ export type CustomerInfo = {
 export type OrderType = {
   id: string;
   tempOrderId: string;
+  /** An app order's price before discounts; see `paidInCents` for what was paid. */
   priceInCents: number;
+  discountedAmountInCents: number;
   createdAt: Date;
   updatedAt: Date;
   customerFirstName: string;

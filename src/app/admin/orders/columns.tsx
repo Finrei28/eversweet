@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { formatCurrency, formatShortDate } from "~/lib/formatters";
+import { paidInCents } from "~/lib/dashboard";
 import { MoreHorizontal } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
@@ -124,13 +125,16 @@ export function GetOrderColumns({
         },
       },
       {
-        accessorKey: "priceInCents",
-        header: language === "en" ? "Amount" : "价格",
-        cell: ({ row }) => {
-          const amount = Number.parseFloat(row.getValue("priceInCents")) / 100;
-          const formatted = formatCurrency(amount);
-          return <div className="font-medium">{formatted}</div>;
-        },
+        // What the customer paid. `priceInCents` alone is an app order's price before its
+        // discounts - see `paidInCents`.
+        id: "paid",
+        accessorFn: paidInCents,
+        header: language === "en" ? "Paid" : "实付金额",
+        cell: ({ getValue }) => (
+          <div className="font-medium">
+            {formatCurrency(getValue<number>() / 100)}
+          </div>
+        ),
       },
       {
         accessorKey: "createdAt",
