@@ -17,6 +17,7 @@ import { api } from "~/trpc/react";
 import { useCallback, useMemo } from "react";
 import { OrderType } from "~/lib/types";
 import { useLanguage } from "~/app/components/language";
+import { orderStatusLabel } from "~/lib/orderStatus";
 import { toast } from "~/hooks/use-toast";
 
 type ColumnProps = {
@@ -144,22 +145,11 @@ export function GetOrderColumns({
       {
         accessorKey: "completed",
         header: language === "en" ? "Status" : "状态",
-        cell: ({ row }) => {
-          const status = row.original.status;
-          const chineseStatus =
-            status === "PENDING"
-              ? "待处理"
-              : status === "READY"
-                ? "已完成"
-                : status === "CANCELLED"
-                  ? "已取消"
-                  : "已取货";
-          return (
-            <div className="font-medium">
-              {language === "en" ? status : chineseStatus}
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="font-medium">
+            {orderStatusLabel(row.original.status, language)}
+          </div>
+        ),
       },
       {
         id: "actions",
