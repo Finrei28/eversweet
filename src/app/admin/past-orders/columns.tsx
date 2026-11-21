@@ -2,6 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { formatCurrency, formatShortDate } from "~/lib/formatters";
+import { paidInCents } from "~/lib/dashboard";
 import { MoreHorizontal, ArrowUpDown } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
@@ -125,7 +126,10 @@ export function GetPastOrderColumns({
         },
       },
       {
-        accessorKey: "priceInCents",
+        // What the customer paid, and sorted by it. `priceInCents` alone is an app order's
+        // price before its discounts - see `paidInCents`.
+        id: "paid",
+        accessorFn: paidInCents,
         header: ({ column }) => {
           return (
             <Button
@@ -134,16 +138,16 @@ export function GetPastOrderColumns({
                 column.toggleSorting(column.getIsSorted() === "asc")
               }
             >
-              {language === "en" ? "Amount" : "价格"}
+              {language === "en" ? "Paid" : "实付金额"}
               <ArrowUpDown className="ml-2 h-4 w-4" />
             </Button>
           );
         },
-        cell: ({ row }) => {
-          const amount = parseFloat(row.getValue("priceInCents")) / 100;
-          const formatted = formatCurrency(amount);
-          return <div className="font-medium">{formatted}</div>;
-        },
+        cell: ({ getValue }) => (
+          <div className="font-medium">
+            {formatCurrency(getValue<number>() / 100)}
+          </div>
+        ),
       },
       {
         accessorKey: "createdAt",
