@@ -21,12 +21,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // server-side caller never calls `auth()`, so the stub costs nothing.
 vi.mock("server-only", () => ({}));
 vi.mock("~/server/auth", () => ({ auth: vi.fn(async () => null) }));
+// Every write publishes the app-offer cache tag; there is no Next request scope in a test.
+vi.mock("next/cache", () => ({
+  revalidateTag: vi.fn(),
+  unstable_cache: (fn: unknown) => fn,
+}));
 
+import { revalidateTag } from "next/cache";
 import { DateTime, Settings } from "luxon";
 import type { z } from "zod";
 
 import type { createOfferSchema } from "~/app/components/schemas";
 import { endOfDayNZ } from "~/lib/aucklandDay";
+import { APP_OFFER_TAG } from "~/server/appOffer";
 import { db } from "~/server/db";
 import { adminCaller } from "~/test/caller";
 import { describeIfDb, resetDatabase } from "~/test/db";
@@ -796,6 +803,73 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
         select: { name: true },
       }),
     ).resolves.toEqual({ name: "Second run" });
+  });
+
+  /**
+   * The website's app-offer pop-up reads the live offer through a five-minute cache, so it
+   * can stop advertising a deal the moment it is paused, archived or edited. Every write
+   * here has to tell it; the five minutes are only a backstop.
+   */
+  describe("telling the website's app-offer pop-up", () => {
+    beforeEach(() => {
+      vi.mocked(revalidateTag).mockClear();
+    });
+
+    it("refreshes it when an offer is created", async () => {
+      await adminCaller().offer.createOffer({ offer: offerInput() });
+
+      expect(revalidateTag).toHaveBeenCalledWith(APP_OFFER_TAG);
+    });
+
+    it("refreshes it when an offer is edited", async () => {
+      const caller = adminCaller();
+      const created = await caller.offer.createOffer({ offer: offerInput() });
+      vi.mocked(revalidateTag).mockClear();
+
+      await caller.offer.updateOffer({
+        offer: { ...offerInput({ discountAmount: 30 }), id: created.id },
+      });
+
+      expect(revalidateTag).toHaveBeenCalledWith(APP_OFFER_TAG);
+    });
+
+    it("refreshes it when an offer is paused or resumed", async () => {
+      const caller = adminCaller();
+      const created = await caller.offer.createOffer({ offer: offerInput() });
+      vi.mocked(revalidateTag).mockClear();
+
+      await caller.offer.setActive({ id: created.id, active: false });
+      expect(revalidateTag).toHaveBeenCalledWith(APP_OFFER_TAG);
+
+      vi.mocked(revalidateTag).mockClear();
+      await caller.offer.setActive({ id: created.id, active: true });
+      expect(revalidateTag).toHaveBeenCalledWith(APP_OFFER_TAG);
+    });
+
+    it("refreshes it when an offer is archived or restored", async () => {
+      const caller = adminCaller();
+      const created = await caller.offer.createOffer({ offer: offerInput() });
+      vi.mocked(revalidateTag).mockClear();
+
+      await caller.offer.setArchived({ id: created.id, archived: true });
+      expect(revalidateTag).toHaveBeenCalledWith(APP_OFFER_TAG);
+
+      vi.mocked(revalidateTag).mockClear();
+      await caller.offer.setArchived({ id: created.id, archived: false });
+      expect(revalidateTag).toHaveBeenCalledWith(APP_OFFER_TAG);
+    });
+
+    it("refreshes it when a run is closed", async () => {
+      const caller = adminCaller();
+      const created = await caller.offer.createOffer({
+        offer: offerInput({ endsOn: aucklandDay(-1) }),
+      });
+      vi.mocked(revalidateTag).mockClear();
+
+      await caller.offer.closeRun({ id: created.id });
+
+      expect(revalidateTag).toHaveBeenCalledWith(APP_OFFER_TAG);
+    });
   });
 
   /**
