@@ -133,9 +133,12 @@ first at `/api/auth/signin`, which is NextAuth's default page as no custom one e
 
 ### Deploying
 
-The website deploys to **Vercel**; the order server goes to Render. `next build` lints and
-typechecks, so **the build needs devDependencies** - and the way it fails without them is
-misleading enough to be worth writing down.
+The website deploys to **Vercel**, on every merge to `main`. The order server is the Fly app
+`eversweet-backend` in `syd` (Render until 2026-10-08), and nothing deploys it on merge: it
+goes out by hand with `npm run deploy:fly` from the other repo's `backend/`, outside trading
+hours, as its CLAUDE.md says. `next build` lints and typechecks, so **the build needs
+devDependencies** - and the way it fails without them is misleading enough to be worth writing
+down.
 
 **A deploy never migrates.** `npm run build` is plain `next build`, so a merged migration
 reaches production only when someone runs `npm run db:migrate` - and which side of the
@@ -212,7 +215,7 @@ this from the other side):
 
 | Directory   | What it is                                                          |
 | ----------- | ------------------------------------------------------------------- |
-| `backend/`  | Express + Prisma + Socket.IO "order server". Deployed to Render.     |
+| `backend/`  | Express + Prisma + Socket.IO "order server". Deployed to Fly.        |
 | `frontend/` | Customer Expo app.                                                   |
 | `admin/`    | Staff kitchen Expo app — order alarms, BLE receipt printing.         |
 

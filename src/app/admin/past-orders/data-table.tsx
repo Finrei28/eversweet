@@ -23,12 +23,14 @@ import {
 } from "~/components/ui/table";
 import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
+import { useLanguage } from "~/app/components/language";
 import { GetPastOrderColumns } from "./columns";
 import { useState } from "react";
 import CustomerDetails from "../orders/_components/customerDetails";
 import OrderDetails from "../orders/_components/orderDetails";
 
 export function DataTable() {
+  const { language } = useLanguage();
   const [customerDetailsOpen, setCustomerDetailsOpen] = useState({
     id: "",
     open: false,
@@ -72,7 +74,11 @@ export function DataTable() {
     <div>
       <div className="flex items-center py-4">
         <Input
-          placeholder="Search by customer or Order number"
+          placeholder={
+            language === "en"
+              ? "Search by customer or order number"
+              : "按顾客或订单号搜索"
+          }
           value={searchValue}
           onChange={(event) => {
             const value = event.target.value;
@@ -138,7 +144,7 @@ export function DataTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {language === "en" ? "No results." : "暂无结果。"}
                 </TableCell>
               </TableRow>
             )}
@@ -152,7 +158,7 @@ export function DataTable() {
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
         >
-          Previous
+          {language === "en" ? "Previous" : "上一页"}
         </Button>
         <Button
           variant="outline"
@@ -160,7 +166,7 @@ export function DataTable() {
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
         >
-          Next
+          {language === "en" ? "Next" : "下一页"}
         </Button>
       </div>
       {customerDetailsOpen && (
