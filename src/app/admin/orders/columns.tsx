@@ -144,12 +144,16 @@ export function GetOrderColumns({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
+                  <span className="sr-only">
+                    {language === "en" ? "Open menu" : "打开菜单"}
+                  </span>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  {language === "en" ? "Action" : "行动"}
+                </DropdownMenuLabel>
                 <DropdownMenuItem
                   onClick={() => setCustomerDetailsOpen({ id, open: true })}
                 >
