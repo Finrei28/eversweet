@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { createOrderSchema } from "~/app/components/schemas";
+import {
+  changeOrderStatusSchema,
+  createOrderSchema,
+} from "~/app/components/schemas";
 import EmailOrderConfirmation from "~/email/orderConfirmation";
 import { Resend } from "resend";
 
@@ -11,6 +14,7 @@ import {
 } from "~/server/api/trpc";
 import { getDashboardFigures } from "~/server/dashboard";
 import { getCurrentOrders, getPastOrders } from "~/server/adminOrders";
+import { changeOrderStatus } from "~/server/orderStatusChange";
 import { announceOrder } from "~/server/notifyAdmin";
 import { followUpStillDue, placeWebsiteOrder } from "~/server/websiteOrder";
 
@@ -107,11 +111,6 @@ export const orderRouter = createTRPCRouter({
     }),
 
   // Both lists are in ~/server/adminOrders, which says what each page holds and why.
-  //
-  // Nothing here changes an order's status. The kitchen tablets do, through the order
-  // server's updateOrderStatus, which pushes the app customer, tells every tablet and marks
-  // the order accepted. A `changeStatus` here wrote the status straight to the database and
-  // did none of that, so an order moved from the admin pages could drop off every tablet.
   getAllCurrentOrders: protectedProcedure.query(({ ctx }) =>
     getCurrentOrders(ctx.db),
   ),
@@ -127,6 +126,18 @@ export const orderRouter = createTRPCRouter({
         .optional(),
     )
     .query(({ ctx, input }) => getPastOrders(ctx.db, input?.limit)),
+
+  /**
+   * For staff who forgot to move an order on the kitchen tablet. Through the order server,
+   * never the database: see `changeOrderStatus`. A `changeStatus` here once wrote the status
+   * straight to the database, so the tablets never heard and an order moved from the admin
+   * pages could drop off every tablet's lists.
+   *
+   * `protectedProcedure` is the admin gate: customers cannot sign in to this site.
+   */
+  changeStatus: protectedProcedure
+    .input(changeOrderStatusSchema)
+    .mutation(({ input }) => changeOrderStatus(input)),
 
   getCustomerDetails: protectedProcedure
     .input(z.object({ id: z.string() }))
