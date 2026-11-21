@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { dashboardDay, OPEN_ORDER_STATUSES, paidInCents } from "./dashboard";
+import {
+  currentOrdersWhere,
+  dashboardDay,
+  OPEN_ORDER_STATUSES,
+  paidInCents,
+} from "./dashboard";
 
 /**
  * The admin dashboard's day and money, without a database.
@@ -65,5 +70,15 @@ describe("OPEN_ORDER_STATUSES", () => {
     expect([...OPEN_ORDER_STATUSES].sort()).toEqual(
       ["ACCEPTED", "MAKING", "PENDING", "READY"].sort(),
     );
+  });
+});
+
+describe("currentOrdersWhere", () => {
+  it("takes every open status, due by the last millisecond of the Auckland day", () => {
+    // The admin Orders page listed PENDING and READY alone, due in the next 15 minutes.
+    expect(currentOrdersWhere(SAT_LUNCH)).toEqual({
+      status: { in: ["PENDING", "ACCEPTED", "MAKING", "READY"] },
+      pickUpTime: { lte: new Date("2026-11-21T10:59:59.999Z") },
+    });
   });
 });

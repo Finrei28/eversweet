@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 import { endOfDayNZ, startOfDayNZ, todayNZ } from "~/lib/aucklandDay";
 
 /**
@@ -44,6 +46,20 @@ export const OPEN_ORDER_STATUSES = [
   "MAKING",
   "READY",
 ] as const;
+
+/**
+ * The orders that are current at `now`: open, and due by the end of the Auckland day, overdue
+ * ones included, since an order never accepted or never collected is still the shop's to deal
+ * with. What the kitchen tablets show across their Upcoming and Current lists.
+ *
+ * The dashboard counts these and the admin Orders page lists them, from this one filter, so
+ * the two cannot disagree. A booking for a later day is current on its day.
+ */
+export const currentOrdersWhere = (now: Date) =>
+  ({
+    status: { in: [...OPEN_ORDER_STATUSES] },
+    pickUpTime: { lte: dashboardDay(now).end },
+  }) satisfies Prisma.OrderWhereInput;
 
 export type SalesFigure = { orders: number; paidInCents: number };
 
