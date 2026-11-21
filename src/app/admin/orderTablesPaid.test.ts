@@ -19,6 +19,9 @@ import { GetPastOrderColumns } from "./past-orders/columns";
  * stores its price before discounts there, and the discount beside it, so every app order
  * with a member price, promotion, offer or points showed more than its customer paid. These
  * render the real column definitions, as the tables do, in both languages.
+ *
+ * Nothing here hydrates, so it renders with the React in node_modules, which TanStack Table
+ * and the UI components are built against (CLAUDE.md, under Commands).
  */
 
 const current = vi.hoisted(() => ({ language: "en" as "en" | "zh" }));

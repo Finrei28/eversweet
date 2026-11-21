@@ -36,11 +36,15 @@ on missing env. A test that imports a `server-only` module needs
 `vi.mock("server-only", () => ({}))` at the top — see `src/server/notifyAdmin.test.ts`.
 
 A test that needs a DOM says so on its first line, `// @vitest-environment jsdom`. One that
-renders or hydrates a component must also swap in Next's own React 19: the App Router runs
-that build, while the `react` and `react-dom` in node_modules are 18, and hydration is where
-they differ. It mocks the React packages with their `next/dist/compiled/...` copies, as
-`src/app/components/language.test.ts` does; `src/test/nextCompiledReact.d.ts` types those
-paths. `vitest.config.mts` compiles JSX itself (`oxc.jsx`), because the Next `tsconfig` says
+hydrates a component, or renders the HTML it then hydrates, must also swap in Next's own
+React 19: the App Router runs that build, while the `react` and `react-dom` in node_modules
+are 18, and hydration is where they differ. It mocks the React packages with their
+`next/dist/compiled/...` copies, as `src/app/components/language.test.ts` does;
+`src/test/nextCompiledReact.d.ts` types those paths. A test that only renders, to read what
+comes out, stays on the React in node_modules, as the admin table tests do
+(`src/app/admin/feedback/data-table.test.ts`). TanStack Table, Radix and lucide are
+node_modules packages Vitest does not transform, so they keep React 18 whatever a test
+mocks, and under Next's copy `useReactTable` fails on a null dispatcher. `vitest.config.mts` compiles JSX itself (`oxc.jsx`), because the Next `tsconfig` says
 `preserve`.
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck and tests on Node 22 with dummy
