@@ -335,14 +335,30 @@ calendar's `Date` itself, which is
 correct on a machine in Auckland and a day early on Vercel, which runs in UTC. An edit that
 leaves the date alone sends no expiry, and the order server keeps the deadline it has.
 
-**`/admin/orders` and `/admin/past-orders` only read; the kitchen tablets own an order's
-status.** The tablets move an order through PENDING, ACCEPTED, MAKING, READY and PICKED_UP
-by calling the order server's `updateOrderStatus`, which also pushes the app customer, tells
-every tablet over the socket and sets `notified`. The tablets' Upcoming list wants PENDING
-and `notified` false, their Current list `notified` true. Until 2026-11-21 these pages had
-a `changeStatus` that wrote the status straight to the database, so an unaccepted order set
-to READY here, or an accepted one sent back to PENDING, was on no tablet list at all. The
-owner chose to leave status to the tablets rather than route it through the order server.
+**`/admin/orders` and `/admin/past-orders` move an order's status through the order server,
+never the database.** The tablets move an order through PENDING, ACCEPTED, MAKING, READY and
+PICKED_UP by calling the order server's `updateOrderStatus`, which also pushes the app
+customer, tells every tablet over the socket and sets `notified`. The tablets' Upcoming list
+wants PENDING and `notified` false, their Current list `notified` true. Until 2026-11-21 these
+pages had a `changeStatus` that wrote the status straight to the database, so an unaccepted
+order set to READY here, or an accepted one sent back to PENDING, was on no tablet list at all.
+
+It came back the same day, for staff who forget to move an order on the tablet, as
+`order.changeStatus` → `changeOrderStatus` (`src/server/orderStatusChange.ts`) → the order
+server's `PUT /api/internal/orders/status`. That tells every tablet and sets `notified`, as a
+tablet's move does. The owner chose:
+
+- **the tablet's Update Status set** (`STAFF_STATUSES` in `~/lib/orderStatus`): ACCEPTED,
+  MAKING, READY and PICKED_UP, either way, collected orders included;
+- **nothing for a PENDING order.** Accepting prints the receipt on the tablet that accepts,
+  so an order accepted here would reach the kitchen unprinted;
+- **no Cancel.** It is final and takes back points, and stays on the tablets;
+- **no push** to the customer, since a change made here is usually a late fix.
+
+Each row sends the status it shows as `expectedStatus`, and the order server moves the order
+only if it is still there, so a stale table never undoes a tablet's move. Otherwise it answers
+`changed` with where the order is now, which `statusChangeNotice` words in both languages.
+The order server keeps the same list of statuses and refuses anything else.
 
 - **Orders** lists the open orders due by the end of the Auckland day, overdue ones included:
   `currentOrdersWhere` in `~/lib/dashboard`, the same filter the dashboard counts.
@@ -357,15 +373,17 @@ opposite contracts:
 - `src/server/notifyAdmin.ts` announces a paid order. **Best-effort** — it never throws, and
   if it fails the order server's cron sweeps the order up instead, because a customer who has
   paid must not wait on the kitchen.
-- `src/server/orderServer.ts` (`callOrderServer`) carries the winners writes. **The answer
-  is the result** — it throws a `TRPCError` with the order server's own wording, so the
-  dialog can show it. An 8s timeout keeps it inside Vercel's default function limit, and a
-  retry is safe: a call that committed but timed out leaves a reward the retry edits in place,
-  with the same code and no second push. When either variable is unset it refuses out loud.
+- `src/server/orderServer.ts` (`callOrderServer`) carries the winners writes and the admin
+  tables' status changes. **The answer is the result** — it throws a `TRPCError` with the
+  order server's own wording, so the dialog can show it. An 8s timeout keeps it inside
+  Vercel's default function limit, and a retry is safe: a call that committed but timed out
+  leaves a reward the retry edits in place, with the same code and no second push, or an order
+  already in the status asked for. When either variable is unset it refuses out loud.
 
-So **assigning a prize or settling a month locally needs the order server running**, with
-`ADMIN_SERVER_URL` pointed at it and a matching `INTERNAL_SERVICE_SECRET`. The order server
-must be deployed before a website build that calls a new internal route.
+So **assigning a prize, settling a month or changing an order's status locally needs the
+order server running**, with `ADMIN_SERVER_URL` pointed at it and a matching
+`INTERNAL_SERVICE_SECRET`. The order server must be deployed before a website build that
+calls a new internal route.
 
 ### Auth is the admin gate
 
