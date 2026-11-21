@@ -9,6 +9,8 @@ import {
   getPrepTimes,
   getTradingHours,
 } from "~/server/pickUpTimes";
+import type { AppOffer } from "~/lib/appOffer";
+import { getAppOffer } from "~/server/appOffer";
 import { type AppPromotion, getAppPromotion } from "~/server/appPromotion";
 import { itemCountForPayment } from "~/server/paymentItemCount";
 
@@ -23,6 +25,15 @@ export const storeRouter = createTRPCRouter({
    */
   getAppPromotion: publicProcedure.query(
     (): Promise<AppPromotion> => getAppPromotion(),
+  ),
+
+  /**
+   * The customer app's sago offer while it is running, for the pop-up that sends visitors
+   * to the app; null otherwise, or on a failed read. Advertised only: nothing on this
+   * website prices against an offer.
+   */
+  getAppOffer: publicProcedure.query(
+    (): Promise<AppOffer | null> => getAppOffer(),
   ),
 
   /** The weekly hours, one row per weekday, in minutes past Auckland midnight. */
