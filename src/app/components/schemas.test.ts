@@ -15,7 +15,6 @@ import {
   updateOfferSchema,
   updateProductSchema,
 } from "./schemas";
-import { todayNZ } from "~/lib/aucklandDay";
 import {
   ANNOUNCEMENT_TEXT_MAX_LENGTH,
   ANNOUNCEMENT_TITLE_MAX_LENGTH,
