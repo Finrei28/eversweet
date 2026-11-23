@@ -78,7 +78,11 @@ const seedMenu = async () => {
     data: { name: "Mochi bowls", chineseName: "麻糬碗" },
   });
 
-  const makeDessert = (name: string, chineseName: string, priceInCents: number) =>
+  const makeDessert = (
+    name: string,
+    chineseName: string,
+    priceInCents: number,
+  ) =>
     db.dessert.create({
       data: {
         name,
@@ -300,6 +304,95 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
     expect(after).toContainEqual(
       expect.objectContaining({ quantity: 4, categoryId: category.id }),
     );
+  });
+
+  /**
+   * "Spend $20 in one order and get half price on a bowl." The order server reads the
+   * amount off the requirement row, so it has to be stored there, and come back for the
+   * edit form to load.
+   */
+  it("stores a minimum spend alongside a dessert requirement, and reads both back", async () => {
+    const { dessert } = await seedMenu();
+    const caller = adminCaller();
+
+    await caller.offer.createOffer({
+      offer: offerInput({
+        requirements: [
+          { dessertId: dessert.id, quantity: 2 },
+          { minSpendInCents: 2000, quantity: 1 },
+        ],
+      }),
+    });
+
+    const [offer] = await caller.offer.getOffers();
+
+    expect(offer?.requirements).toHaveLength(2);
+    expect(offer?.requirements).toContainEqual(
+      expect.objectContaining({
+        minSpendInCents: 2000,
+        dessert: null,
+        category: null,
+      }),
+    );
+    expect(offer?.requirements).toContainEqual(
+      expect.objectContaining({
+        minSpendInCents: null,
+        quantity: 2,
+        dessert: expect.objectContaining({ id: dessert.id }) as unknown,
+      }),
+    );
+  });
+
+  it("changes a minimum spend in place", async () => {
+    const caller = adminCaller();
+    const created = await caller.offer.createOffer({
+      offer: offerInput({
+        requirements: [{ minSpendInCents: 2000, quantity: 1 }],
+      }),
+    });
+    const [existing] = await db.offerRequirement.findMany({
+      where: { offerId: created.id },
+      select: { id: true },
+    });
+    if (!existing) throw new Error("seeded requirement missing");
+
+    await caller.offer.updateOffer({
+      offer: {
+        ...offerInput({
+          requirements: [
+            { id: existing.id, minSpendInCents: 3000, quantity: 1 },
+          ],
+        }),
+        id: created.id,
+      },
+    });
+
+    await expect(
+      db.offerRequirement.findMany({
+        where: { offerId: created.id },
+        select: { id: true, minSpendInCents: true },
+      }),
+    ).resolves.toEqual([{ id: existing.id, minSpendInCents: 3000 }]);
+  });
+
+  /**
+   * A row switched from a dessert to a spend keeps whatever quantity it had in the form.
+   * Nothing reads a quantity on a spend row, so store 1 rather than leave a 5 that reads
+   * like it means something.
+   */
+  it("stores a quantity of 1 on a minimum spend whatever it is sent", async () => {
+    const created = await adminCaller().offer.createOffer({
+      offer: offerInput({
+        requirements: [{ minSpendInCents: 2000, quantity: 5 }],
+      }),
+    });
+
+    await expect(
+      db.offerRequirement.findMany({
+        where: { offerId: created.id },
+        select: { quantity: true, minSpendInCents: true },
+      }),
+    ).resolves.toEqual([{ quantity: 1, minSpendInCents: 2000 }]);
   });
 
   it("refuses to edit an offer whose run has ended, and changes nothing", async () => {
@@ -588,7 +681,10 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
       where: { id: created.id },
       select: { name: true, excludedDessertIds: true },
     });
-    expect(stored).toEqual({ name: "Half-price bowls", excludedDessertIds: [] });
+    expect(stored).toEqual({
+      name: "Half-price bowls",
+      excludedDessertIds: [],
+    });
   });
 
   it("refuses to leave out a dessert that is not in the offer's category", async () => {

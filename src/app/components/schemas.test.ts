@@ -3,12 +3,16 @@ import { describe, expect, it } from "vitest";
 import {
   announcementSchema,
   announcementsFormSchema,
+  createOfferSchema,
   editSchema,
   LOYALTY_POINTS_PRICE_MAX,
   membershipBenefitsFormSchema,
   membershipBenefitsSchema,
+  offerFormSchema,
+  offerRequirementSchema,
   priceInLoyaltyPointsSchema,
   saveAnnouncementsSchema,
+  updateOfferSchema,
   updateProductSchema,
 } from "./schemas";
 import { todayNZ } from "~/lib/aucklandDay";
@@ -312,5 +316,69 @@ describe("a dessert's price in points", () => {
     expect(
       priceInLoyaltyPointsSchema.safeParse(LOYALTY_POINTS_PRICE_MAX).success,
     ).toBe(true);
+  });
+});
+
+/**
+ * What unlocks an offer: so many of a dessert, so many from a category, or a minimum spend
+ * on the order. The order server checks a row by whichever of the three it names, so a row
+ * naming two of them would be read as only one, and a row naming none never unlocks.
+ */
+describe("offer requirement schemas", () => {
+  const dessertRow = { dessertId: "dessert-1", quantity: 2 };
+  const spendRow = { minSpendInCents: 2000, quantity: 1 };
+
+  it("takes a minimum spend that names no dessert or category", () => {
+    expect(offerRequirementSchema.parse(spendRow)).toEqual({
+      dessertId: null,
+      categoryId: null,
+      minSpendInCents: 2000,
+      quantity: 1,
+    });
+  });
+
+  it("leaves the spend empty on a dessert or category row", () => {
+    expect(offerRequirementSchema.parse(dessertRow).minSpendInCents).toBeNull();
+  });
+
+  it.each([
+    ["a dessert and a spend", { ...spendRow, dessertId: "dessert-1" }],
+    ["a category and a spend", { ...spendRow, categoryId: "category-1" }],
+    ["a dessert and a category", { ...dessertRow, categoryId: "category-1" }],
+    ["nothing at all", { quantity: 1 }],
+  ])("refuses a row naming %s", (_, row) => {
+    expect(offerRequirementSchema.safeParse(row).success).toBe(false);
+  });
+
+  it.each([0, -100, 19.5])("refuses a spend of %j cents", (minSpendInCents) => {
+    expect(
+      offerRequirementSchema.safeParse({ ...spendRow, minSpendInCents })
+        .success,
+    ).toBe(false);
+  });
+
+  /**
+   * Two amounts on one offer would only ever mean the larger of them, so the smaller is a
+   * mistake. Checked on the form and on both mutations, which share one requirements
+   * schema - the same object, so a rule added to one cannot miss the others.
+   */
+  it("refuses a second minimum spend on one offer, on the form and the wire", () => {
+    const formShape = offerFormSchema.innerType().shape;
+    expect(createOfferSchema.innerType().shape.requirements).toBe(
+      formShape.requirements,
+    );
+    expect(updateOfferSchema.innerType().shape.requirements).toBe(
+      formShape.requirements,
+    );
+
+    expect(
+      formShape.requirements.safeParse([spendRow, dessertRow]).success,
+    ).toBe(true);
+    expect(
+      formShape.requirements.safeParse([
+        spendRow,
+        { ...spendRow, minSpendInCents: 3000 },
+      ]).success,
+    ).toBe(false);
   });
 });

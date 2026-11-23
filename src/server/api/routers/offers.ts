@@ -3,7 +3,11 @@ import { TRPCError } from "@trpc/server";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
-import { createOfferSchema, updateOfferSchema } from "~/app/components/schemas";
+import {
+  createOfferSchema,
+  type offerRequirementSchema,
+  updateOfferSchema,
+} from "~/app/components/schemas";
 import { endOfDayNZ, startOfDayNZ } from "~/lib/aucklandDay";
 import { formatCurrency } from "~/lib/formatters";
 import { canActivate, hasEnded } from "~/lib/offers";
@@ -178,6 +182,7 @@ const offerSelect = {
     select: {
       id: true,
       quantity: true,
+      minSpendInCents: true,
       dessert: { select: { id: true, name: true, chineseName: true } },
       category: { select: { id: true, name: true, chineseName: true } },
     },
@@ -212,6 +217,23 @@ const offerScalars = (
   dessertId: data.dessertId,
   categoryId: data.categoryId,
   excludedDessertIds,
+});
+
+/**
+ * A requirement row's columns, shared by create and update so a column added to one
+ * cannot be missed by the other.
+ *
+ * A spend row stores a quantity of 1 whatever it was sent. Nothing reads it there, and a
+ * row switched from "3 x Mango sago" to a spend would otherwise keep a 3 that reads like it
+ * means something.
+ */
+const requirementValues = (
+  requirement: z.infer<typeof offerRequirementSchema>,
+) => ({
+  dessertId: requirement.dessertId,
+  categoryId: requirement.categoryId,
+  minSpendInCents: requirement.minSpendInCents,
+  quantity: requirement.minSpendInCents === null ? requirement.quantity : 1,
 });
 
 export const offerRouter = createTRPCRouter({
@@ -274,13 +296,7 @@ export const offerRouter = createTRPCRouter({
       const offer = await ctx.db.offer.create({
         data: {
           ...offerScalars(data, excludedDessertIds),
-          requirements: {
-            create: data.requirements.map((r) => ({
-              quantity: r.quantity,
-              dessertId: r.dessertId,
-              categoryId: r.categoryId,
-            })),
-          },
+          requirements: { create: data.requirements.map(requirementValues) },
         },
         select: { id: true, name: true },
       });
@@ -361,11 +377,7 @@ export const offerRouter = createTRPCRouter({
         }
 
         for (const requirement of data.requirements) {
-          const values = {
-            quantity: requirement.quantity,
-            dessertId: requirement.dessertId,
-            categoryId: requirement.categoryId,
-          };
+          const values = requirementValues(requirement);
 
           // The result is discarded either way, so name a single column rather than
           // having Prisma return - and therefore SELECT - every field on the row.
