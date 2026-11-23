@@ -98,6 +98,10 @@ hand (this machine's already has them):
 # TradingHours: only its ALTER TABLE lines, since db push has already created the table
 sed -n '/^ALTER TABLE "TradingHours"/,/;$/p' prisma/migrations/20260918000000_trading_hours/migration.sql \
   | "C:/pg16test/pgsql/bin/psql.exe" -v ON_ERROR_STOP=1 -d "$TEST_DATABASE_URL"
+# OfferRequirement: only its constraints, since db push has already added the column
+sed -n '/^ALTER TABLE "OfferRequirement" ADD CONSTRAINT/,/;$/p' \
+  prisma/migrations/20261123000000_offer_requirement_min_spend/migration.sql \
+  | "C:/pg16test/pgsql/bin/psql.exe" -v ON_ERROR_STOP=1 -d "$TEST_DATABASE_URL"
 ```
 
 Nothing in the suites depends on them - they assert the zod schema and the router, which is
@@ -1100,6 +1104,16 @@ visitors to the customer app for its sago offer. The rules are `~/lib/appOffer`;
   the integration-test section - so a raw insert there needs a price). The suites prove the
   application layer either way; the constraints are defence against a writer that bypasses
   it.
+- **A requirement asks for exactly one thing: so many of a dessert, so many from a category,
+  or a minimum spend** (`OfferRequirement.minSpendInCents`, since
+  `20261123000000_offer_requirement_min_spend`, whose `OfferRequirement_exactly_one_target`
+  CHECK holds it). One order has to meet every row. The spend is what the card is charged for
+  the order - after member discounts and promotions, with items from other offers counted at
+  what they cost - while the dessert and category counts leave those items out; the owner chose
+  that on 2026-11-23, since a free bowl adds nothing to a spend and so cannot feed the next
+  reward. One spend per offer (the requirements schema refuses a second), typed in dollars on
+  the form and stored in cents, with `quantity` stored as 1. The order server's
+  `lib/offerUnlock` is what checks it, and an older order server never unlocks a spend row.
 - **Never read an Auckland hour or day off a `Date`'s own getters, or out of an `Intl`
   format with no `timeZone`.** Vercel runs in UTC and a customer's browser can be anywhere.
   The pick-up picker, whose old helper called itself `getNowNZ` but returned `new Date()`,
