@@ -395,6 +395,97 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
     ).resolves.toEqual([{ quantity: 1, minSpendInCents: 2000 }]);
   });
 
+  /**
+   * A requirement is patched by its id, and the id was all the update looked at. Saving
+   * one offer with another offer's requirement id rewrote that other offer's requirement,
+   * which the order server would then unlock against.
+   */
+  it("refuses a requirement id that belongs to another offer, and changes neither", async () => {
+    const { dessert } = await seedMenu();
+    const caller = adminCaller();
+    const other = await caller.offer.createOffer({
+      offer: offerInput({
+        name: "Other offer",
+        requirements: [{ dessertId: dessert.id, quantity: 2 }],
+      }),
+    });
+    const edited = await caller.offer.createOffer({
+      offer: offerInput({ name: "Edited offer" }),
+    });
+    const [foreign] = await db.offerRequirement.findMany({
+      where: { offerId: other.id },
+      select: { id: true },
+    });
+    if (!foreign) throw new Error("seeded requirement missing");
+
+    await expect(
+      caller.offer.updateOffer({
+        offer: {
+          ...offerInput({
+            name: "Edited offer",
+            requirements: [
+              { id: foreign.id, dessertId: dessert.id, quantity: 9 },
+            ],
+          }),
+          id: edited.id,
+        },
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    await expect(
+      db.offerRequirement.findMany({
+        select: { id: true, offerId: true, quantity: true },
+      }),
+    ).resolves.toEqual([{ id: foreign.id, offerId: other.id, quantity: 2 }]);
+  });
+
+  /**
+   * Two admins with the same offer open: one removes a requirement and saves, then the
+   * other saves a form still holding it. That update found no row and failed as a 500 with
+   * Prisma's message; it is a stale form, and says so.
+   */
+  it("refuses a requirement removed since the form was opened, and changes nothing", async () => {
+    const { dessert } = await seedMenu();
+    const caller = adminCaller();
+    const created = await caller.offer.createOffer({
+      offer: offerInput({
+        name: "Before",
+        requirements: [{ dessertId: dessert.id, quantity: 2 }],
+      }),
+    });
+    const [removed] = await db.offerRequirement.findMany({
+      where: { offerId: created.id },
+      select: { id: true },
+    });
+    if (!removed) throw new Error("seeded requirement missing");
+    // What the other admin's save did.
+    await db.offerRequirement.delete({ where: { id: removed.id } });
+
+    await expect(
+      caller.offer.updateOffer({
+        offer: {
+          ...offerInput({
+            name: "After",
+            requirements: [
+              { id: removed.id, dessertId: dessert.id, quantity: 2 },
+            ],
+          }),
+          id: created.id,
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringMatching(/changed since/) as unknown,
+    });
+
+    await expect(
+      db.offer.findUnique({
+        where: { id: created.id },
+        select: { name: true },
+      }),
+    ).resolves.toEqual({ name: "Before" });
+  });
+
   it("refuses to edit an offer whose run has ended, and changes nothing", async () => {
     const caller = adminCaller();
     const created = await caller.offer.createOffer({

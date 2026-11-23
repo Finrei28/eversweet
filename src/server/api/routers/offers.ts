@@ -366,6 +366,21 @@ export const offerRouter = createTRPCRouter({
           .map((r) => r.id)
           .filter((id): id is string => !!id);
 
+        /**
+         * Every id sent has to be one of this offer's requirements. The update below
+         * found its row by id alone, so another offer's id rewrote that offer's
+         * requirement, and one removed by a save made since this form opened failed as a
+         * 500 with Prisma's message. Both are refused before anything is written.
+         */
+        const heldIds = new Set(existing.requirements.map((r) => r.id));
+        if (keptIds.some((id) => !heldIds.has(id))) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "This offer's requirements have changed since it was opened. Close it, open it again and make your change again.",
+          });
+        }
+
         const removed = existing.requirements
           .map((r) => r.id)
           .filter((id) => !keptIds.includes(id));
@@ -382,8 +397,10 @@ export const offerRouter = createTRPCRouter({
           // The result is discarded either way, so name a single column rather than
           // having Prisma return - and therefore SELECT - every field on the row.
           if (requirement.id) {
+            // `offerId` as well as the id, so this can never reach another offer's row
+            // even if the check above is ever loosened.
             await tx.offerRequirement.update({
-              where: { id: requirement.id },
+              where: { id: requirement.id, offerId: data.id },
               data: values,
               select: { id: true },
             });
