@@ -202,13 +202,18 @@ export default function RequirementsField({
             {kind === "spend" ? (
               /* Dollars on screen, cents in the form and the database. A controlled
                  number input keeps "20." while it is typed, since React leaves the box
-                 alone when the number it holds has not changed. */
+                 alone when the number it holds has not changed.
+
+                 No `min`, and `step="any"`: with min="0.01" and step="0.01" the browser
+                 refused 0, a negative or a third decimal itself, in its own language,
+                 and the schema's "Enter an amount over $0." never showed (Greptile on
+                 #79). The box rounds to the cent as it is typed; the schema refuses the
+                 rest. */
               <div className="flex min-w-36 flex-1 items-center gap-1">
                 <span className="text-sm text-muted-foreground">$</span>
                 <Input
                   type="number"
-                  min={0.01}
-                  step={0.01}
+                  step="any"
                   inputMode="decimal"
                   aria-label={language === "en" ? "Minimum spend" : "最低消费"}
                   value={
