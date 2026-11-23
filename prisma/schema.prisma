@@ -221,8 +221,17 @@ model OfferRequirement {
 
   offerId String
 
-  dessertId  String?
-  categoryId String?
+  /// Exactly one of these three says what the row asks for: so many of a dessert, so many
+  /// from a category, or a minimum spend on the order ("spend $20 to unlock"). A CHECK
+  /// constraint holds that (20261123000000_offer_requirement_min_spend).
+  ///
+  /// The spend is what the order's card payment comes to - the order total after member
+  /// discounts and promotions, items from other offers included at what they cost - since
+  /// money paid is what it measures. Items bought with Sweet Points cost nothing, so add
+  /// nothing. `quantity` means nothing on a spend row and is stored as 1.
+  dessertId       String?
+  categoryId      String?
+  minSpendInCents Int?
 
   quantity Int
 

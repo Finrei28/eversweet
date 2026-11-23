@@ -55,7 +55,11 @@ describe("the Terms on eating in", () => {
     expect(termAndConditions.sections.at(-1)?.heading).toBe("20. Contact us");
   });
 
-  it("is dated the day that wording was added", () => {
-    expect(LEGAL_LAST_UPDATED).toBe("21 November 2026");
+  // No earlier, rather than exactly: every later change to the Terms moves the date on, as
+  // LEGAL_LAST_UPDATED says to. The minimum-spend offers clause did on 2026-11-23.
+  it("is dated no earlier than the day that wording was added", () => {
+    expect(
+      new Date(`${LEGAL_LAST_UPDATED} UTC`).getTime(),
+    ).toBeGreaterThanOrEqual(Date.UTC(2026, 10, 21));
   });
 });

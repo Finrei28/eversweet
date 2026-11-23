@@ -3,7 +3,11 @@ import { TRPCError } from "@trpc/server";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 
-import { createOfferSchema, updateOfferSchema } from "~/app/components/schemas";
+import {
+  createOfferSchema,
+  type offerRequirementSchema,
+  updateOfferSchema,
+} from "~/app/components/schemas";
 import { endOfDayNZ, startOfDayNZ } from "~/lib/aucklandDay";
 import { formatCurrency } from "~/lib/formatters";
 import { canActivate, hasEnded } from "~/lib/offers";
@@ -178,6 +182,7 @@ const offerSelect = {
     select: {
       id: true,
       quantity: true,
+      minSpendInCents: true,
       dessert: { select: { id: true, name: true, chineseName: true } },
       category: { select: { id: true, name: true, chineseName: true } },
     },
@@ -212,6 +217,23 @@ const offerScalars = (
   dessertId: data.dessertId,
   categoryId: data.categoryId,
   excludedDessertIds,
+});
+
+/**
+ * A requirement row's columns, shared by create and update so a column added to one
+ * cannot be missed by the other.
+ *
+ * A spend row stores a quantity of 1 whatever it was sent. Nothing reads it there, and a
+ * row switched from "3 x Mango sago" to a spend would otherwise keep a 3 that reads like it
+ * means something.
+ */
+const requirementValues = (
+  requirement: z.infer<typeof offerRequirementSchema>,
+) => ({
+  dessertId: requirement.dessertId,
+  categoryId: requirement.categoryId,
+  minSpendInCents: requirement.minSpendInCents,
+  quantity: requirement.minSpendInCents === null ? requirement.quantity : 1,
 });
 
 export const offerRouter = createTRPCRouter({
@@ -274,13 +296,7 @@ export const offerRouter = createTRPCRouter({
       const offer = await ctx.db.offer.create({
         data: {
           ...offerScalars(data, excludedDessertIds),
-          requirements: {
-            create: data.requirements.map((r) => ({
-              quantity: r.quantity,
-              dessertId: r.dessertId,
-              categoryId: r.categoryId,
-            })),
-          },
+          requirements: { create: data.requirements.map(requirementValues) },
         },
         select: { id: true, name: true },
       });
@@ -350,6 +366,21 @@ export const offerRouter = createTRPCRouter({
           .map((r) => r.id)
           .filter((id): id is string => !!id);
 
+        /**
+         * Every id sent has to be one of this offer's requirements. The update below
+         * found its row by id alone, so another offer's id rewrote that offer's
+         * requirement, and one removed by a save made since this form opened failed as a
+         * 500 with Prisma's message. Both are refused before anything is written.
+         */
+        const heldIds = new Set(existing.requirements.map((r) => r.id));
+        if (keptIds.some((id) => !heldIds.has(id))) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "This offer's requirements have changed since it was opened. Close it, open it again and make your change again.",
+          });
+        }
+
         const removed = existing.requirements
           .map((r) => r.id)
           .filter((id) => !keptIds.includes(id));
@@ -361,17 +392,15 @@ export const offerRouter = createTRPCRouter({
         }
 
         for (const requirement of data.requirements) {
-          const values = {
-            quantity: requirement.quantity,
-            dessertId: requirement.dessertId,
-            categoryId: requirement.categoryId,
-          };
+          const values = requirementValues(requirement);
 
           // The result is discarded either way, so name a single column rather than
           // having Prisma return - and therefore SELECT - every field on the row.
           if (requirement.id) {
+            // `offerId` as well as the id, so this can never reach another offer's row
+            // even if the check above is ever loosened.
             await tx.offerRequirement.update({
-              where: { id: requirement.id },
+              where: { id: requirement.id, offerId: data.id },
               data: values,
               select: { id: true },
             });

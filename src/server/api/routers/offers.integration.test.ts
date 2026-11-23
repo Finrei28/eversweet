@@ -78,7 +78,11 @@ const seedMenu = async () => {
     data: { name: "Mochi bowls", chineseName: "麻糬碗" },
   });
 
-  const makeDessert = (name: string, chineseName: string, priceInCents: number) =>
+  const makeDessert = (
+    name: string,
+    chineseName: string,
+    priceInCents: number,
+  ) =>
     db.dessert.create({
       data: {
         name,
@@ -300,6 +304,186 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
     expect(after).toContainEqual(
       expect.objectContaining({ quantity: 4, categoryId: category.id }),
     );
+  });
+
+  /**
+   * "Spend $20 in one order and get half price on a bowl." The order server reads the
+   * amount off the requirement row, so it has to be stored there, and come back for the
+   * edit form to load.
+   */
+  it("stores a minimum spend alongside a dessert requirement, and reads both back", async () => {
+    const { dessert } = await seedMenu();
+    const caller = adminCaller();
+
+    await caller.offer.createOffer({
+      offer: offerInput({
+        requirements: [
+          { dessertId: dessert.id, quantity: 2 },
+          { minSpendInCents: 2000, quantity: 1 },
+        ],
+      }),
+    });
+
+    const [offer] = await caller.offer.getOffers();
+
+    expect(offer?.requirements).toHaveLength(2);
+    expect(offer?.requirements).toContainEqual(
+      expect.objectContaining({
+        minSpendInCents: 2000,
+        dessert: null,
+        category: null,
+      }),
+    );
+    expect(offer?.requirements).toContainEqual(
+      expect.objectContaining({
+        minSpendInCents: null,
+        quantity: 2,
+        dessert: expect.objectContaining({ id: dessert.id }) as unknown,
+      }),
+    );
+  });
+
+  it("changes a minimum spend in place", async () => {
+    const caller = adminCaller();
+    const created = await caller.offer.createOffer({
+      offer: offerInput({
+        requirements: [{ minSpendInCents: 2000, quantity: 1 }],
+      }),
+    });
+    const [existing] = await db.offerRequirement.findMany({
+      where: { offerId: created.id },
+      select: { id: true },
+    });
+    if (!existing) throw new Error("seeded requirement missing");
+
+    await caller.offer.updateOffer({
+      offer: {
+        ...offerInput({
+          requirements: [
+            { id: existing.id, minSpendInCents: 3000, quantity: 1 },
+          ],
+        }),
+        id: created.id,
+      },
+    });
+
+    await expect(
+      db.offerRequirement.findMany({
+        where: { offerId: created.id },
+        select: { id: true, minSpendInCents: true },
+      }),
+    ).resolves.toEqual([{ id: existing.id, minSpendInCents: 3000 }]);
+  });
+
+  /**
+   * A row switched from a dessert to a spend keeps whatever quantity it had in the form.
+   * Nothing reads a quantity on a spend row, so store 1 rather than leave a 5 that reads
+   * like it means something.
+   */
+  it("stores a quantity of 1 on a minimum spend whatever it is sent", async () => {
+    const created = await adminCaller().offer.createOffer({
+      offer: offerInput({
+        requirements: [{ minSpendInCents: 2000, quantity: 5 }],
+      }),
+    });
+
+    await expect(
+      db.offerRequirement.findMany({
+        where: { offerId: created.id },
+        select: { quantity: true, minSpendInCents: true },
+      }),
+    ).resolves.toEqual([{ quantity: 1, minSpendInCents: 2000 }]);
+  });
+
+  /**
+   * A requirement is patched by its id, and the id was all the update looked at. Saving
+   * one offer with another offer's requirement id rewrote that other offer's requirement,
+   * which the order server would then unlock against.
+   */
+  it("refuses a requirement id that belongs to another offer, and changes neither", async () => {
+    const { dessert } = await seedMenu();
+    const caller = adminCaller();
+    const other = await caller.offer.createOffer({
+      offer: offerInput({
+        name: "Other offer",
+        requirements: [{ dessertId: dessert.id, quantity: 2 }],
+      }),
+    });
+    const edited = await caller.offer.createOffer({
+      offer: offerInput({ name: "Edited offer" }),
+    });
+    const [foreign] = await db.offerRequirement.findMany({
+      where: { offerId: other.id },
+      select: { id: true },
+    });
+    if (!foreign) throw new Error("seeded requirement missing");
+
+    await expect(
+      caller.offer.updateOffer({
+        offer: {
+          ...offerInput({
+            name: "Edited offer",
+            requirements: [
+              { id: foreign.id, dessertId: dessert.id, quantity: 9 },
+            ],
+          }),
+          id: edited.id,
+        },
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    await expect(
+      db.offerRequirement.findMany({
+        select: { id: true, offerId: true, quantity: true },
+      }),
+    ).resolves.toEqual([{ id: foreign.id, offerId: other.id, quantity: 2 }]);
+  });
+
+  /**
+   * Two admins with the same offer open: one removes a requirement and saves, then the
+   * other saves a form still holding it. That update found no row and failed as a 500 with
+   * Prisma's message; it is a stale form, and says so.
+   */
+  it("refuses a requirement removed since the form was opened, and changes nothing", async () => {
+    const { dessert } = await seedMenu();
+    const caller = adminCaller();
+    const created = await caller.offer.createOffer({
+      offer: offerInput({
+        name: "Before",
+        requirements: [{ dessertId: dessert.id, quantity: 2 }],
+      }),
+    });
+    const [removed] = await db.offerRequirement.findMany({
+      where: { offerId: created.id },
+      select: { id: true },
+    });
+    if (!removed) throw new Error("seeded requirement missing");
+    // What the other admin's save did.
+    await db.offerRequirement.delete({ where: { id: removed.id } });
+
+    await expect(
+      caller.offer.updateOffer({
+        offer: {
+          ...offerInput({
+            name: "After",
+            requirements: [
+              { id: removed.id, dessertId: dessert.id, quantity: 2 },
+            ],
+          }),
+          id: created.id,
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringMatching(/changed since/) as unknown,
+    });
+
+    await expect(
+      db.offer.findUnique({
+        where: { id: created.id },
+        select: { name: true },
+      }),
+    ).resolves.toEqual({ name: "Before" });
   });
 
   it("refuses to edit an offer whose run has ended, and changes nothing", async () => {
@@ -588,7 +772,10 @@ describeIfDb("offer router", { timeout: 30_000 }, () => {
       where: { id: created.id },
       select: { name: true, excludedDessertIds: true },
     });
-    expect(stored).toEqual({ name: "Half-price bowls", excludedDessertIds: [] });
+    expect(stored).toEqual({
+      name: "Half-price bowls",
+      excludedDessertIds: [],
+    });
   });
 
   it("refuses to leave out a dessert that is not in the offer's category", async () => {

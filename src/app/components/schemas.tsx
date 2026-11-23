@@ -121,22 +121,52 @@ export const createOrderSchema = z.object({
 });
 
 /**
- * One requirement row on an offer: so many of a dessert, or so many from a category.
+ * One requirement row on an offer: so many of a dessert, so many from a category, or a
+ * minimum spend on the order.
  *
  * `id` is present for rows that already exist in the database and absent for rows the
  * admin just added. The update mutation uses that to patch rather than delete and
  * recreate, so requirement ids survive an unrelated edit.
+ *
+ * Exactly one of the three, which the database holds too
+ * (`OfferRequirement_exactly_one_target`). The order server checks a row by whichever it
+ * names first, so a dessert and a spend on one row would be a dessert requirement.
+ * `quantity` means nothing on a spend row; the router stores 1 there.
  */
 export const offerRequirementSchema = z
   .object({
     id: z.string().min(1).optional(),
     dessertId: z.string().min(1).nullable().default(null),
     categoryId: z.string().min(1).nullable().default(null),
+    /** Cents, compared with what the card is charged for the order: `OfferRequirement` in schema.prisma. */
+    minSpendInCents: z.coerce
+      .number()
+      .int()
+      .positive()
+      .nullable()
+      .default(null),
     quantity: z.coerce.number().int().positive(),
   })
   .refine(
-    (r) => (r.dessertId === null) !== (r.categoryId === null),
-    "Pick either a dessert or a category, not both",
+    (r) =>
+      [r.dessertId, r.categoryId, r.minSpendInCents].filter((v) => v !== null)
+        .length === 1,
+    "Pick a dessert or a category, or set a minimum spend - one per row",
+  );
+
+/**
+ * An offer's requirements. Every row must be met by one order, so two spends would only
+ * ever mean the larger, and the smaller is a mistake.
+ *
+ * One schema object for the form and both mutations (`schemas.test.ts` checks they share
+ * it), so the dialog refuses what the router would.
+ */
+const offerRequirementsSchema = z
+  .array(offerRequirementSchema)
+  .default([])
+  .refine(
+    (rows) => rows.filter((r) => r.minSpendInCents !== null).length <= 1,
+    "An offer can have one minimum spend",
   );
 
 /**
@@ -188,7 +218,7 @@ const offerFields = z.object({
    * closed the run on.
    */
   renewsWeekly: z.boolean().default(false),
-  requirements: z.array(offerRequirementSchema).default([]),
+  requirements: offerRequirementsSchema,
 });
 
 /**

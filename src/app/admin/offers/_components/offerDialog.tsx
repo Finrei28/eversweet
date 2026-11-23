@@ -102,6 +102,7 @@ const toFormValues = (offer: OfferRow | null): OfferForm =>
           id: requirement.id,
           dessertId: requirement.dessert?.id ?? null,
           categoryId: requirement.category?.id ?? null,
+          minSpendInCents: requirement.minSpendInCents,
           quantity: requirement.quantity,
         })),
       }

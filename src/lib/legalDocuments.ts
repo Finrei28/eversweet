@@ -92,7 +92,7 @@ export const LEGAL_TOKENS = [
  * Written the long way round because it is rendered raw by the app, and "12-06-2026" reads
  * as 12 June to a New Zealander and 6 December to an American with equal confidence.
  */
-export const LEGAL_LAST_UPDATED = "21 November 2026"
+export const LEGAL_LAST_UPDATED = "23 November 2026"
 
 const fill = (text: string, contact: LegalContact): string =>
   text.replace(/\{\{(\w+)\}\}/g, (whole, token: string) =>
@@ -310,7 +310,7 @@ export const termAndConditions: LegalDocument = {
       heading: "15. Offers and discounts",
       list: [
         "Offers in the app may be open to everyone, limited to members, or limited to customers who have not ordered before.",
-        "Some offers have to be unlocked first, by buying the items they name in one order paid at least partly by card. Items from another offer do not count towards it.",
+        "Some offers have to be unlocked first, in one order paid at least partly by card, by buying the items they name, spending the amount they name, or both. Items from another offer do not count towards the items an offer names. The amount is what you pay for the whole order after discounts, items from other offers included; items paid for with Sweet Points add nothing to it.",
         "An offer can have a limit on how many times you can use it. Some reset each week.",
         "Offers run for a set period and can be paused, changed or withdrawn at any time.",
         "If an offer in your cart stops running before you pay, the item is taken out of your cart and we tell you why.",
