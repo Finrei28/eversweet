@@ -1121,6 +1121,23 @@ visitors to the customer app for its sago offer. The rules are `~/lib/appOffer`;
   reward. One spend per offer (the requirements schema refuses a second), typed in dollars on
   the form and stored in cents, with `quantity` stored as 1. The order server's
   `lib/offerUnlock` is what checks it, and an older order server never unlocks a spend row.
+- **A combo is the third kind of price: one price for a set** ("any mochi + any sago for $15",
+  `20261125000000_offer_combos`). `Offer.comboPriceInCents` plus 2-4 `OfferComboSlot`s, each a
+  dessert or a whole category, with no dessert, category or exclusions on the offer itself.
+  - **Where the rules live.** The shared schemas hold the count and the shape
+    (`refineCombo`) and the three-way price (`hasExactlyOnePrice`). The router holds the
+    ceiling (`assertComboUnderCeiling`: under the cheapest dessert each slot can take, added
+    up, its message naming the sum).
+  - **Slots are replaced on every save.** No cart or order line keeps a slot id.
+  - **The kind is fixed once made.** `updateOffer` refuses a single offer turning into a
+    combo or back, because every line under it would mean something else.
+  - **Who serves it.** The order server prices, checks and serves combos, only to app builds
+    that ask with `?combos=1`.
+  - **Changing a running combo's price or slots,** or a single offer's price, takes it out of
+    every cart holding it on the next load. The dialog says so on every edit.
+  - **The order lines.** A combo's order lines share a `comboId`, each line carrying its
+    share of the price as its discount, so `paidInCents` and the dashboard need nothing new.
+  - **The app-offer pop-up** never picks a combo: it reads only offers naming a category.
 - **Never read an Auckland hour or day off a `Date`'s own getters, or out of an `Intl`
   format with no `timeZone`.** Vercel runs in UTC and a customer's browser can be anywhere.
   The pick-up picker, whose old helper called itself `getNowNZ` but returned `new Date()`,
