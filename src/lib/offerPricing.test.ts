@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   cheapestDessert,
+  comboCeiling,
+  describeComboCeiling,
   hasExactlyOnePrice,
   isUnderListPrice,
 } from "./offerPricing";
@@ -107,5 +109,96 @@ describe("isUnderListPrice", () => {
   // a rule that cannot be evaluated is not a rule that was broken.
   it("passes when there is nothing to compare against", () => {
     expect(isUnderListPrice(5000, null)).toBe(true);
+  });
+});
+
+/**
+ * A combo is the third way to price an offer: one price for the set. Exactly one of the three
+ * is set, as the CHECK constraint `Offer_exactly_one_price` holds it since
+ * 20261125000000_offer_combos.
+ */
+describe("hasExactlyOnePrice with a combo", () => {
+  it("accepts a combo price on its own, free included", () => {
+    expect(
+      hasExactlyOnePrice({ itemPriceInCents: null, discountAmount: null, comboPriceInCents: 1500 }),
+    ).toBe(true);
+    expect(
+      hasExactlyOnePrice({ itemPriceInCents: null, discountAmount: null, comboPriceInCents: 0 }),
+    ).toBe(true);
+  });
+
+  it("rejects a combo price beside either of the others", () => {
+    expect(
+      hasExactlyOnePrice({ itemPriceInCents: 500, discountAmount: null, comboPriceInCents: 1500 }),
+    ).toBe(false);
+    expect(
+      hasExactlyOnePrice({ itemPriceInCents: null, discountAmount: 20, comboPriceInCents: 1500 }),
+    ).toBe(false);
+  });
+});
+
+describe("comboCeiling", () => {
+  const desserts = [
+    { id: "taro", name: "Taro Mochi Bowl", priceInCents: 1050, categoryId: "mochi" },
+    { id: "matcha", name: "Matcha Mochi Bowl", priceInCents: 950, categoryId: "mochi" },
+    { id: "mango", name: "Mango Sago", priceInCents: 800, categoryId: "sago" },
+  ];
+  const categoryName = (id: string) =>
+    ({ mochi: "Mochi Series", sago: "Sago Series" })[id] ?? id;
+
+  it("adds up the cheapest dessert each slot can take", () => {
+    const ceiling = comboCeiling(
+      [
+        { dessertId: null, categoryId: "mochi" },
+        { dessertId: null, categoryId: "sago" },
+      ],
+      desserts,
+      categoryName,
+    );
+    expect(ceiling?.totalCents).toBe(1750);
+    expect(describeComboCeiling(ceiling!)).toBe(
+      "Mochi Series from $9.50 + Sago Series from $8.00 = $17.50",
+    );
+  });
+
+  it("counts a category twice when two slots name it", () => {
+    expect(
+      comboCeiling(
+        [
+          { dessertId: null, categoryId: "sago" },
+          { dessertId: null, categoryId: "sago" },
+        ],
+        desserts,
+        categoryName,
+      )?.totalCents,
+    ).toBe(1600);
+  });
+
+  it("names a dessert slot by the dessert, at its own price", () => {
+    const ceiling = comboCeiling(
+      [
+        { dessertId: "taro", categoryId: null },
+        { dessertId: null, categoryId: "sago" },
+      ],
+      desserts,
+      categoryName,
+    );
+    expect(describeComboCeiling(ceiling!)).toBe(
+      "Taro Mochi Bowl $10.50 + Sago Series from $8.00 = $18.50",
+    );
+  });
+
+  it("has no answer while a slot names nothing on the menu", () => {
+    expect(
+      comboCeiling(
+        [
+          { dessertId: null, categoryId: "mochi" },
+          { dessertId: null, categoryId: "empty" },
+        ],
+        desserts,
+        categoryName,
+      ),
+    ).toBeNull();
+    expect(comboCeiling([], desserts, categoryName)).toBeNull();
   });
 });
