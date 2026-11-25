@@ -1,3 +1,5 @@
+import { formatCurrency } from "~/lib/formatters";
+
 /**
  * What an offer is allowed to charge.
  *
@@ -25,14 +27,22 @@
 export type OfferPricing = {
   itemPriceInCents: number | null;
   discountAmount: number | null;
+  /** A combo's price for its whole set. Absent where only the first two apply. */
+  comboPriceInCents?: number | null;
 };
 
 export const DISCOUNT_MIN_PERCENT = 1;
 export const DISCOUNT_MAX_PERCENT = 100;
 
-/** Rule 1, as one expression, so the schema and the constraint cannot disagree. */
+/**
+ * Rule 1, as one expression, so the schema and the constraint cannot disagree. Exactly one
+ * of three since combo offers (20261125000000_offer_combos): a fixed price, a percentage, or
+ * a combo's price for its set - the constraint is `NUM_NONNULLS(...) = 1`.
+ */
 export const hasExactlyOnePrice = (offer: OfferPricing): boolean =>
-  (offer.itemPriceInCents === null) !== (offer.discountAmount === null);
+  [offer.itemPriceInCents, offer.discountAmount, offer.comboPriceInCents ?? null].filter(
+    (price) => price !== null,
+  ).length === 1;
 
 /**
  * The item a fixed offer price has to beat.
@@ -65,3 +75,66 @@ export const isUnderListPrice = (
   itemPriceInCents: number,
   ceilingInCents: number | null,
 ): boolean => ceilingInCents === null || itemPriceInCents < ceilingInCents;
+
+/** One slot of a combo, as the form and the router hold it: a dessert or a whole category. */
+export type ComboSlotTarget = { dessertId: string | null; categoryId: string | null };
+
+type CeilingDessert = {
+  id: string;
+  name: string;
+  priceInCents: number;
+  categoryId: string;
+};
+
+export type ComboCeiling = {
+  totalCents: number;
+  parts: { label: string; cents: number; fromCategory: boolean }[];
+};
+
+/**
+ * Rule 3 for a combo: the most its set may cost is under the cheapest dessert each slot can
+ * take, added up - "any mochi + any sago" has to beat the cheapest mochi and the cheapest sago
+ * bought on their own. A category named twice counts twice. Null while a slot names nothing
+ * on the menu, which has no ceiling to break, as for a single offer.
+ *
+ * The parts are kept so the admin is told the sum, not just a number: "Mochi Series from
+ * $9.50 + Sago Series from $8.00 = $17.50".
+ */
+export const comboCeiling = (
+  slots: readonly ComboSlotTarget[],
+  desserts: readonly CeilingDessert[],
+  categoryName: (categoryId: string) => string,
+): ComboCeiling | null => {
+  if (slots.length === 0) return null;
+  const parts: ComboCeiling["parts"] = [];
+  for (const slot of slots) {
+    if (slot.dessertId !== null) {
+      const dessert = desserts.find((d) => d.id === slot.dessertId);
+      if (!dessert) return null;
+      parts.push({ label: dessert.name, cents: dessert.priceInCents, fromCategory: false });
+      continue;
+    }
+    const cheapest = cheapestDessert(
+      desserts.filter((d) => d.categoryId === slot.categoryId),
+    );
+    if (!cheapest || slot.categoryId === null) return null;
+    parts.push({
+      label: categoryName(slot.categoryId),
+      cents: cheapest.priceInCents,
+      fromCategory: true,
+    });
+  }
+  return {
+    totalCents: parts.reduce((sum, part) => sum + part.cents, 0),
+    parts,
+  };
+};
+
+/** "Mochi Series from $9.50 + Sago Series from $8.00 = $17.50". */
+export const describeComboCeiling = (ceiling: ComboCeiling) =>
+  `${ceiling.parts
+    .map(
+      (part) =>
+        `${part.label} ${part.fromCategory ? "from " : ""}${formatCurrency(part.cents / 100)}`,
+    )
+    .join(" + ")} = ${formatCurrency(ceiling.totalCents / 100)}`;
