@@ -37,15 +37,12 @@ import { Textarea } from "~/components/ui/textarea";
 import { toast } from "~/hooks/use-toast";
 import { calendarDate, pickedDay } from "~/lib/aucklandDay";
 import { formatCurrency } from "~/lib/formatters";
-import {
-  cheapestDessert,
-  comboCeiling,
-  describeComboCeiling,
-} from "~/lib/offerPricing";
+import { cheapestDessert, describeComboCeiling } from "~/lib/offerPricing";
 import { api } from "~/trpc/react";
 import { type OfferRow } from "../columns";
 import ComboSlotsField from "./comboSlotsField";
 import RequirementsField from "./requirementsField";
+import { useComboLimit } from "./useComboLimit";
 
 /**
  * One dialog for both create and edit, rather than the AddProduct/EditProduct pair the
@@ -206,31 +203,7 @@ export default function OfferDialog({
     return cheapestDessert(covered);
   }, [desserts, dessertId, categoryDesserts, excludedDessertIds]);
 
-  const comboSlots = form.watch("comboSlots");
-
-  /**
-   * What a combo's set has to come in under: the cheapest dessert each part can take, added
-   * up. Mirrors `assertComboUnderCeiling` in the router, which decides; this tells the admin
-   * while typing. Worded in the admin's language, with the names the menu uses.
-   */
-  const comboLimit = useMemo(() => {
-    if (kind !== "combo") return null;
-    const named = (useChinese: boolean) =>
-      comboCeiling(
-        comboSlots,
-        desserts.map((dessert) => ({
-          id: dessert.id,
-          name: useChinese ? dessert.chineseName : dessert.name,
-          priceInCents: dessert.priceInCents,
-          categoryId: dessert.category.id,
-        })),
-        (id) => {
-          const category = categories.find((c) => c.id === id);
-          return (useChinese ? category?.chineseName : category?.name) ?? id;
-        },
-      );
-    return { en: named(false), zh: named(true) };
-  }, [kind, comboSlots, desserts, categories]);
+  const comboLimit = useComboLimit(form, kind, desserts, categories);
 
   const switchKind = (next: "single" | "combo") => {
     setKind(next);
