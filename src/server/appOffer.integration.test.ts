@@ -106,4 +106,29 @@ describeIfDb("getAppOffer", () => {
 
     await expect(getAppOffer()).resolves.toBeNull();
   });
+
+  /**
+   * The pop-up advertises a percentage off sago bowls. A combo is neither: it has its own
+   * price for a set and names no category of its own, so the query never picks one up - even
+   * a combo made only of sago bowls. A regression guard: it passed before combos could be
+   * authored, and pins that a combo cannot become the pop-up's offer by accident.
+   */
+  it("passes over a combo, even one of sago bowls", async () => {
+    const { category } = await seedSago();
+    await db.offer.create({
+      data: {
+        name: "Two sago bowls for $16",
+        audience: "EVERYONE",
+        comboPriceInCents: 1600,
+        comboSlots: {
+          create: [
+            { position: 0, categoryId: category.id },
+            { position: 1, categoryId: category.id },
+          ],
+        },
+      },
+    });
+
+    await expect(getAppOffer()).resolves.toBeNull();
+  });
 });

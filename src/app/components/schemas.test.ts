@@ -381,3 +381,81 @@ describe("offer requirement schemas", () => {
     ).toBe(false);
   });
 });
+
+
+/**
+ * A combo: one price for 2-4 slots, each a dessert or a whole category, and no dessert,
+ * category or exclusions of its own - the database's CHECKs hold the same
+ * (20261125000000_offer_combos), and the router holds the price ceiling.
+ */
+describe("combo offer schemas", () => {
+  const base = { name: "Mochi + Sago", audience: "EVERYONE" as const };
+  const slots = [{ categoryId: "mochi" }, { categoryId: "sago" }];
+  const ok = (offer: object) => createOfferSchema.safeParse(offer).success;
+
+  it("takes one price for two to four slots", () => {
+    const parsed = createOfferSchema.parse({
+      ...base,
+      comboPriceInCents: 1500,
+      comboSlots: slots,
+    });
+    expect(parsed.comboPriceInCents).toBe(1500);
+    expect(parsed.comboSlots).toEqual([
+      { dessertId: null, categoryId: "mochi" },
+      { dessertId: null, categoryId: "sago" },
+    ]);
+    expect(
+      ok({ ...base, comboPriceInCents: 0, comboSlots: [...slots, ...slots] }),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["one slot", [{ categoryId: "mochi" }]],
+    ["five slots", [...slots, ...slots, { categoryId: "mochi" }]],
+  ])("refuses a combo of %s", (_, comboSlots) => {
+    expect(ok({ ...base, comboPriceInCents: 1500, comboSlots })).toBe(false);
+  });
+
+  it.each([
+    ["a category of its own", { categoryId: "sago" }],
+    ["a dessert of its own", { dessertId: "taro" }],
+    ["a fixed price too", { itemPriceInCents: 500 }],
+    ["a percentage too", { discountAmount: 20 }],
+  ])("refuses a combo with %s", (_, extra) => {
+    expect(
+      ok({ ...base, comboPriceInCents: 1500, comboSlots: slots, ...extra }),
+    ).toBe(false);
+  });
+
+  it("refuses slots on an offer that is not a combo", () => {
+    expect(
+      ok({ ...base, categoryId: "sago", discountAmount: 20, comboSlots: slots }),
+    ).toBe(false);
+  });
+
+  it.each([
+    ["nothing", {}],
+    ["a dessert and a category", { dessertId: "taro", categoryId: "mochi" }],
+  ])("refuses a slot naming %s", (_, slot) => {
+    expect(
+      ok({ ...base, comboPriceInCents: 1500, comboSlots: [slot, slots[1]] }),
+    ).toBe(false);
+  });
+
+  it("refuses a negative combo price", () => {
+    expect(ok({ ...base, comboPriceInCents: -1, comboSlots: slots })).toBe(false);
+  });
+
+  // One object for the form and both mutations, so the dialog refuses what the router would.
+  it("shares the slots and the price between the form and both mutations", () => {
+    const formShape = offerFormSchema.innerType().shape;
+    expect(formShape.comboSlots).toBeDefined();
+    expect(formShape.comboPriceInCents).toBeDefined();
+    for (const schema of [createOfferSchema, updateOfferSchema]) {
+      expect(schema.innerType().shape.comboSlots).toBe(formShape.comboSlots);
+      expect(schema.innerType().shape.comboPriceInCents).toBe(
+        formShape.comboPriceInCents,
+      );
+    }
+  });
+});
