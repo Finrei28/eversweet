@@ -123,6 +123,44 @@ describeIfDb("combo offers in the database", () => {
     ).toBe(2);
   });
 
+  /** An order with a combo's two lines, as the order server copies them from the cart. */
+  const orderWithCombo = (offerId: string | null) =>
+    db.order.create({
+      data: {
+        tempOrderId: "9100",
+        priceInCents: 1500,
+        GST: 196,
+        customerFirstName: "Aroha",
+        customerLastName: "Ngata",
+        customerEmail: "aroha@example.test",
+        status: "ACCEPTED",
+        desserts: {
+          create: [0, 1].map(() => ({
+            dessertId,
+            offerId,
+            comboId: "combo-1",
+            quantity: 1,
+            priceInCents: 1200,
+            discountedAmountInCents: 450,
+          })),
+        },
+      },
+    });
+
+  it("keeps a combo's order lines together by comboId", async () => {
+    const offer = await db.offer.create({
+      data: { name: "Pair", comboPriceInCents: 1500 },
+    });
+    await orderWithCombo(offer.id);
+
+    expect(
+      await db.orderDessert.findMany({
+        where: { comboId: "combo-1" },
+        select: { offerId: true },
+      }),
+    ).toEqual([{ offerId: offer.id }, { offerId: offer.id }]);
+  });
+
   // The migration's CHECK constraints, which Prisma cannot see. A test database built with
   // `prisma db push` has none, and the suites promise to pass on one - so these skip, in
   // the report rather than silently, until the constraints are applied (see CLAUDE.md).
@@ -213,4 +251,14 @@ describeIfDb("combo offers in the database", () => {
       ).rejects.toThrow(Prisma.PrismaClientUnknownRequestError);
     },
   );
+
+  // A cancelled order hands back one use per combo, which it can only do while each line
+  // still names the combo's offer.
+  it("the table refuses a combo order line with no offer", async ({ skip }) => {
+    if (!(await constraintsInstalled())) skip();
+
+    await expect(orderWithCombo(null)).rejects.toThrow(
+      Prisma.PrismaClientUnknownRequestError,
+    );
+  });
 });
