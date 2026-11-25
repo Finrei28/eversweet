@@ -1128,7 +1128,10 @@ visitors to the customer app for its sago offer. The rules are `~/lib/appOffer`;
     (`refineCombo`) and the three-way price (`hasExactlyOnePrice`). The router holds the
     ceiling (`assertComboUnderCeiling`: under the cheapest dessert each slot can take, added
     up, its message naming the sum).
-  - **Slots are replaced on every save.** No cart or order line keeps a slot id.
+  - **Slots are replaced on every save,** since no cart or order line keeps a slot id. So
+    saves of one offer take turns: `updateOffer` locks the offer row first
+    (`FOR NO KEY UPDATE`, never `FOR UPDATE`, which would hold up customers adding it).
+    Two admins saving one combo used to collide on the (offer, position) key as a 500.
   - **The kind is fixed once made.** `updateOffer` refuses a single offer turning into a
     combo or back, because every line under it would mean something else.
   - **Who serves it.** The order server prices, checks and serves combos, only to app builds
