@@ -11,7 +11,12 @@ import {
 import { endOfDayNZ, startOfDayNZ } from "~/lib/aucklandDay";
 import { formatCurrency } from "~/lib/formatters";
 import { canActivate, hasEnded } from "~/lib/offers";
-import { cheapestDessert, isUnderListPrice } from "~/lib/offerPricing";
+import {
+  cheapestDessert,
+  comboCeiling,
+  describeComboCeiling,
+  isUnderListPrice,
+} from "~/lib/offerPricing";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { APP_OFFER_TAG } from "~/server/appOffer";
 
@@ -159,6 +164,74 @@ const assertUnderListPrice = async (
   }
 };
 
+/**
+ * Rule 3 for a combo: its set has to cost less than the cheapest dessert each part can take,
+ * added up. Like `assertUnderListPrice`, it compares against another table, so neither zod
+ * nor a CHECK constraint can hold it. The message names the sum, so the admin knows what to
+ * beat: "Mochi Series from $9.50 + Sago Series from $8.00 = $17.50".
+ *
+ * The order server refuses picks that come to less than the combo at add-to-cart, since a
+ * menu price can drop after this check.
+ */
+const assertComboUnderCeiling = async (
+  db: Prisma.TransactionClient,
+  data: {
+    comboPriceInCents: number | null;
+    comboSlots: { dessertId: string | null; categoryId: string | null }[];
+  },
+) => {
+  if (data.comboPriceInCents === null) return;
+
+  const dessertIds = data.comboSlots.flatMap((slot) =>
+    slot.dessertId ? [slot.dessertId] : [],
+  );
+  const categoryIds = data.comboSlots.flatMap((slot) =>
+    slot.categoryId ? [slot.categoryId] : [],
+  );
+  const [desserts, categories] = await Promise.all([
+    db.dessert.findMany({
+      where: {
+        OR: [{ id: { in: dessertIds } }, { categoryId: { in: categoryIds } }],
+      },
+      select: { id: true, name: true, priceInCents: true, categoryId: true },
+    }),
+    db.category.findMany({
+      where: { id: { in: categoryIds } },
+      select: { id: true, name: true },
+    }),
+  ]);
+
+  const names = new Map(categories.map((category) => [category.id, category.name]));
+  const ceiling = comboCeiling(
+    data.comboSlots,
+    desserts,
+    (id) => names.get(id) ?? "that category",
+  );
+
+  if (
+    ceiling !== null &&
+    !isUnderListPrice(data.comboPriceInCents, ceiling.totalCents)
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        `A combo has to cost less than its cheapest picks bought on their own: ` +
+        `${describeComboCeiling(ceiling)}, so this combo has to be under ` +
+        `${formatCurrency(ceiling.totalCents / 100)}.`,
+    });
+  }
+};
+
+/** A combo's parts as rows, numbered from 0 in the order they were given. */
+const comboSlotRows = (
+  slots: { dessertId: string | null; categoryId: string | null }[],
+) =>
+  slots.map((slot, position) => ({
+    position,
+    dessertId: slot.dessertId,
+    categoryId: slot.categoryId,
+  }));
+
 const offerSelect = {
   id: true,
   name: true,
@@ -171,6 +244,16 @@ const offerSelect = {
   audience: true,
   itemPriceInCents: true,
   discountAmount: true,
+  comboPriceInCents: true,
+  // A combo's parts, in order, named for the table and read back by the edit form.
+  comboSlots: {
+    select: {
+      position: true,
+      dessert: { select: { id: true, name: true, chineseName: true } },
+      category: { select: { id: true, name: true, chineseName: true } },
+    },
+    orderBy: { position: "asc" },
+  },
   limit: true,
   renewsWeekly: true,
   // The nested objects rather than the raw FK columns: the table renders the name and
@@ -212,6 +295,7 @@ const offerScalars = (
   audience: data.audience,
   itemPriceInCents: data.itemPriceInCents,
   discountAmount: data.discountAmount,
+  comboPriceInCents: data.comboPriceInCents,
   limit: data.limit,
   renewsWeekly: data.renewsWeekly,
   dessertId: data.dessertId,
@@ -291,12 +375,14 @@ export const offerRouter = createTRPCRouter({
 
       const excludedDessertIds = await resolveExclusions(ctx.db, data, null);
       await assertUnderListPrice(ctx.db, { ...data, excludedDessertIds });
+      await assertComboUnderCeiling(ctx.db, data);
 
       // No redemption reset: a brand new offer has none.
       const offer = await ctx.db.offer.create({
         data: {
           ...offerScalars(data, excludedDessertIds),
           requirements: { create: data.requirements.map(requirementValues) },
+          comboSlots: { create: comboSlotRows(data.comboSlots) },
         },
         select: { id: true, name: true },
       });
@@ -325,6 +411,7 @@ export const offerRouter = createTRPCRouter({
             endsAt: true,
             categoryId: true,
             excludedDessertIds: true,
+            comboPriceInCents: true,
             requirements: { select: { id: true } },
           },
         });
@@ -352,8 +439,41 @@ export const offerRouter = createTRPCRouter({
           });
         }
 
+        /**
+         * An offer stays what it was made as. The order server tells a combo from a single
+         * offer by `comboPriceInCents`, and a cart or order line under it by its `comboId`:
+         * switched, every line already holding the offer would mean something else. Archive
+         * it and make a new one instead.
+         */
+        if ((existing.comboPriceInCents === null) !== (data.comboPriceInCents === null)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              existing.comboPriceInCents === null
+                ? "A single-item offer can't become a combo. Archive it and create a combo instead."
+                : "A combo can't become a single-item offer. Archive it and create a new offer instead.",
+          });
+        }
+
         const excludedDessertIds = await resolveExclusions(tx, data, existing);
         await assertUnderListPrice(tx, { ...data, excludedDessertIds });
+        await assertComboUnderCeiling(tx, data);
+
+        /**
+         * A combo's parts are replaced, not patched: nothing outside this offer keeps a slot's
+         * id (cart and order lines are matched to slots as a set), so there is nothing a new
+         * id breaks. Changing a running combo's parts or price takes it out of every cart
+         * holding it on their next load, as the owner chose - the dialog says so.
+         */
+        if (data.comboPriceInCents !== null) {
+          await tx.offerComboSlot.deleteMany({ where: { offerId: data.id } });
+          await tx.offerComboSlot.createMany({
+            data: comboSlotRows(data.comboSlots).map((row) => ({
+              ...row,
+              offerId: data.id,
+            })),
+          });
+        }
 
         /**
          * Requirements are patched, not replaced.
