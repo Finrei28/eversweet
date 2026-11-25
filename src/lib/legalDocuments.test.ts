@@ -357,6 +357,9 @@ describe("the claims that were wrong before", () => {
       /added to and removed from your cart as a set, and counts as one use/i,
     );
     expect(termsText).toMatch(/Extras you add cost their usual price on top/i);
+    expect(termsText).toMatch(
+      /with your member discount if you have one; the combo price itself has no further discount/i,
+    );
   });
 
   /**
@@ -366,6 +369,8 @@ describe("the claims that were wrong before", () => {
    */
   it("says a changed offer leaves the cart, not only one that stopped", () => {
     expect(termsText).toMatch(/stops running or changes before you pay/i);
+    expect(termsText).toMatch(/its use is given back/i);
+    expect(termsText).toMatch(/A combo is taken out as a whole/i);
     expect(termsText).not.toMatch(
       /If an offer in your cart stops running before you pay/i,
     );
