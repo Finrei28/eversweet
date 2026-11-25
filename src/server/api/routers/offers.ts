@@ -404,6 +404,19 @@ export const offerRouter = createTRPCRouter({
       const data = input.offer;
 
       const saved = await ctx.db.$transaction(async (tx) => {
+        /**
+         * Saves of one offer take turns. A combo's parts are deleted and written again, and at
+         * READ COMMITTED a second save's delete waited for the first, then could not see the
+         * parts it had written, so its insert hit the (offer, position) unique key: a 500.
+         * Taken first, so everything below reads what the save before it committed.
+         *
+         * `FOR NO KEY UPDATE` is the lock the `offer.update` below takes anyway, held from the
+         * start rather than the end. Not `FOR UPDATE`: that conflicts with the `FOR KEY SHARE`
+         * an insert of a cart line, order line or redemption takes on its offer, and would
+         * hold up customers adding this offer while an admin saves it.
+         */
+        await tx.$queryRaw`SELECT 1 FROM "Offer" WHERE "id" = ${data.id} FOR NO KEY UPDATE`;
+
         const existing = await tx.offer.findUnique({
           where: { id: data.id },
           select: {
