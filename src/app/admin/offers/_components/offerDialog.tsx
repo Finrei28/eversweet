@@ -692,24 +692,35 @@ export default function OfferDialog({
                     render={({ field }) => (
                       <div>
                         <FormLabel>
-                          {language === "en"
-                            ? "Fixed price (cents)"
-                            : "固定价格(分)"}
+                          {language === "en" ? "Fixed price" : "固定价格"}
                         </FormLabel>
-                        <FormControl>
-                          <FormInput
-                            type="number"
-                            min={0}
-                            value={field.value ?? ""}
-                            onChange={(event) =>
-                              field.onChange(
-                                event.target.value === ""
-                                  ? null
-                                  : Number(event.target.value),
-                              )
-                            }
-                          />
-                        </FormControl>
+                        {/* Dollars on screen, cents in the form, as the combo price and the
+                            minimum spend boxes are. It was typed in cents beside them, so
+                            "8.50" there saved nothing. No `min` and `step="any"`, so the
+                            form's own message shows rather than the browser's. */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm text-muted-foreground">$</span>
+                          <FormControl>
+                            <FormInput
+                              type="number"
+                              step="any"
+                              inputMode="decimal"
+                              aria-label={
+                                language === "en" ? "Fixed price" : "固定价格"
+                              }
+                              value={field.value == null ? "" : field.value / 100}
+                              onChange={(event) =>
+                                field.onChange(
+                                  event.target.value === ""
+                                    ? null
+                                    : Math.round(
+                                        Number(event.target.value) * 100,
+                                      ),
+                                )
+                              }
+                            />
+                          </FormControl>
+                        </div>
                         <FormMessage />
                       </div>
                     )}
