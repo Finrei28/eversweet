@@ -3,6 +3,8 @@ import { z } from "zod";
 import { pickedDay, todayNZ } from "~/lib/aucklandDay";
 import { STAFF_STATUSES } from "~/lib/orderStatus";
 import {
+  COMBO_MAX_SLOTS,
+  COMBO_MIN_SLOTS,
   DISCOUNT_MAX_PERCENT,
   DISCOUNT_MIN_PERCENT,
   hasExactlyOnePrice,
@@ -170,6 +172,41 @@ const offerRequirementsSchema = z
   );
 
 /**
+ * One part of a combo: one dessert, or a whole category to choose from. A combo leaves nothing
+ * out of a category, so there are no exclusions here.
+ */
+export const offerComboSlotSchema = z
+  .object({
+    dessertId: z.string().min(1).nullable().default(null),
+    categoryId: z.string().min(1).nullable().default(null),
+  })
+  .refine(
+    (slot) => (slot.dessertId === null) !== (slot.categoryId === null),
+    "Pick a dessert or a category for each part",
+  );
+
+/**
+ * A combo's parts, in the order the app lists them. Empty on any other offer; the count is
+ * checked with the rest of the offer below, since an empty list is right for a single offer.
+ * The router replaces the rows on every save, so they carry no ids.
+ */
+const offerComboSlotsSchema = z
+  .array(offerComboSlotSchema)
+  .max(COMBO_MAX_SLOTS)
+  .default([]);
+
+/**
+ * A combo's price for its whole set, in cents; 0 is free, as for a fixed price. Shared, as the
+ * slots are, by the form and both mutations.
+ */
+const comboPriceSchema = z.coerce
+  .number()
+  .int()
+  .nonnegative()
+  .nullable()
+  .default(null);
+
+/**
  * Split from the refinement below because `superRefine` returns a ZodEffects, which has
  * no `.extend()` - the update schema has to branch off the plain object.
  */
@@ -219,6 +256,13 @@ const offerFields = z.object({
    */
   renewsWeekly: z.boolean().default(false),
   requirements: offerRequirementsSchema,
+  /**
+   * A combo (20261125000000_offer_combos): one price for its set, and the parts the customer
+   * picks one dessert for each. Both empty on a single-item offer. An offer cannot switch
+   * between the two once made; the router refuses it.
+   */
+  comboPriceInCents: comboPriceSchema,
+  comboSlots: offerComboSlotsSchema,
 });
 
 /**
@@ -234,10 +278,27 @@ const offerFields = z.object({
  * were audited against it first and all three already comply.
  */
 const refineOfferPricing = (
-  offer: { itemPriceInCents: number | null; discountAmount: number | null },
+  offer: {
+    itemPriceInCents: number | null;
+    discountAmount: number | null;
+    comboPriceInCents: number | null;
+  },
   ctx: z.RefinementCtx,
 ) => {
   if (hasExactlyOnePrice(offer)) return;
+
+  // A combo has one price for its set; anything else set beside it is the mistake.
+  if (offer.comboPriceInCents !== null) {
+    for (const path of ["itemPriceInCents", "discountAmount"] as const) {
+      if (offer[path] === null) continue;
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [path],
+        message: "A combo has one price for the whole set. Clear this one.",
+      });
+    }
+    return;
+  }
 
   const message =
     offer.itemPriceInCents === null
@@ -249,8 +310,67 @@ const refineOfferPricing = (
   }
 };
 
+/**
+ * A combo's shape: 2-4 parts, and no dessert, category or exclusions of its own - its desserts
+ * are its parts, and an offer naming a category too would be listed and priced as a single
+ * item by every app build that does not know combos. Any other offer has no parts.
+ */
+const refineCombo = (
+  offer: {
+    comboPriceInCents: number | null;
+    comboSlots: unknown[];
+    dessertId: string | null;
+    categoryId: string | null;
+    excludedDessertIds?: string[];
+  },
+  ctx: z.RefinementCtx,
+) => {
+  if (offer.comboPriceInCents === null) {
+    if (offer.comboSlots.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["comboSlots"],
+        message: "Only a combo has parts.",
+      });
+    }
+    return;
+  }
+
+  if (
+    offer.comboSlots.length < COMBO_MIN_SLOTS ||
+    offer.comboSlots.length > COMBO_MAX_SLOTS
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["comboSlots"],
+      message: `A combo has ${COMBO_MIN_SLOTS} to ${COMBO_MAX_SLOTS} parts.`,
+    });
+  }
+
+  if (
+    offer.dessertId !== null ||
+    offer.categoryId !== null ||
+    (offer.excludedDessertIds?.length ?? 0) > 0
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["comboSlots"],
+      message:
+        "A combo's desserts are its parts. It names no dessert or category of its own.",
+    });
+  }
+};
+
+const refineOffer = (
+  offer: Parameters<typeof refineOfferPricing>[0] & Parameters<typeof refineCombo>[0],
+  ctx: z.RefinementCtx,
+) => {
+  refineOfferPricing(offer, ctx);
+  refineCombo(offer, ctx);
+};
+
 /** The offer dialog's form, whose dates are the calendar controls' `Date`s. */
-export const offerFormSchema = offerFields.superRefine(refineOfferPricing);
+export const offerFormSchema = offerFields.superRefine(refineOffer);
 
 /**
  * An offer as `createOffer` and `updateOffer` receive it: the form, with each date as the
@@ -274,12 +394,11 @@ const offerInputFields = offerFields
     excludedDessertIds: z.array(z.string().min(1)).optional(),
   });
 
-export const createOfferSchema =
-  offerInputFields.superRefine(refineOfferPricing);
+export const createOfferSchema = offerInputFields.superRefine(refineOffer);
 
 export const updateOfferSchema = offerInputFields
   .extend({ id: z.string().min(1) })
-  .superRefine(refineOfferPricing);
+  .superRefine(refineOffer);
 
 /**
  * Assigning or editing a monthly winner's prize.

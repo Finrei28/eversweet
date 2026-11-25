@@ -35,6 +35,14 @@ export const DISCOUNT_MIN_PERCENT = 1;
 export const DISCOUNT_MAX_PERCENT = 100;
 
 /**
+ * A combo has 2-4 parts. The database holds the most with a position CHECK (0-3) and a unique
+ * position per offer; the fewest needs counting the rows, which only the schema and the router
+ * can do.
+ */
+export const COMBO_MIN_SLOTS = 2;
+export const COMBO_MAX_SLOTS = 4;
+
+/**
  * Rule 1, as one expression, so the schema and the constraint cannot disagree. Exactly one
  * of three since combo offers (20261125000000_offer_combos): a fixed price, a percentage, or
  * a combo's price for its set - the constraint is `NUM_NONNULLS(...) = 1`.
