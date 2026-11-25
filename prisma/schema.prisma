@@ -272,6 +272,13 @@ model OfferComboSlot {
   dessertId  String?
   categoryId String?
 
+  /// The desserts a category slot leaves out: "any sago but the durian", as
+  /// `Offer.excludedDessertIds` does for a category offer. Means nothing on a slot naming
+  /// one dessert. Ids rather than a relation, so an id that no longer matches anything
+  /// excludes nothing. The order server leaves these out of the slot's list and refuses
+  /// them in a combo, so installed app builds, which list whatever it sends, need no update.
+  excludedDessertIds String[] @default([])
+
   offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
 
   // Restrict, not the SetNull an optional relation defaults to: a slot naming nothing

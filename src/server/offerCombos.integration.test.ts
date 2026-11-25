@@ -67,6 +67,34 @@ describeIfDb("combo offers in the database", () => {
     });
   });
 
+  // A category slot can leave desserts out, as a category offer can: "any sago but the
+  // durian". The order server reads the list; this repo writes it.
+  it("stores the desserts a category slot leaves out, and none by default", async () => {
+    const offer = await db.offer.create({
+      data: {
+        name: "Any sago but mango, then any sago",
+        comboPriceInCents: 1500,
+        comboSlots: {
+          create: [
+            { position: 0, categoryId, excludedDessertIds: [dessertId] },
+            { position: 1, categoryId },
+          ],
+        },
+      },
+      select: {
+        comboSlots: {
+          select: { position: true, excludedDessertIds: true },
+          orderBy: { position: "asc" },
+        },
+      },
+    });
+
+    expect(offer.comboSlots).toEqual([
+      { position: 0, excludedDessertIds: [dessertId] },
+      { position: 1, excludedDessertIds: [] },
+    ]);
+  });
+
   it("refuses two slots at the same position", async () => {
     const offer = await db.offer.create({
       data: { name: "Pair", comboPriceInCents: 1500 },

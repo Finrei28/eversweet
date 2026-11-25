@@ -1,0 +1,26 @@
+-- Lets a combo's category slot leave some of its desserts out: "any sago but the durian +
+-- any mochi for $15", as a category offer already can (20261110000000_offer_excluded_desserts).
+--
+-- Written by hand in place of:
+--   npx prisma migrate dev --create-only --name offer_combo_slot_exclusions
+-- run from C:\Personal Projects\eversweet
+--
+-- This is exactly the SQL Prisma would generate (`prisma migrate diff` between the previous
+-- schema and this one, datamodel to datamodel), and nothing more. No CHECK keeps the list
+-- empty on a slot naming one dessert, as none does on `Offer`: the website stores an empty
+-- list there, and the order server ignores one on a dessert either way.
+--
+-- Purely additive, so there is nothing to backfill or assert against. The DEFAULT fills
+-- every existing slot with an empty list as the column is added, which excludes nothing:
+-- every combo goes on covering exactly what it covers today. Over an empty database - a
+-- shadow, or `migrate deploy` building a fresh local one - it applies the same.
+--
+-- Rollout: this migration first, then the order server and this site's admin. A Prisma
+-- client built from this schema selects the column on any read of OfferComboSlot, and
+-- fails with "column does not exist" against a database without it. The deployed order
+-- server and website predate the column and keep working with it present. Installed app
+-- builds need nothing: they list the desserts the order server sends for a slot, and the
+-- server leaves the excluded ones out.
+
+-- AlterTable
+ALTER TABLE "OfferComboSlot" ADD COLUMN     "excludedDessertIds" TEXT[] DEFAULT ARRAY[]::TEXT[];
