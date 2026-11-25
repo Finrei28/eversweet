@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import DollarPrefix from "./dollarPrefix";
 
 type OfferForm = z.infer<typeof offerFormSchema>;
 
@@ -209,27 +210,31 @@ export default function RequirementsField({
                  and the schema's "Enter an amount over $0." never showed (Greptile on
                  #79). The box rounds to the cent as it is typed; the schema refuses the
                  rest. */
-              <div className="flex min-w-36 flex-1 items-center gap-1">
-                <span className="text-sm text-muted-foreground">$</span>
-                <Input
-                  type="number"
-                  step="any"
-                  inputMode="decimal"
-                  aria-label={language === "en" ? "Minimum spend" : "最低消费"}
-                  value={
-                    row?.minSpendInCents == null
-                      ? ""
-                      : row.minSpendInCents / 100
-                  }
-                  onChange={(event) =>
-                    setRow(index, {
-                      minSpendInCents:
-                        event.target.value === ""
-                          ? null
-                          : Math.round(Number(event.target.value) * 100),
-                    })
-                  }
-                />
+              <div className="min-w-36 flex-1">
+                <DollarPrefix>
+                  <Input
+                    type="number"
+                    step="any"
+                    inputMode="decimal"
+                    className="pl-7"
+                    aria-label={
+                      language === "en" ? "Minimum spend" : "最低消费"
+                    }
+                    value={
+                      row?.minSpendInCents == null
+                        ? ""
+                        : row.minSpendInCents / 100
+                    }
+                    onChange={(event) =>
+                      setRow(index, {
+                        minSpendInCents:
+                          event.target.value === ""
+                            ? null
+                            : Math.round(Number(event.target.value) * 100),
+                      })
+                    }
+                  />
+                </DollarPrefix>
               </div>
             ) : (
               <>
