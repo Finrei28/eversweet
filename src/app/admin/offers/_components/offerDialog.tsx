@@ -41,6 +41,7 @@ import { cheapestDessert, describeComboCeiling } from "~/lib/offerPricing";
 import { api } from "~/trpc/react";
 import { type OfferRow } from "../columns";
 import ComboSlotsField from "./comboSlotsField";
+import DollarPrefix from "./dollarPrefix";
 import RequirementsField from "./requirementsField";
 import { useComboLimit } from "./useComboLimit";
 
@@ -520,13 +521,13 @@ export default function OfferDialog({
                       {/* Dollars on screen, cents in the form, as the minimum spend box:
                           no `min` and `step="any"`, so the form's own message shows rather
                           than the browser's. */}
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm text-muted-foreground">$</span>
+                      <DollarPrefix>
                         <FormControl>
                           <FormInput
                             type="number"
                             step="any"
                             inputMode="decimal"
+                            className="pl-7"
                             aria-label={
                               language === "en" ? "Combo price" : "套餐价格"
                             }
@@ -542,7 +543,7 @@ export default function OfferDialog({
                             }
                           />
                         </FormControl>
-                      </div>
+                      </DollarPrefix>
                       <FormMessage />
                       {/* Not under its own error: a price at or over the limit is refused
                           in these same words, which then showed twice. */}
@@ -698,17 +699,19 @@ export default function OfferDialog({
                             minimum spend boxes are. It was typed in cents beside them, so
                             "8.50" there saved nothing. No `min` and `step="any"`, so the
                             form's own message shows rather than the browser's. */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-muted-foreground">$</span>
+                        <DollarPrefix>
                           <FormControl>
                             <FormInput
                               type="number"
                               step="any"
                               inputMode="decimal"
+                              className="pl-7"
                               aria-label={
                                 language === "en" ? "Fixed price" : "固定价格"
                               }
-                              value={field.value == null ? "" : field.value / 100}
+                              value={
+                                field.value == null ? "" : field.value / 100
+                              }
                               onChange={(event) =>
                                 field.onChange(
                                   event.target.value === ""
@@ -720,7 +723,7 @@ export default function OfferDialog({
                               }
                             />
                           </FormControl>
-                        </div>
+                        </DollarPrefix>
                         <FormMessage />
                       </div>
                     )}
