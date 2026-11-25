@@ -102,12 +102,19 @@ sed -n '/^ALTER TABLE "TradingHours"/,/;$/p' prisma/migrations/20260918000000_tr
 sed -n '/^ALTER TABLE "OfferRequirement" ADD CONSTRAINT/,/;$/p' \
   prisma/migrations/20261123000000_offer_requirement_min_spend/migration.sql \
   | "C:/pg16test/pgsql/bin/psql.exe" -v ON_ERROR_STOP=1 -d "$TEST_DATABASE_URL"
+# Combo offers: everything from the price rule onwards, since db push has made the columns,
+# the slot table and its keys. It replaces Offer_exactly_one_price, so it runs after the
+# pricing rules above.
+sed -n '/^ALTER TABLE "Offer" DROP CONSTRAINT/,$p' \
+  prisma/migrations/20261125000000_offer_combos/migration.sql \
+  | "C:/pg16test/pgsql/bin/psql.exe" -v ON_ERROR_STOP=1 -d "$TEST_DATABASE_URL"
 ```
 
 Nothing in the suites depends on them - they assert the zod schema and the router, which is
-every path an admin can reach - so a database without them still passes. The one suite that
-asserts a constraint (`src/server/pickUpTimes.integration.test.ts`) skips those cases, in
-the report, when the constraints are missing.
+every path an admin can reach - so a database without them still passes. The suites that
+assert a constraint (`src/server/pickUpTimes.integration.test.ts`,
+`src/server/offerCombos.integration.test.ts`) skip those cases, in the report, when the
+constraints are missing.
 
 `resetDatabase()` truncates `TradingHours` too, so a suite that reads the shop's hours seeds
 them itself, as `src/server/pickUpTimes.integration.test.ts` does.
