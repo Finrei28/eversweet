@@ -172,13 +172,18 @@ const offerRequirementsSchema = z
   );
 
 /**
- * One part of a combo: one dessert, or a whole category to choose from. A combo leaves nothing
- * out of a category, so there are no exclusions here.
+ * One part of a combo: one dessert, or a category to choose from less the desserts it leaves
+ * out ("any sago but the durian"), as a category offer's `excludedDessertIds` does.
+ *
+ * The list is optional, not defaulted: a part sent without it - from a dialog opened before
+ * parts could leave desserts out - keeps what is stored, where an empty list clears it. The
+ * router resolves it, and stores none on a dessert part.
  */
 export const offerComboSlotSchema = z
   .object({
     dessertId: z.string().min(1).nullable().default(null),
     categoryId: z.string().min(1).nullable().default(null),
+    excludedDessertIds: z.array(z.string().min(1)).optional(),
   })
   .refine(
     (slot) => (slot.dessertId === null) !== (slot.categoryId === null),

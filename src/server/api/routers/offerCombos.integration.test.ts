@@ -68,6 +68,32 @@ const comboInput = (overrides: Partial<OfferInput> = {}): OfferInput => ({
   ...overrides,
 });
 
+/** The menu, plus a second sago: Lychee at $9.00 beside the $8.00 Mango. */
+const seedTwoSagos = async () => {
+  const menu = await seedMenu();
+  const lychee = await db.dessert.create({
+    data: {
+      name: "Lychee Sago",
+      chineseName: "Lychee Sago",
+      priceInCents: 900,
+      imagePath: "/desserts/lychee-sago.jpg",
+      imagePublicId: "products/lychee-sago",
+      categoryId: menu.sago.id,
+    },
+  });
+  const mango = await db.dessert.findFirstOrThrow({ where: { name: "Mango Sago" } });
+  return { ...menu, lychee, mango };
+};
+
+const exclusionsOf = async (offerId: string) =>
+  (
+    await db.offerComboSlot.findMany({
+      where: { offerId },
+      orderBy: { position: "asc" },
+      select: { excludedDessertIds: true },
+    })
+  ).map((slot) => slot.excludedDessertIds);
+
 const slotsOf = (offerId: string) =>
   db.offerComboSlot.findMany({
     where: { offerId },
@@ -173,6 +199,96 @@ describeIfDb("combo offers in the offers router", { timeout: 30_000 }, () => {
       { position: 1, dessertId: null, categoryId: sago.id },
       { position: 2, dessertId: null, categoryId: sago.id },
     ]);
+  });
+
+  // "Any sago but the mango": a category part leaves desserts out, as a category offer does.
+  it("stores what a category part leaves out, and nothing on a dessert part", async () => {
+    const { sago, taro, mango } = await seedTwoSagos();
+
+    const created = await adminCaller().offer.createOffer({
+      offer: comboInput({
+        comboSlots: [
+          { dessertId: taro.id, excludedDessertIds: [taro.id] },
+          { categoryId: sago.id, excludedDessertIds: [mango.id, mango.id] },
+        ],
+      }),
+    });
+
+    expect(await exclusionsOf(created.id)).toEqual([[], [mango.id]]);
+    const [offer] = await adminCaller().offer.getOffers();
+    expect(offer?.comboSlots.map((slot) => slot.excludedDessertIds)).toEqual([
+      [],
+      [mango.id],
+    ]);
+  });
+
+  it("takes the price limit from what a part does not leave out", async () => {
+    const { mochi, sago, mango } = await seedTwoSagos();
+    const caller = adminCaller();
+    const slots = [
+      { categoryId: mochi.id },
+      { categoryId: sago.id, excludedDessertIds: [mango.id] },
+    ];
+
+    // Mochi from $9.50 + Sago, less the $8.00 mango, from $9.00 = $18.50.
+    await expect(
+      caller.offer.createOffer({
+        offer: comboInput({ comboPriceInCents: 1850, comboSlots: slots }),
+      }),
+    ).rejects.toThrow("Mochi Series from $9.50 + Sago Series from $9.00 = $18.50");
+
+    const created = await caller.offer.createOffer({
+      offer: comboInput({ comboPriceInCents: 1800, comboSlots: slots }),
+    });
+    expect(await exclusionsOf(created.id)).toEqual([[], [mango.id]]);
+  });
+
+  it.each([
+    ["a dessert outside its category", "outside"],
+    ["every dessert in its category", "everything"],
+  ])("refuses a part that leaves out %s", async (_, shape) => {
+    const { mochi, sago, taro, mango, lychee } = await seedTwoSagos();
+
+    await expect(
+      adminCaller().offer.createOffer({
+        offer: comboInput({
+          comboSlots: [
+            { categoryId: mochi.id },
+            {
+              categoryId: sago.id,
+              excludedDessertIds:
+                shape === "outside" ? [taro.id] : [mango.id, lychee.id],
+            },
+          ],
+        }),
+      }),
+    ).rejects.toThrow(shape === "outside" ? /not in its category/ : /every dessert/);
+    expect(await db.offer.count()).toBe(0);
+  });
+
+  // A dialog opened before parts could leave desserts out sends them without the list. Its
+  // save keeps what is stored, as an offer's own exclusions are kept; an empty list clears.
+  it("keeps a part's exclusions when a save sends none for it", async () => {
+    const { mochi, sago, mango } = await seedTwoSagos();
+    const caller = adminCaller();
+    const created = await caller.offer.createOffer({
+      offer: comboInput({
+        comboSlots: [
+          { categoryId: mochi.id },
+          { categoryId: sago.id, excludedDessertIds: [mango.id] },
+        ],
+      }),
+    });
+    const save = (comboSlots: OfferInput["comboSlots"]) =>
+      caller.offer.updateOffer({
+        offer: { ...comboInput({ comboPriceInCents: 1600, comboSlots }), id: created.id },
+      });
+
+    await save([{ categoryId: mochi.id }, { categoryId: sago.id }]);
+    expect(await exclusionsOf(created.id)).toEqual([[], [mango.id]]);
+
+    await save([{ categoryId: mochi.id }, { categoryId: sago.id, excludedDessertIds: [] }]);
+    expect(await exclusionsOf(created.id)).toEqual([[], []]);
   });
 
   /**

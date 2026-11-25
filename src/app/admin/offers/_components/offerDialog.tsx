@@ -119,6 +119,7 @@ const toFormValues = (offer: OfferRow | null): OfferForm =>
         comboSlots: offer.comboSlots.map((slot) => ({
           dessertId: slot.dessert?.id ?? null,
           categoryId: slot.category?.id ?? null,
+          excludedDessertIds: slot.excludedDessertIds,
         })),
       }
     : emptyOffer;

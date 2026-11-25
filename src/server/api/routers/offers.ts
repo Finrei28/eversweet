@@ -177,7 +177,7 @@ const assertComboUnderCeiling = async (
   db: Prisma.TransactionClient,
   data: {
     comboPriceInCents: number | null;
-    comboSlots: { dessertId: string | null; categoryId: string | null }[];
+    comboSlots: readonly ResolvedComboSlot[];
   },
 ) => {
   if (data.comboPriceInCents === null) return;
@@ -222,14 +222,89 @@ const assertComboUnderCeiling = async (
   }
 };
 
+type ComboSlotInput = {
+  dessertId: string | null;
+  categoryId: string | null;
+  excludedDessertIds?: string[];
+};
+
+type ResolvedComboSlot = {
+  dessertId: string | null;
+  categoryId: string | null;
+  excludedDessertIds: string[];
+};
+
+/**
+ * What each part of a combo leaves out, settled before anything is checked or written: the
+ * slot-by-slot version of `resolveExclusions`, with the same rules.
+ *
+ * - A dessert part leaves nothing out.
+ * - A part sent without the list - from a dialog opened before parts could leave desserts
+ *   out - keeps what the stored part at its position had, if that part named the same
+ *   category; an empty list clears it.
+ * - An id outside the part's category is refused, unless it was stored (the dessert has
+ *   since moved, and the dialog sends back what it cannot show), when it is dropped.
+ * - A part may not leave out every dessert in its category.
+ *
+ * `stored` is the offer's parts as stored, or empty for a new offer.
+ */
+const resolveComboSlots = async (
+  db: Prisma.TransactionClient,
+  slots: readonly ComboSlotInput[],
+  stored: readonly { position: number; categoryId: string | null; excludedDessertIds: string[] }[],
+): Promise<ResolvedComboSlot[]> => {
+  const categoryIds = [
+    ...new Set(
+      slots.flatMap((slot) =>
+        slot.categoryId && !slot.dessertId ? [slot.categoryId] : [],
+      ),
+    ),
+  ];
+  const desserts = categoryIds.length
+    ? await db.dessert.findMany({
+        where: { categoryId: { in: categoryIds } },
+        select: { id: true, categoryId: true },
+      })
+    : [];
+
+  return slots.map((slot, position) => {
+    const base = { dessertId: slot.dessertId, categoryId: slot.categoryId };
+    if (slot.dessertId || !slot.categoryId) return { ...base, excludedDessertIds: [] };
+
+    const before = stored.find((row) => row.position === position);
+    const kept =
+      before?.categoryId === slot.categoryId ? before.excludedDessertIds : [];
+    const asked = Array.from(new Set(slot.excludedDessertIds ?? kept));
+
+    const inCategory = new Set(
+      desserts.filter((d) => d.categoryId === slot.categoryId).map((d) => d.id),
+    );
+    const excluded = asked.filter((id) => inCategory.has(id) || !kept.includes(id));
+
+    if (excluded.some((id) => !inCategory.has(id))) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `A dessert left out of part ${position + 1} is not in its category. Reopen the offer and choose again.`,
+      });
+    }
+    if (excluded.length > 0 && excluded.length >= inCategory.size) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Part ${position + 1} cannot leave out every dessert in its category - it would have nothing to choose from.`,
+      });
+    }
+
+    return { ...base, excludedDessertIds: excluded };
+  });
+};
+
 /** A combo's parts as rows, numbered from 0 in the order they were given. */
-const comboSlotRows = (
-  slots: { dessertId: string | null; categoryId: string | null }[],
-) =>
+const comboSlotRows = (slots: readonly ResolvedComboSlot[]) =>
   slots.map((slot, position) => ({
     position,
     dessertId: slot.dessertId,
     categoryId: slot.categoryId,
+    excludedDessertIds: slot.excludedDessertIds,
   }));
 
 const offerSelect = {
@@ -251,6 +326,7 @@ const offerSelect = {
       position: true,
       dessert: { select: { id: true, name: true, chineseName: true } },
       category: { select: { id: true, name: true, chineseName: true } },
+      excludedDessertIds: true,
     },
     orderBy: { position: "asc" },
   },
@@ -375,14 +451,15 @@ export const offerRouter = createTRPCRouter({
 
       const excludedDessertIds = await resolveExclusions(ctx.db, data, null);
       await assertUnderListPrice(ctx.db, { ...data, excludedDessertIds });
-      await assertComboUnderCeiling(ctx.db, data);
+      const comboSlots = await resolveComboSlots(ctx.db, data.comboSlots, []);
+      await assertComboUnderCeiling(ctx.db, { ...data, comboSlots });
 
       // No redemption reset: a brand new offer has none.
       const offer = await ctx.db.offer.create({
         data: {
           ...offerScalars(data, excludedDessertIds),
           requirements: { create: data.requirements.map(requirementValues) },
-          comboSlots: { create: comboSlotRows(data.comboSlots) },
+          comboSlots: { create: comboSlotRows(comboSlots) },
         },
         select: { id: true, name: true },
       });
@@ -425,6 +502,9 @@ export const offerRouter = createTRPCRouter({
             categoryId: true,
             excludedDessertIds: true,
             comboPriceInCents: true,
+            comboSlots: {
+              select: { position: true, categoryId: true, excludedDessertIds: true },
+            },
             requirements: { select: { id: true } },
           },
         });
@@ -470,7 +550,12 @@ export const offerRouter = createTRPCRouter({
 
         const excludedDessertIds = await resolveExclusions(tx, data, existing);
         await assertUnderListPrice(tx, { ...data, excludedDessertIds });
-        await assertComboUnderCeiling(tx, data);
+        const comboSlots = await resolveComboSlots(
+          tx,
+          data.comboSlots,
+          existing.comboSlots,
+        );
+        await assertComboUnderCeiling(tx, { ...data, comboSlots });
 
         /**
          * A combo's parts are replaced, not patched: nothing outside this offer keeps a slot's
@@ -481,7 +566,7 @@ export const offerRouter = createTRPCRouter({
         if (data.comboPriceInCents !== null) {
           await tx.offerComboSlot.deleteMany({ where: { offerId: data.id } });
           await tx.offerComboSlot.createMany({
-            data: comboSlotRows(data.comboSlots).map((row) => ({
+            data: comboSlotRows(comboSlots).map((row) => ({
               ...row,
               offerId: data.id,
             })),

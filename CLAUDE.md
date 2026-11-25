@@ -1123,7 +1123,7 @@ visitors to the customer app for its sago offer. The rules are `~/lib/appOffer`;
   `lib/offerUnlock` is what checks it, and an older order server never unlocks a spend row.
 - **A combo is the third kind of price: one price for a set** ("any mochi + any sago for $15",
   `20261125000000_offer_combos`). `Offer.comboPriceInCents` plus 2-4 `OfferComboSlot`s, each a
-  dessert or a whole category, with no dessert, category or exclusions on the offer itself.
+  dessert or a category, with no dessert, category or exclusions on the offer itself.
   - **Where the rules live.** The shared schemas hold the count and the shape
     (`refineCombo`) and the three-way price (`hasExactlyOnePrice`). The router holds the
     ceiling (`assertComboUnderCeiling`: under the cheapest dessert each slot can take, added
@@ -1132,10 +1132,21 @@ visitors to the customer app for its sago offer. The rules are `~/lib/appOffer`;
     saves of one offer take turns: `updateOffer` locks the offer row first
     (`FOR NO KEY UPDATE`, never `FOR UPDATE`, which would hold up customers adding it).
     Two admins saving one combo used to collide on the (offer, position) key as a 500.
+  - **A category part can leave desserts out** (`OfferComboSlot.excludedDessertIds`,
+    `20261126000000_offer_combo_slot_exclusions`): "any sago but the durian", as a category
+    offer can. `resolveComboSlots` settles each part's list by `resolveExclusions`' rules: none
+    on a dessert part; an id outside the category refused unless it was stored, then dropped;
+    never the whole category. A part sent without the list, from a dialog opened before
+    exclusions existed, keeps what the stored part at its position had if that named the same
+    category - so the slot schema's list is optional, not defaulted. The ceiling takes each
+    part's cheapest from what it keeps, and the table counts what it leaves out ("Sago Series
+    (except 1 item)"). The order server leaves them out of what it sends and refuses them.
   - **The kind is fixed once made.** `updateOffer` refuses a single offer turning into a
     combo or back, because every line under it would mean something else.
   - **Who serves it.** The order server prices, checks and serves combos, only to app builds
-    that ask with `?combos=1`.
+    that ask with `?combos=1`. It announces one in the new-offer push only once its
+    `ANNOUNCE_COMBO_OFFERS` setting is on, raised at launch with the minimum app builds; until
+    then a combo switched on reaches 1.1.0 testers alone, unannounced.
   - **Changing a running combo's price or slots,** or a single offer's price, takes it out of
     every cart holding it on the next load. The dialog says so on every edit.
   - **The order lines.** A combo's order lines share a `comboId`, each line carrying its
