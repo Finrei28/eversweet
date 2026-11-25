@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { formatCurrency } from "~/lib/formatters";
+import { comboPartsLabel, comboPriceLabel } from "~/lib/comboLabels";
 import { hasEnded, offerState, type OfferState } from "~/lib/offers";
 import { type RouterOutputs } from "~/trpc/react";
 
@@ -139,7 +140,15 @@ export function GetOfferColumns({
         id: "appliesTo",
         header: language === "en" ? "Applies to" : "适用于",
         cell: ({ row }) => {
-          const { dessert, category, excludedDessertIds } = row.original;
+          const { dessert, category, excludedDessertIds, comboSlots } =
+            row.original;
+          if (comboSlots.length > 0) {
+            return (
+              <div className="font-medium">
+                {comboPartsLabel(comboSlots, language)}
+              </div>
+            );
+          }
           const target = dessert ?? category;
           if (!target) return <div className="text-muted-foreground">—</div>;
           // Counted rather than named: the names are in the edit dialog, and a table row
@@ -163,7 +172,16 @@ export function GetOfferColumns({
         id: "reward",
         header: language === "en" ? "Reward" : "优惠内容",
         cell: ({ row }) => {
-          const { itemPriceInCents, discountAmount } = row.original;
+          const { itemPriceInCents, discountAmount, comboPriceInCents } =
+            row.original;
+
+          if (comboPriceInCents !== null) {
+            return (
+              <div className="font-medium">
+                {comboPriceLabel(comboPriceInCents, language)}
+              </div>
+            );
+          }
 
           // itemPriceInCents wins on the order server, so it is what we lead with.
           if (itemPriceInCents !== null) {
