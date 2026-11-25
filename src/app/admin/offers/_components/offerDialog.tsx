@@ -335,7 +335,7 @@ export default function OfferDialog({
         message:
           language === "en"
             ? `Has to be under ${formatCurrency(ceiling.totalCents / 100)}: ${describeComboCeiling(ceiling)}.`
-            : `必须低于 ${formatCurrency(ceiling.totalCents / 100)}：${describeComboCeiling(ceilingZh)}。`,
+            : `必须低于 ${formatCurrency(ceiling.totalCents / 100)}：${describeComboCeiling(ceilingZh, "zh")}。`,
       });
       return;
     }
@@ -574,7 +574,7 @@ export default function OfferDialog({
                         <p className="mt-1 text-sm text-muted-foreground">
                           {language === "en"
                             ? `Has to be under ${formatCurrency(comboLimit.en.totalCents / 100)}: ${describeComboCeiling(comboLimit.en)}.`
-                            : `必须低于 ${formatCurrency(comboLimit.en.totalCents / 100)}：${describeComboCeiling(comboLimit.zh!)}。`}
+                            : `必须低于 ${formatCurrency(comboLimit.en.totalCents / 100)}：${describeComboCeiling(comboLimit.zh!, "zh")}。`}
                         </p>
                       )}
                     </div>

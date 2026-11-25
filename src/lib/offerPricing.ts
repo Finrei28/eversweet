@@ -138,11 +138,20 @@ export const comboCeiling = (
   };
 };
 
-/** "Mochi Series from $9.50 + Sago Series from $8.00 = $17.50". */
-export const describeComboCeiling = (ceiling: ComboCeiling) =>
+/**
+ * "Mochi Series from $9.50 + Sago Series from $8.00 = $17.50", or in Chinese, from a
+ * ceiling built with the Chinese names, "麻薯系列 $9.50 起 + 西米系列 $8.00 起 = $17.50".
+ */
+export const describeComboCeiling = (
+  ceiling: ComboCeiling,
+  language: "en" | "zh" = "en",
+) =>
   `${ceiling.parts
-    .map(
-      (part) =>
-        `${part.label} ${part.fromCategory ? "from " : ""}${formatCurrency(part.cents / 100)}`,
-    )
+    .map((part) => {
+      const price = formatCurrency(part.cents / 100);
+      if (!part.fromCategory) return `${part.label} ${price}`;
+      return language === "en"
+        ? `${part.label} from ${price}`
+        : `${part.label} ${price} 起`;
+    })
     .join(" + ")} = ${formatCurrency(ceiling.totalCents / 100)}`;
