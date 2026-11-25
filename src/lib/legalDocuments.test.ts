@@ -346,6 +346,36 @@ describe("the claims that were wrong before", () => {
     );
   });
 
+  /**
+   * A combo is one set: added, removed and counted as one use (the order server's
+   * `offerUsesIn`), its extras at their usual price on top with a member's discount, and no
+   * member discount on the set's own price.
+   */
+  it("says how a combo offer is priced and counted", () => {
+    expect(termsText).toMatch(/A combo offer sets one price for a set of items/i);
+    expect(termsText).toMatch(
+      /added to and removed from your cart as a set, and counts as one use/i,
+    );
+    expect(termsText).toMatch(/Extras you add cost their usual price on top/i);
+    expect(termsText).toMatch(
+      /with your member discount if you have one; the combo price itself has no further discount/i,
+    );
+  });
+
+  /**
+   * Since combos (the order server's `lib/offerStanding`), an offer item leaves the cart when
+   * its offer changes, not only when it stops - single offers included - and its use goes
+   * back. The terms said only "stops running".
+   */
+  it("says a changed offer leaves the cart, not only one that stopped", () => {
+    expect(termsText).toMatch(/stops running or changes before you pay/i);
+    expect(termsText).toMatch(/its use is given back/i);
+    expect(termsText).toMatch(/A combo is taken out as a whole/i);
+    expect(termsText).not.toMatch(
+      /If an offer in your cart stops running before you pay/i,
+    );
+  });
+
   /** The shop does send these, so the policy must not claim otherwise. */
   it("discloses the new-offer notification", () => {
     expect(privacyText).toMatch(/when a new offer becomes available/i);

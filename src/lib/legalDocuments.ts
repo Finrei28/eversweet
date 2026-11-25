@@ -92,7 +92,7 @@ export const LEGAL_TOKENS = [
  * Written the long way round because it is rendered raw by the app, and "12-06-2026" reads
  * as 12 June to a New Zealander and 6 December to an American with equal confidence.
  */
-export const LEGAL_LAST_UPDATED = "23 November 2026"
+export const LEGAL_LAST_UPDATED = "25 November 2026"
 
 const fill = (text: string, contact: LegalContact): string =>
   text.replace(/\{\{(\w+)\}\}/g, (whole, token: string) =>
@@ -312,8 +312,9 @@ export const termAndConditions: LegalDocument = {
         "Offers in the app may be open to everyone, limited to members, or limited to customers who have not ordered before.",
         "Some offers have to be unlocked first, in one order paid at least partly by card, by buying the items they name, spending the amount they name, or both. Items from another offer do not count towards the items an offer names. The amount is what you pay for the whole order after discounts, items from other offers included; items paid for with Sweet Points add nothing to it.",
         "An offer can have a limit on how many times you can use it. Some reset each week.",
+        "A combo offer sets one price for a set of items, one for each of its parts. It is added to and removed from your cart as a set, and counts as one use. Extras you add cost their usual price on top, with your member discount if you have one; the combo price itself has no further discount.",
         "Offers run for a set period and can be paused, changed or withdrawn at any time.",
-        "If an offer in your cart stops running before you pay, the item is taken out of your cart and we tell you why.",
+        "If an offer in your cart stops running or changes before you pay, the item is taken out of your cart, its use is given back, and we tell you why. A combo is taken out as a whole.",
         "Only one percentage discount applies to an item: whichever is better of your member discount and any promotion. They do not add together.",
         "Offers and discounts in the app or on the website apply to orders placed there, and may not be available over the counter.",
         "Offers are tied to the account they were given to, have no cash value, and cannot be transferred.",
