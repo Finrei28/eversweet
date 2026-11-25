@@ -324,16 +324,18 @@ export default function OfferDialog({
 
   const handleSubmit = (data: OfferForm) => {
     const ceiling = comboLimit?.en;
+    const ceilingZh = comboLimit?.zh ?? ceiling;
     if (
       data.comboPriceInCents !== null &&
       ceiling &&
+      ceilingZh &&
       data.comboPriceInCents >= ceiling.totalCents
     ) {
       form.setError("comboPriceInCents", {
         message:
           language === "en"
             ? `Has to be under ${formatCurrency(ceiling.totalCents / 100)}: ${describeComboCeiling(ceiling)}.`
-            : `必须低于 ${formatCurrency(ceiling.totalCents / 100)}：${describeComboCeiling(comboLimit!.zh!)}。`,
+            : `必须低于 ${formatCurrency(ceiling.totalCents / 100)}：${describeComboCeiling(ceilingZh)}。`,
       });
       return;
     }
