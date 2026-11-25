@@ -187,6 +187,17 @@ model Offer {
   ///
   /// Ignored entirely when itemPriceInCents is set - that wins.
   discountAmount     Int?
+  /// A combo's price: one fixed price for the whole set its `comboSlots` describe ("any
+  /// mochi + any sago for $15"), 0 meaning free as for `itemPriceInCents`. Set only on a
+  /// combo, which then names no dessert, category or exclusions of its own - so any code
+  /// that does not know about combos finds an offer covering nothing and refuses it,
+  /// rather than pricing it as a single item. Exactly one of the three prices is set
+  /// (Offer_exactly_one_price, 20261125000000_offer_combos).
+  ///
+  /// The order server splits it across the combo's cart lines in proportion to their list
+  /// prices, so each line carries its share as a discount and every total, receipt and
+  /// points sum is worked out exactly as for any other line.
+  comboPriceInCents  Int?
   limit              Int                @default(1)
   /// `used` on this offer's redemptions resets every Monday, so a membership perk can be
   /// taken once a week. The order server's weekly cron used to be an updateMany with no
@@ -209,6 +220,7 @@ model Offer {
   /// over and a second run should be announced like the first.
   notifiedAt         DateTime?
   requirements       OfferRequirement[]
+  comboSlots         OfferComboSlot[]
   cartItems          CartItem[]
   category           Category?          @relation(fields: [categoryId], references: [id])
   dessert            Dessert?           @relation(fields: [dessertId], references: [id])
@@ -239,6 +251,35 @@ model OfferRequirement {
 
   dessert  Dessert?  @relation(fields: [dessertId], references: [id])
   category Category? @relation(fields: [categoryId], references: [id])
+}
+
+/// One part of a combo offer: the customer picks one dessert for each slot. A slot names
+/// exactly one dessert or one category, all of it - a combo leaves nothing out - and two
+/// slots may name the same category ("two sago bowls for $16"). 2-4 slots per combo,
+/// `position` 0-3 in the order the app lists them. CHECK constraints hold the target and
+/// the position (20261125000000_offer_combos); the website's offers router holds the count.
+///
+/// Cart and order lines record which combo they belong to (`comboId`) but not which slot:
+/// with four slots at most there are 24 ways to match lines to slots, so the order server
+/// matches them as a set, and a slot edited under a cart cannot leave a line pointing at a
+/// slot that no longer exists.
+model OfferComboSlot {
+  id String @id @default(cuid())
+
+  offerId  String
+  position Int
+
+  dessertId  String?
+  categoryId String?
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  // Restrict, not the SetNull an optional relation defaults to: a slot naming nothing
+  // means nothing, and the CHECK would refuse it anyway.
+  dessert  Dessert?  @relation(fields: [dessertId], references: [id], onDelete: Restrict)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([offerId, position])
 }
 
 model OfferRedemption {
@@ -295,6 +336,7 @@ model Dessert {
   ingredients            DessertIngredient[]
   offers                 Offer[]
   offerRequirements      OfferRequirement[]
+  offerComboSlots        OfferComboSlot[]
   orders                 OrderDessert[]
   promoId                String?
   promo                  Promo?              @relation(fields: [promoId], references: [id])
@@ -309,6 +351,7 @@ model Category {
   desserts          Dessert[]
   offers            Offer[]
   offerRequirements OfferRequirement[]
+  offerComboSlots   OfferComboSlot[]
   promoId           String?
   promo             Promo?                  @relation(fields: [promoId], references: [id])
 }
@@ -416,6 +459,11 @@ model OrderDessert {
   orderId                 String
   dessertId               String
   offerId                 String?
+  /// Copied from the cart line when the order is placed, so the order card and a
+  /// cancellation can tell one combo from two single offers - a cancelled order hands
+  /// back one use per combo. Every line of a combo carries its offer
+  /// (OrderDessert_combo_line_has_offer).
+  comboId                 String?
   quantity                Int
   priceInCents            Int                         @default(0)
   discountedAmountInCents Int                         @default(0)
@@ -548,6 +596,12 @@ model CartItem {
   loyaltyPointsUsed       Int?
   cartId                  String
   offerId                 String?
+  /// The combo this line is one bowl of: every line of one combo shares it, and a line
+  /// outside a combo has none. A plain group key, not a slot id - see OfferComboSlot.
+  /// Lines are added, removed and handed back as a set, the offer's use counted once per
+  /// combo. A combo line carries its offer, is never paid with points and is quantity 1
+  /// (CartItem_combo_line, 20261125000000_offer_combos).
+  comboId                 String?
   cart                    Cart                      @relation(fields: [cartId], references: [id], onDelete: Cascade)
   dessert                 Dessert                   @relation(fields: [dessertId], references: [id])
   offer                   Offer?                    @relation(fields: [offerId], references: [id], onDelete: Cascade)
