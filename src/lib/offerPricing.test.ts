@@ -188,6 +188,29 @@ describe("comboCeiling", () => {
     );
   });
 
+  /**
+   * The Chinese dialog shows the same sum with the Chinese names. It used to keep the
+   * English "from" between them: "西米系列 from $8.00". Chinese puts 起 after the price.
+   */
+  it("writes the sum in Chinese with 起, never the English 'from'", () => {
+    const chineseName = (id: string) =>
+      ({ mochi: "麻薯系列", sago: "西米系列" })[id] ?? id;
+    const ceiling = comboCeiling(
+      [
+        { dessertId: null, categoryId: "mochi" },
+        { dessertId: null, categoryId: "sago" },
+        { dessertId: "taro", categoryId: null },
+      ],
+      desserts.map((dessert) =>
+        dessert.id === "taro" ? { ...dessert, name: "芋泥麻薯" } : dessert,
+      ),
+      chineseName,
+    );
+    expect(describeComboCeiling(ceiling!, "zh")).toBe(
+      "麻薯系列 $9.50 起 + 西米系列 $8.00 起 + 芋泥麻薯 $10.50 = $28.00",
+    );
+  });
+
   it("has no answer while a slot names nothing on the menu", () => {
     expect(
       comboCeiling(
