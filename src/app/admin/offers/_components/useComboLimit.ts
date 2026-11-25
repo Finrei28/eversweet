@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { type UseFormReturn } from "react-hook-form";
+import { useWatch, type UseFormReturn } from "react-hook-form";
 import { type z } from "zod";
 
 import { type offerFormSchema } from "~/app/components/schemas";
@@ -29,7 +29,13 @@ export function useComboLimit(
   desserts: readonly LimitDessert[],
   categories: readonly LimitCategory[],
 ) {
-  const comboSlots = form.watch("comboSlots");
+  /**
+   * `useWatch`, not `form.watch`. The parts field sets each row's own fields, and
+   * `form.watch` hands back the form's own array, changed in place, so a memo keyed on it
+   * never ran again: the hint never showed and the check before saving never fired.
+   * `useWatch` hands back a fresh copy on every change.
+   */
+  const comboSlots = useWatch({ control: form.control, name: "comboSlots" });
 
   return useMemo(() => {
     if (kind !== "combo") return null;
