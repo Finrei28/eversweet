@@ -176,6 +176,75 @@ describeIfDb("combo offers in the offers router", { timeout: 30_000 }, () => {
   });
 
   /**
+   * Two admins saving one combo. Each save deletes the parts and writes them again; at READ
+   * COMMITTED the second save's delete waited on the first's, found the old rows gone once it
+   * committed, could not see the new ones, and so its insert hit the (offer, position) unique
+   * key and answered a 500.
+   *
+   * Deterministic rather than two saves fired together, which rarely interleave on a local
+   * database, as the announcements suite does it: another admin's save is held open - the offer
+   * row written and its parts replaced, not committed - while this save runs. Taking turns, it
+   * waits, then replaces the other admin's parts with its own.
+   */
+  it("makes a save wait for one in progress on the same combo, then saves", async () => {
+    const { mochi, sago, taro } = await seedMenu();
+    const caller = adminCaller();
+    const created = await caller.offer.createOffer({
+      offer: comboInput({
+        comboSlots: [{ categoryId: mochi.id }, { categoryId: sago.id }],
+      }),
+    });
+
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let written!: () => void;
+    const partsWritten = new Promise<void>((resolve) => (written = resolve));
+
+    const otherAdmin = db.$transaction(
+      async (tx) => {
+        // What a save writes, in the order it writes it: the offer row, then the parts.
+        await tx.offer.update({ where: { id: created.id }, data: { name: "Elsewhere" } });
+        await tx.offerComboSlot.deleteMany({ where: { offerId: created.id } });
+        await tx.offerComboSlot.createMany({
+          data: [
+            { offerId: created.id, position: 0, categoryId: sago.id },
+            { offerId: created.id, position: 1, categoryId: mochi.id },
+          ],
+        });
+        written();
+        await held;
+      },
+      { timeout: 20_000 },
+    );
+    await partsWritten;
+
+    const save = caller.offer.updateOffer({
+      offer: {
+        ...comboInput({
+          comboSlots: [{ dessertId: taro.id }, { categoryId: sago.id }],
+        }),
+        id: created.id,
+      },
+    });
+    const outcome = save.then(
+      () => "saved",
+      (error: Error) => error.message,
+    );
+    await Promise.race([
+      outcome,
+      new Promise((resolve) => setTimeout(resolve, 1_500)),
+    ]);
+    release();
+    await otherAdmin;
+
+    expect(await outcome).toBe("saved");
+    expect(await slotsOf(created.id)).toEqual([
+      { position: 0, dessertId: taro.id, categoryId: null },
+      { position: 1, dessertId: null, categoryId: sago.id },
+    ]);
+  });
+
+  /**
    * The order server tells a combo from a single offer by its price column, and a cart line
    * from either by its `comboId`. Switching an offer between the two would leave every cart
    * line and order line under it meaning something else.
