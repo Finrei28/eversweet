@@ -84,8 +84,15 @@ export const isUnderListPrice = (
   ceilingInCents: number | null,
 ): boolean => ceilingInCents === null || itemPriceInCents < ceilingInCents;
 
-/** One slot of a combo, as the form and the router hold it: a dessert or a whole category. */
-export type ComboSlotTarget = { dessertId: string | null; categoryId: string | null };
+/**
+ * One slot of a combo, as the form and the router hold it: a dessert, or a category less the
+ * desserts it leaves out.
+ */
+export type ComboSlotTarget = {
+  dessertId: string | null;
+  categoryId: string | null;
+  excludedDessertIds?: readonly string[];
+};
 
 type CeilingDessert = {
   id: string;
@@ -102,8 +109,9 @@ export type ComboCeiling = {
 /**
  * Rule 3 for a combo: the most its set may cost is under the cheapest dessert each slot can
  * take, added up - "any mochi + any sago" has to beat the cheapest mochi and the cheapest sago
- * bought on their own. A category named twice counts twice. Null while a slot names nothing
- * on the menu, which has no ceiling to break, as for a single offer.
+ * bought on their own. A category named twice counts twice, and a dessert a slot leaves out
+ * sets no limit, as for a category offer. Null while a slot names nothing on the menu, or
+ * leaves out all of it, which has no ceiling to break, as for a single offer.
  *
  * The parts are kept so the admin is told the sum, not just a number: "Mochi Series from
  * $9.50 + Sago Series from $8.00 = $17.50".
@@ -122,8 +130,11 @@ export const comboCeiling = (
       parts.push({ label: dessert.name, cents: dessert.priceInCents, fromCategory: false });
       continue;
     }
+    const leftOut = slot.excludedDessertIds ?? [];
     const cheapest = cheapestDessert(
-      desserts.filter((d) => d.categoryId === slot.categoryId),
+      desserts.filter(
+        (d) => d.categoryId === slot.categoryId && !leftOut.includes(d.id),
+      ),
     );
     if (!cheapest || slot.categoryId === null) return null;
     parts.push({

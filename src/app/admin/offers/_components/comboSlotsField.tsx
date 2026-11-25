@@ -14,6 +14,7 @@ import { type z } from "zod";
 import { useLanguage } from "~/app/components/language";
 import { type offerFormSchema } from "~/app/components/schemas";
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -29,16 +30,20 @@ type TargetKind = "dessert" | "category";
 
 type NamedOption = { id: string; name: string; chineseName: string };
 
+/** A dessert with its category, so a category part can list what it may leave out. */
+type DessertOption = NamedOption & { category: { id: string } };
+
 type ComboSlotsFieldProps = {
   control: Control<OfferForm>;
-  desserts: NamedOption[];
+  desserts: DessertOption[];
   categories: NamedOption[];
 };
 
 /**
  * A combo's parts: the customer picks one dessert for each, in this order. A part is one
- * dessert, or a whole category to choose from - and two parts may name the same category
- * ("two sago bowls for $16"). Two to four of them.
+ * dessert, or a category to choose from - and two parts may name the same category ("two
+ * sago bowls for $16"). Two to four of them. A category part can leave desserts out ("any
+ * sago but the durian"), as a category offer can.
  *
  * The rows carry no ids: the router replaces them on every save, since nothing outside the
  * offer keeps a part's id (the order server matches cart lines to parts as a set).
@@ -68,7 +73,15 @@ export default function ComboSlotsField({
     const options = { shouldDirty: true };
     setValue(`comboSlots.${index}.dessertId`, values.dessertId, options);
     setValue(`comboSlots.${index}.categoryId`, values.categoryId, options);
+    // What a part leaves out belongs to the category it was ticked in.
+    setValue(`comboSlots.${index}.excludedDessertIds`, [], options);
     if (isSubmitted) void trigger("comboSlots");
+  };
+
+  const setLeftOut = (index: number, excludedDessertIds: string[]) => {
+    setValue(`comboSlots.${index}.excludedDessertIds`, excludedDessertIds, {
+      shouldDirty: true,
+    });
   };
 
   /**
@@ -96,10 +109,17 @@ export default function ComboSlotsField({
         const selected = kind === "dessert" ? row?.dessertId : row?.categoryId;
         const rowError = errors.comboSlots?.[index];
         const rowErrorMessage = rowError?.message ?? rowError?.root?.message;
+        // What a category part can leave out: the desserts the app would list for it.
+        const inCategory =
+          kind === "category" && row?.categoryId
+            ? desserts.filter((dessert) => dessert.category.id === row.categoryId)
+            : [];
+        const leftOut = row?.excludedDessertIds ?? [];
 
         return (
           <div
             key={field.id}
+            data-combo-part=""
             className="flex flex-wrap items-center gap-2 rounded-md border p-2"
           >
             <span className="w-14 text-sm font-medium">
@@ -168,6 +188,37 @@ export default function ComboSlotsField({
               <X className="h-4 w-4" />
             </Button>
 
+            {/* The order server leaves these out of the app's list for the part and refuses
+            them in the combo. */}
+            {inCategory.length > 0 && (
+              <div className="w-full">
+                <span className="text-sm text-muted-foreground">
+                  {language === "en" ? "Leave out" : "不包括"}
+                </span>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  {inCategory.map((dessert) => (
+                    <label
+                      key={dessert.id}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <Checkbox
+                        checked={leftOut.includes(dessert.id)}
+                        onCheckedChange={(checked) =>
+                          setLeftOut(
+                            index,
+                            checked === true
+                              ? [...leftOut, dessert.id]
+                              : leftOut.filter((id) => id !== dessert.id),
+                          )
+                        }
+                      />
+                      {language === "en" ? dessert.name : dessert.chineseName}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {rowErrorMessage && (
               <p className="w-full text-sm text-destructive">
                 {language === "en"
@@ -189,8 +240,8 @@ export default function ComboSlotsField({
 
       <p className="text-sm text-muted-foreground">
         {language === "en"
-          ? "Customers pick one dessert for each part, in this order. A category part lets them choose any dessert in it, and two parts can use the same category. Extras cost their usual price on top."
-          : "顾客按此顺序为每一项选择一款甜品。分类项可选择该分类中的任意甜品，两项可以使用同一分类。加料按原价另计。"}
+          ? "Customers pick one dessert for each part, in this order. A category part lets them choose any dessert in it that isn't left out, and two parts can use the same category. Extras cost their usual price on top."
+          : "顾客按此顺序为每一项选择一款甜品。分类项可选择该分类中未被排除的任意甜品，两项可以使用同一分类。加料按原价另计。"}
       </p>
 
       <Button
