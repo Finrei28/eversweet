@@ -442,6 +442,26 @@ describe("combo offer schemas", () => {
     ).toBe(false);
   });
 
+  // "Any sago but the durian". Absent rather than empty when a part is sent without the
+  // list - a tab opened before parts could leave desserts out - so the router can keep what
+  // is stored instead of clearing it.
+  it("keeps what a part leaves out, and tells a part sent without the list apart", () => {
+    const parsed = createOfferSchema.parse({
+      ...base,
+      comboPriceInCents: 1500,
+      comboSlots: [slots[0], { ...slots[1], excludedDessertIds: ["durian"] }],
+    });
+    expect(parsed.comboSlots[1]?.excludedDessertIds).toEqual(["durian"]);
+    expect(parsed.comboSlots[0]?.excludedDessertIds).toBeUndefined();
+    expect(
+      ok({
+        ...base,
+        comboPriceInCents: 1500,
+        comboSlots: [slots[0], { ...slots[1], excludedDessertIds: [""] }],
+      }),
+    ).toBe(false);
+  });
+
   it("refuses a negative combo price", () => {
     expect(ok({ ...base, comboPriceInCents: -1, comboSlots: slots })).toBe(false);
   });

@@ -224,4 +224,38 @@ describe("comboCeiling", () => {
     ).toBeNull();
     expect(comboCeiling([], desserts, categoryName)).toBeNull();
   });
+
+  // "Any sago but the cheapest": what a part leaves out sets no limit, as for a category
+  // offer, so the limit is the cheapest it still takes.
+  it("takes a category part's cheapest from what it does not leave out", () => {
+    expect(
+      comboCeiling(
+        [
+          { dessertId: null, categoryId: "mochi", excludedDessertIds: ["matcha"] },
+          { dessertId: null, categoryId: "sago" },
+        ],
+        desserts,
+        categoryName,
+      ),
+    ).toEqual({
+      totalCents: 1850,
+      parts: [
+        { label: "Mochi Series", cents: 1050, fromCategory: true },
+        { label: "Sago Series", cents: 800, fromCategory: true },
+      ],
+    });
+  });
+
+  it("has no limit for a part that leaves out everything in its category", () => {
+    expect(
+      comboCeiling(
+        [
+          { dessertId: null, categoryId: "mochi" },
+          { dessertId: null, categoryId: "sago", excludedDessertIds: ["mango"] },
+        ],
+        desserts,
+        categoryName,
+      ),
+    ).toBeNull();
+  });
 });

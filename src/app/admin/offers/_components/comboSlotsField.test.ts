@@ -34,7 +34,11 @@ function Harness({ slots }: { slots: OfferForm["comboSlots"] }): ReactNode {
     ...form,
     children: h(ComboSlotsField, {
       control: form.control,
-      desserts: [{ id: "taro", name: "Taro Mochi Bowl", chineseName: "芋泥麻糬" }],
+      desserts: [
+        { id: "taro", name: "Taro Mochi Bowl", chineseName: "芋泥麻糬", category: { id: "mochi" } },
+        { id: "mango", name: "Mango Sago", chineseName: "芒果西米露", category: { id: "sago" } },
+        { id: "durian", name: "Durian Sago", chineseName: "榴莲西米露", category: { id: "sago" } },
+      ],
       categories,
     }),
   });
@@ -100,6 +104,46 @@ describe("a combo's parts", () => {
     expect(button("Add part").disabled).toBe(true);
     // Above two, a part can go again.
     expect(removeButtons().every((b) => !b.disabled)).toBe(true);
+  });
+
+  /** The "Leave out" boxes under part `index`, by the dessert each names. */
+  const leaveOutBoxes = (index: number) => {
+    const row = container.querySelectorAll<HTMLElement>("[data-combo-part]")[index];
+    return [...(row?.querySelectorAll<HTMLButtonElement>('button[role="checkbox"]') ?? [])];
+  };
+  const boxNamed = (index: number, name: string) => {
+    const box = leaveOutBoxes(index).find((b) =>
+      b.closest("label")?.textContent?.includes(name),
+    );
+    if (!box) throw new Error(`no box for ${name} under part ${index + 1}`);
+    return box;
+  };
+
+  // "Any sago but the durian", as a category offer can.
+  it("lets a category part leave its desserts out, and a dessert part nothing", async () => {
+    await render([
+      { dessertId: "taro", categoryId: null },
+      { dessertId: null, categoryId: "sago", excludedDessertIds: [] },
+    ]);
+
+    expect(leaveOutBoxes(0)).toHaveLength(0);
+    expect(leaveOutBoxes(1)).toHaveLength(2);
+
+    await act(async () => boxNamed(1, "Durian Sago").click());
+    expect(form.getValues("comboSlots.1.excludedDessertIds")).toEqual(["durian"]);
+
+    await act(async () => boxNamed(1, "Durian Sago").click());
+    expect(form.getValues("comboSlots.1.excludedDessertIds")).toEqual([]);
+  });
+
+  it("shows a part's stored exclusions ticked", async () => {
+    await render([
+      { dessertId: null, categoryId: "mochi" },
+      { dessertId: null, categoryId: "sago", excludedDessertIds: ["mango"] },
+    ]);
+
+    expect(boxNamed(1, "Mango Sago").getAttribute("aria-checked")).toBe("true");
+    expect(boxNamed(1, "Durian Sago").getAttribute("aria-checked")).toBe("false");
   });
 
   it("removes the part asked for", async () => {

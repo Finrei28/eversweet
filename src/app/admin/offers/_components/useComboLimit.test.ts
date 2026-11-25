@@ -27,6 +27,7 @@ const desserts = [
   { id: "taro", name: "Taro Mochi Bowl", chineseName: "芋泥麻薯", priceInCents: 1050, category: { id: "mochi" } },
   { id: "matcha", name: "Matcha Mochi Bowl", chineseName: "抹茶麻薯", priceInCents: 950, category: { id: "mochi" } },
   { id: "mango", name: "Mango Sago", chineseName: "芒果西米露", priceInCents: 800, category: { id: "sago" } },
+  { id: "lychee", name: "Lychee Sago", chineseName: "荔枝西米露", priceInCents: 900, category: { id: "sago" } },
 ];
 const categories = [
   { id: "mochi", name: "Mochi Series", chineseName: "麻薯系列" },
@@ -94,5 +95,17 @@ describe("useComboLimit", () => {
 
     await pick(1, "mochi");
     expect(limit?.en?.totalCents).toBe(1900);
+  });
+
+  it("follows what a part leaves out", async () => {
+    await pick(0, "mochi");
+    await pick(1, "sago");
+    expect(limit?.en?.totalCents).toBe(1750);
+
+    await act(async () => {
+      form.setValue("comboSlots.1.excludedDessertIds", ["mango"], { shouldDirty: true });
+    });
+
+    expect(limit?.en?.totalCents).toBe(1850);
   });
 });
