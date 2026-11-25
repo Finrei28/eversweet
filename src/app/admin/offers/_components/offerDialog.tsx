@@ -511,7 +511,7 @@ export default function OfferDialog({
                 <FormField
                   control={form.control}
                   name="comboPriceInCents"
-                  render={({ field }) => (
+                  render={({ field, fieldState }) => (
                     <div>
                       <FormLabel>
                         {language === "en" ? "Combo price" : "套餐价格"}
@@ -543,7 +543,9 @@ export default function OfferDialog({
                         </FormControl>
                       </div>
                       <FormMessage />
-                      {comboLimit?.en && (
+                      {/* Not under its own error: a price at or over the limit is refused
+                          in these same words, which then showed twice. */}
+                      {comboLimit?.en && !fieldState.error && (
                         <p className="mt-1 text-sm text-muted-foreground">
                           {language === "en"
                             ? `Has to be under ${formatCurrency(comboLimit.en.totalCents / 100)}: ${describeComboCeiling(comboLimit.en)}.`
